@@ -1,0 +1,25 @@
+{
+  "name": "jumpersim",
+  "version": "1.0.1",
+  "description": "a physics based skydiving simulator for visualizing jumprun strafes",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plaidroni/JumperSim.git"
+  },
+  "author": "sevan e",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/plaidroni/JumperSim/issues"
+  },
+  "homepage": "https://github.com/plaidroni/JumperSim#readme",
+  "dependencies": {
+    "three": "^0.176.0"
+  },
+  "devDependencies": {
+    "parcel": "^2.14.4"
+  }
+}
