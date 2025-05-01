@@ -21,4 +21,5 @@ Parcel
 To install and start local server:
 
 git clone https://github.com/plaidroni/JumperSim.git
+
 npx parcel ./src/index.html
