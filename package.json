@@ -2,7 +2,7 @@
   "name": "jumpersim",
   "version": "1.0.1",
   "description": "a physics based skydiving simulator for visualizing jumprun strafes",
-  "main": "index.js",
+  "default": "index.js",
   "scripts": {
     "test": "test"
   },
