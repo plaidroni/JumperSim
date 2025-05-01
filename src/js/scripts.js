@@ -64,82 +64,75 @@ class Plane {
   constructor(
     position,
     speedKnots = window.devConsoleVars.planeSpeed,
-    direction = new THREE.Vector3(1, 0, 0),
-    jumpersLeft = 10
+    direction = new THREE.Vector3(1, 0, 0)
   ) {
+    this.initialPosition = position.clone();
     this.position = position.clone();
     this.direction = direction.normalize();
-    this.speed = speedKnots * 0.51444; // knots to m/s
+    this.speed = speedKnots * 0.51444 * window.simScale;
     this.vector = this.direction.clone().multiplyScalar(this.speed);
-    this.jumpersLeft = jumpersLeft;
-    this.lastJumpTime = 0;
-    this.timeBetweenJumpers = this.calculateJumpInterval();
-  }
-
-  calculateJumpInterval(twelveWinds = 60) {
-    return (60 / twelveWinds) * 2.0;
   }
 
   update(simulationTime) {
-    if (window.isPlaying) {
-      this.position.add(this.vector.clone().multiplyScalar(simulationTime));
-    }
-  }
-
-  canDropJumper(currentTime) {
-    return (
-      this.jumpersLeft > 0 &&
-      currentTime - this.lastJumpTime > this.timeBetweenJumpers
+    this.position.copy(
+      this.initialPosition
+        .clone()
+        .add(this.vector.clone().multiplyScalar(simulationTime))
     );
-  }
-
-  dropJumper(currentTime) {
-    if (this.canDropJumper(currentTime)) {
-      this.jumpersLeft--;
-      this.lastJumpTime = currentTime;
-      return new Jumper(this.position.clone());
-    }
-    return null;
   }
 }
 
 class Jumper {
-  constructor(position, canopySize = 190) {
-    this.position = position.clone();
-    this.velocity = new THREE.Vector3(0, 0, 0);
-    this.acceleration = new THREE.Vector3(0, -9.81, 0); // gravity in m/s²
+  constructor(
+    index,
+    plane,
+    jumpInterval = 15,
+    deployDelay = 7,
+    canopySize = 190
+  ) {
+    this.index = index;
+    this.jumpTime = index * jumpInterval;
+    this.deployDelay = deployDelay;
     this.canopySize = canopySize;
-    this.hasDeployedCanopy = false;
+    this.plane = plane;
+    this.initialVelocity = new THREE.Vector3(0, 0, 0);
+
     this.mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.2, 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xff0000 })
     );
-    this.mesh.position.copy(this.position);
     scene.add(this.mesh);
+    this.position = new THREE.Vector3();
   }
 
-  update(simulationTime, windVars, canopyDeployAltitude) {
-    if (!this.hasDeployedCanopy && this.position.y <= canopyDeployAltitude) {
-      this.hasDeployedCanopy = true;
-      this.acceleration.set(0, -2.5, 0); // simulate parachute drag reducing fall rate
-    }
+  update(simulationTime) {
+    if (simulationTime < this.jumpTime) {
+      // Still in plane
+      this.position.copy(this.plane.position);
+    } else {
+      const timeSinceJump = simulationTime - this.jumpTime;
+      const deployTime = Math.max(0, timeSinceJump - this.deployDelay);
+      const fallTime = Math.min(timeSinceJump, this.deployDelay);
 
-    // Gravity and wind displacements utilizing scalar vectorssssss
-    const wind = this.hasDeployedCanopy
-      ? windVars.threeWinds
-      : windVars.sixWinds;
+      const gravity = new THREE.Vector3(0, -9.81 * window.simScale, 0);
+      const canopyDescentRate = new THREE.Vector3(0, -2.5 * window.simScale, 0);
 
-    if (window.isPlaying) {
-      const windInfluence = wind.clone().multiplyScalar(simulationTime);
+      const freefall = gravity
+        .clone()
+        .multiplyScalar(0.5 * fallTime * fallTime);
+      const canopyFall = canopyDescentRate.clone().multiplyScalar(deployTime);
 
-      this.velocity.add(
-        this.acceleration.clone().multiplyScalar(simulationTime)
+      const totalFall = freefall.add(canopyFall);
+
+      this.position.copy(
+        this.plane.initialPosition
+          .clone()
+          .add(this.plane.vector.clone().multiplyScalar(this.jumpTime))
+          .add(totalFall)
       );
-      this.velocity.add(windInfluence);
-      this.position.add(this.velocity.clone().multiplyScalar(simulationTime));
-
-      this.mesh.position.copy(this.position);
     }
+
+    this.mesh.position.copy(this.position);
   }
 }
 
@@ -151,7 +144,7 @@ const windVars = new GlobalWindVars(
 );
 
 const plane = new Plane(new THREE.Vector3(0, 20, 0));
-const jumpers = [];
+const jumpers = Array.from({ length: 10 }, (_, i) => new Jumper(i, plane));
 let simulationTime = 0;
 let lastFrameTime = performance.now();
 
@@ -169,25 +162,30 @@ function updateSimulation(simulationTime) {
   plane.update(simulationTime);
   planeMesh.position.copy(plane.position);
 
-  const newJumper = plane.dropJumper(simulationTime);
-  if (newJumper) jumpers.push(newJumper);
-
   for (const jumper of jumpers) {
     jumper.update(simulationTime, windVars, 5); // deploy canopy at 5m
   }
 }
 
+let lastSimTime = -1;
+
 renderer.setAnimationLoop(() => {
+  const now = performance.now();
+  const deltaTime = (now - lastFrameTime) / 1000;
+  lastFrameTime = now;
+
   if (window.isPlaying) {
-    const now = performance.now();
-    const deltaTime = (now - lastFrameTime) / 1000;
-    lastFrameTime = now;
     simulationTime += deltaTime;
     window.updateScrubber(simulationTime);
   } else {
     simulationTime = window.currentTime;
   }
-  updateSimulation(simulationTime);
+
+  if (simulationTime !== lastSimTime) {
+    updateSimulation(simulationTime);
+    lastSimTime = simulationTime;
+  }
+
   controls.update();
   renderer.render(scene, camera);
   camera.getWorldDirection(dir);
