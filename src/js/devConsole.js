@@ -27,7 +27,7 @@ document.addEventListener("mouseup", () => {
 window.devConsoleVars = {
   separation: 2,
   pullAltitude: 1000,
-  planeSpeed: 90,
+  planeSpeed: 5,
   bellySpeed: 55,
   freeflySpeed: 75,
   winds: {

@@ -41,6 +41,10 @@ controls.update();
  * END BASIC THREEJS SETUP
  */
 
+/**
+ * START GLOBAL VARS
+ */
+
 class GlobalWindVars {
   /**
    *
@@ -55,10 +59,11 @@ class GlobalWindVars {
   }
 }
 
+console.log(window.devConsoleVars.planeSpeed);
 class Plane {
   constructor(
     position,
-    speedKnots = 5,
+    speedKnots = window.devConsoleVars.planeSpeed,
     direction = new THREE.Vector3(1, 0, 0),
     jumpersLeft = 10
   ) {
@@ -75,8 +80,10 @@ class Plane {
     return (60 / twelveWinds) * 2.0;
   }
 
-  update(deltaTime) {
-    this.position.add(this.vector.clone().multiplyScalar(deltaTime));
+  update(simulationTime) {
+    if (window.isPlaying) {
+      this.position.add(this.vector.clone().multiplyScalar(simulationTime));
+    }
   }
 
   canDropJumper(currentTime) {
@@ -111,7 +118,7 @@ class Jumper {
     scene.add(this.mesh);
   }
 
-  update(deltaTime, windVars, canopyDeployAltitude) {
+  update(simulationTime, windVars, canopyDeployAltitude) {
     if (!this.hasDeployedCanopy && this.position.y <= canopyDeployAltitude) {
       this.hasDeployedCanopy = true;
       this.acceleration.set(0, -2.5, 0); // simulate parachute drag reducing fall rate
@@ -122,13 +129,17 @@ class Jumper {
       ? windVars.threeWinds
       : windVars.sixWinds;
 
-    const windInfluence = wind.clone().multiplyScalar(deltaTime);
+    if (window.isPlaying) {
+      const windInfluence = wind.clone().multiplyScalar(simulationTime);
 
-    this.velocity.add(this.acceleration.clone().multiplyScalar(deltaTime));
-    this.velocity.add(windInfluence);
-    this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+      this.velocity.add(
+        this.acceleration.clone().multiplyScalar(simulationTime)
+      );
+      this.velocity.add(windInfluence);
+      this.position.add(this.velocity.clone().multiplyScalar(simulationTime));
 
-    this.mesh.position.copy(this.position);
+      this.mesh.position.copy(this.position);
+    }
   }
 }
 
@@ -151,32 +162,37 @@ const planeMesh = new THREE.Mesh(
 );
 scene.add(planeMesh);
 
+// not needed because we have scrubber now?
 function restartSimulation() {}
 
-// Animate simulation each frame
-function updateSimulation() {
-  const now = performance.now();
-  const deltaTime = (now - lastFrameTime) / 1000;
-  lastFrameTime = now;
-  simulationTime += deltaTime;
-
-  plane.update(deltaTime);
+function updateSimulation(simulationTime) {
+  plane.update(simulationTime);
   planeMesh.position.copy(plane.position);
 
   const newJumper = plane.dropJumper(simulationTime);
   if (newJumper) jumpers.push(newJumper);
 
   for (const jumper of jumpers) {
-    jumper.update(deltaTime, windVars, 5); // deploy canopy at 5m
+    jumper.update(simulationTime, windVars, 5); // deploy canopy at 5m
   }
 }
 
 renderer.setAnimationLoop(() => {
-  updateSimulation();
+  if (window.isPlaying) {
+    const now = performance.now();
+    const deltaTime = (now - lastFrameTime) / 1000;
+    lastFrameTime = now;
+    simulationTime += deltaTime;
+    window.updateScrubber(simulationTime);
+  } else {
+    simulationTime = window.currentTime;
+  }
+  updateSimulation(simulationTime);
   controls.update();
   renderer.render(scene, camera);
   camera.getWorldDirection(dir);
   sph.setFromVector3(dir);
+  //thx guy on stack overflow
   compass.style.transform = `rotate(${
     THREE.MathUtils.radToDeg(sph.theta) - 180
   }deg)`;
