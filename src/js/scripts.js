@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { clampVectorAboveYZero } from "./utils";
+import { GlobalWindVars } from "./globalVars";
 
 /**
  * START BASIC THREEJS SETUP
@@ -26,6 +28,47 @@ const controls = new OrbitControls(camera, renderer.domElement);
 const axisHelper = new THREE.AxesHelper(5);
 var grid = new THREE.GridHelper(250, 50, "aqua", "gray");
 
+/**
+ * handle raycast
+ */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const tooltip = document.getElementById("info-tooltip");
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  tooltip.style.left = `${event.clientX + 10}px`;
+  tooltip.style.top = `${event.clientY + 10}px`;
+}
+
+function checkHoverIntersect(objects) {
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(objects, true);
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    const data = obj.userData;
+    // display all data in userData
+    if (data && data.label) {
+      let html = `<strong>${data.label}</strong><br>`;
+      for (const key in data) {
+        if (key !== "label") {
+          html += `${key}: ${data[key]}<br>`;
+        }
+      }
+      tooltip.innerHTML = html;
+      tooltip.style.display = "block";
+    }
+  } else {
+    tooltip.style.display = "none";
+  }
+}
+
+/**
+ * end handle raycast
+ */
+
 //compass
 var dir = new THREE.Vector3();
 var sph = new THREE.Spherical();
@@ -45,19 +88,12 @@ controls.update();
  * START GLOBAL VARS
  */
 
-class GlobalWindVars {
-  /**
-   *
-   * @param {ThreeJS.Vector3(x,x,x)} upperWinds
-   * @param {ThreeJS.Vector3(x,x,x)} lowerWinds
-   */
-  constructor(twelveWinds, nineWinds, sixWinds, threeWinds) {
-    this.twelveWinds = twelveWinds;
-    this.nineWinds = nineWinds;
-    this.sixWinds = sixWinds;
-    this.threeWinds = threeWinds;
-  }
-}
+const windVars = new GlobalWindVars(
+  new THREE.Vector3(0, 4, 1), // winds at 12,000
+  new THREE.Vector3(0, 0, 2), // winds at 9,000
+  new THREE.Vector3(0, 0, 2), // winds at 6,000
+  new THREE.Vector3(0, 0, 2) // winds at 3,000
+);
 
 console.log(window.devConsoleVars.planeSpeed);
 class Plane {
@@ -116,12 +152,11 @@ class Jumper {
 
       const gravity = new THREE.Vector3(0, -9.81 * window.simScale, 0);
       const canopyDescentRate = new THREE.Vector3(0, -2.5 * window.simScale, 0);
-
+      // have they hit the ground yet?
       const freefall = gravity
         .clone()
         .multiplyScalar(0.5 * fallTime * fallTime);
       const canopyFall = canopyDescentRate.clone().multiplyScalar(deployTime);
-
       const totalFall = freefall.add(canopyFall);
 
       this.position.copy(
@@ -130,20 +165,15 @@ class Jumper {
           .add(this.plane.vector.clone().multiplyScalar(this.jumpTime))
           .add(totalFall)
       );
+      this.position.y = Math.max(0, this.position.y);
     }
 
     this.mesh.position.copy(this.position);
   }
 }
 
-const windVars = new GlobalWindVars(
-  new THREE.Vector3(0, 4, 1), // winds at 12,000
-  new THREE.Vector3(0, 0, 2), // winds at 9,000
-  new THREE.Vector3(0, 0, 2), // winds at 6,000
-  new THREE.Vector3(0, 0, 2) // winds at 3,000
-);
-
 const plane = new Plane(new THREE.Vector3(0, 20, 0));
+
 const jumpers = Array.from({ length: 10 }, (_, i) => new Jumper(i, plane));
 let simulationTime = 0;
 let lastFrameTime = performance.now();
@@ -153,6 +183,14 @@ const planeMesh = new THREE.Mesh(
   new THREE.BoxGeometry(1, 0.3, 0.3),
   new THREE.MeshBasicMaterial({ color: 0x00ff00 })
 );
+planeMesh.userData = {
+  label: "Plane",
+  jumpersLeft: `${plane.jumpersLeft}`,
+  speed: `${plane.speed.toFixed(2)} m/s`,
+  velocity: `(${plane.vector.x.toFixed(2)}, ${plane.vector.y.toFixed(
+    2
+  )}, ${plane.vector.z.toFixed(2)})`,
+};
 scene.add(planeMesh);
 
 // not needed because we have scrubber now?
@@ -164,6 +202,11 @@ function updateSimulation(simulationTime) {
 
   for (const jumper of jumpers) {
     jumper.update(simulationTime, windVars, 5); // deploy canopy at 5m
+    jumper.mesh.userData = {
+      label: `Jumper #${jumper.index}`,
+      canopySize: `${jumper.canopySize} sqft`,
+      jumpTime: jumper.jumpTime.toFixed(2),
+    };
   }
 }
 
@@ -194,4 +237,7 @@ renderer.setAnimationLoop(() => {
   compass.style.transform = `rotate(${
     THREE.MathUtils.radToDeg(sph.theta) - 180
   }deg)`;
+  checkHoverIntersect([...jumpers.map((j) => j.mesh), planeMesh]);
 });
+
+document.addEventListener("mousemove", onMouseMove);
