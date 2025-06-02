@@ -6,15 +6,19 @@ Plane class moves based on time and vector
 
 Jumper class transitions from freefall to canopy
 
-Modifiable wind variables at 3,6,9,12k ft MSL let you simulate layered wind environments
+Wind speeds at all heights at 1,000agl steps based on latitude and longitude
 
 Time-aware updates for scrubbing and playback
 
 ## Libraries & Addons used
 
 Three.JS
+
 OrbitControls
+
 Parcel
+
+OpenMateo(for wind vectors)
 
 ## Libraries & Addons used
 
