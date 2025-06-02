@@ -19,7 +19,30 @@
         >N</text
       >
     </div>
+
     <div id="devConsole"></div>
+
+    <div class="panel" id="location-panel">
+      <div class="panel-header">
+        <h2>Location</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <label for="dropzone-select">Choose a dropzone:</label>
+
+        <select id="dropzone-select">
+          <option value="">-- Select a dropzone --</option>
+        </select>
+        <div id="dropzone-details" style="margin-top: 1em"></div>
+        <div class="panel-controls">
+          <button id="fetch-button">Fetch</button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="sim-panel">
       <div class="panel-header">
         <h2>Jump Settings</h2>
@@ -52,63 +75,54 @@
           />
         </label>
       </div>
-      <div class="panel" id="speed-panel">
-        <div class="panel-header">
-          <h2>Speed Settings</h2>
-          <div class="panel-controls">
-            <button>-</button>
-            <button>×</button>
-          </div>
-        </div>
-        <div class="panel-body">
-          <label>
-            Plane Speed (knots):
-            <input
-              type="number"
-              id="planeSpeed"
-              min="50"
-              max="150"
-              step="1"
-              value="90"
-            />
-          </label>
-          <label>
-            Belly Jumper Speed (m/s):
-            <input
-              type="number"
-              id="bellySpeed"
-              min="30"
-              max="60"
-              step="1"
-              value="55"
-            />
-          </label>
-          <label>
-            Freefly Jumper Speed (m/s):
-            <input
-              type="number"
-              id="freeflySpeed"
-              min="50"
-              max="90"
-              step="1"
-              value="75"
-            />
-          </label>
+    </div>
+
+    <div class="panel" id="speed-panel">
+      <div class="panel-header">
+        <h2>Speed Settings</h2>
+        <div class="panel-controls">
+          <button>-</button>
+          <button>×</button>
         </div>
       </div>
-
-      <div class="panel" id="location-panel">
-        <div class="panel-header">
-          <h2>Location</h2>
-          <div class="panel-controls">
-            <button>–</button>
-            <button>×</button>
-          </div>
-        </div>
+      <div class="panel-body">
+        <label>
+          Plane Speed (knots):
+          <input
+            type="number"
+            id="planeSpeed"
+            min="50"
+            max="150"
+            step="1"
+            value="90"
+          />
+        </label>
+        <label>
+          Belly Jumper Speed (m/s):
+          <input
+            type="number"
+            id="bellySpeed"
+            min="30"
+            max="60"
+            step="1"
+            value="55"
+          />
+        </label>
+        <label>
+          Freefly Jumper Speed (m/s):
+          <input
+            type="number"
+            id="freeflySpeed"
+            min="50"
+            max="90"
+            step="1"
+            value="75"
+          />
+        </label>
       </div>
     </div>
 
-    <div- class="panel" id="info-tooltip"></div->
+    <div class="panel" id="info-tooltip"></div>
 
     <div class="panel" id="playback-panel">
       <div class="panel-header">
@@ -149,5 +163,6 @@
     <script src="./src/js/scripts.ts" type="module" defer></script>
     <script src="./src/apidata/openMateo.ts" type="module"></script>
     <script src="./src/js/panelDrag.ts" type="module"></script>
+    <script src="./src/js/locationSelect.ts" type="module"></script>
   </body>
 </html>

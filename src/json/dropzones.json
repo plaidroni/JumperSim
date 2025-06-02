@@ -1,0 +1,218 @@
+[
+  {
+    "name": "Skydive Dubai Palm",
+    "country": "United Arab Emirates",
+    "latitude": 25.0908,
+    "longitude": 55.1369
+  },
+  {
+    "name": "Skydive Arizona",
+    "country": "United States",
+    "latitude": 32.8067,
+    "longitude": -111.5866
+  },
+  {
+    "name": "Skydive Perris",
+    "country": "United States",
+    "latitude": 33.7646,
+    "longitude": -117.219
+  },
+  {
+    "name": "Skydive Chicago",
+    "country": "United States",
+    "latitude": 41.3997,
+    "longitude": -88.7939
+  },
+  {
+    "name": "Skydive Empuriabrava",
+    "country": "Spain",
+    "latitude": 42.2595,
+    "longitude": 3.11
+  },
+  {
+    "name": "Skydive Deland",
+    "country": "United States",
+    "latitude": 29.067,
+    "longitude": -81.2837
+  },
+  {
+    "name": "Skydive Elsinore",
+    "country": "United States",
+    "latitude": 33.63,
+    "longitude": -117.3017
+  },
+  {
+    "name": "Skydive Spaceland Houston",
+    "country": "United States",
+    "latitude": 29.3569,
+    "longitude": -95.4594
+  },
+  {
+    "name": "Skydive Sebastian",
+    "country": "United States",
+    "latitude": 27.8132,
+    "longitude": -80.4955
+  },
+  {
+    "name": "Skydive City (Zephyrhills)",
+    "country": "United States",
+    "latitude": 28.228,
+    "longitude": -82.156
+  },
+  {
+    "name": "Skydive Spaceland Dallas",
+    "country": "United States",
+    "latitude": 33.4492,
+    "longitude": -96.3777
+  },
+  {
+    "name": "Skydive Spaceland Atlanta",
+    "country": "United States",
+    "latitude": 33.9763,
+    "longitude": -85.1688
+  },
+  {
+    "name": "Skydive San Diego",
+    "country": "United States",
+    "latitude": 32.6348,
+    "longitude": -116.8918
+  },
+  {
+    "name": "Skydive Dubai Desert",
+    "country": "United Arab Emirates",
+    "latitude": 24.8852,
+    "longitude": 55.548
+  },
+  {
+    "name": "Skydive Kapowsin",
+    "country": "United States",
+    "latitude": 47.2335,
+    "longitude": -123.1475
+  },
+  {
+    "name": "Skydive New England",
+    "country": "United States",
+    "latitude": 43.3714,
+    "longitude": -70.9257
+  },
+  {
+    "name": "Skydive Voss",
+    "country": "Norway",
+    "latitude": 60.6399,
+    "longitude": 6.502
+  },
+  {
+    "name": "Skydive Pull Out Ravenna",
+    "country": "Italy",
+    "latitude": 44.3643,
+    "longitude": 12.2249
+  },
+  {
+    "name": "Skydive Santa Barbara",
+    "country": "United States",
+    "latitude": 34.6656,
+    "longitude": -120.4675
+  },
+  {
+    "name": "Skydive Midwest",
+    "country": "United States",
+    "latitude": 42.7032,
+    "longitude": -87.9589
+  },
+  {
+    "name": "Skydive Fyrosity",
+    "country": "United States",
+    "latitude": 36.5681,
+    "longitude": -114.4433
+  },
+  {
+    "name": "Skydive Lodi Parachute Center",
+    "country": "United States",
+    "latitude": 38.2024,
+    "longitude": -121.2691
+  },
+  {
+    "name": "Skydive Utah",
+    "country": "United States",
+    "latitude": 40.6132,
+    "longitude": -112.3481
+  },
+  {
+    "name": "Skydive Monterey Bay",
+    "country": "United States",
+    "latitude": 36.682,
+    "longitude": -121.7685
+  },
+  {
+    "name": "Skydive California",
+    "country": "United States",
+    "latitude": 37.7313,
+    "longitude": -121.3356
+  },
+  {
+    "name": "Skydive Orange",
+    "country": "United States",
+    "latitude": 38.2425,
+    "longitude": -78.0556
+  },
+  {
+    "name": "Skydive Hawaii",
+    "country": "United States",
+    "latitude": 21.5795,
+    "longitude": -158.1973
+  },
+  {
+    "name": "Skydive Spaceland Florida",
+    "country": "United States",
+    "latitude": 26.7352,
+    "longitude": -81.0511
+  },
+  {
+    "name": "Skydive Panama City",
+    "country": "United States",
+    "latitude": 30.4872,
+    "longitude": -85.1138
+  },
+  {
+    "name": "Skydive Tullahoma",
+    "country": "United States",
+    "latitude": 35.38,
+    "longitude": -86.2464
+  },
+  {
+    "name": "Skydive Carolina",
+    "country": "United States",
+    "latitude": 34.7905,
+    "longitude": -81.1956
+  },
+  {
+    "name": "Skydive Georgia",
+    "country": "United States",
+    "latitude": 34.0187,
+    "longitude": -85.1465
+  },
+  {
+    "name": "Skydive Rick's",
+    "country": "United States",
+    "latitude": 40.9006,
+    "longitude": -80.5553
+  },
+  {
+    "name": "Skydive Pennsylvania",
+    "country": "United States",
+    "latitude": 41.146,
+    "longitude": -80.1678
+  },
+  {
+    "name": "Skydive Kansas City",
+    "country": "United States",
+    "latitude": 38.2898,
+    "longitude": -94.3401
+  },
+  {
+    "name": "Skydive Palatka",
+    "country": "United States",
+    "latitude": 29.6584,
+    "longitude": -81.6895
+  }
+]

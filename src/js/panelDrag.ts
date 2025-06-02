@@ -16,15 +16,23 @@ function getCookie(name: string): string | null {
     : null;
 }
 
-function restorePanelPosition(panel: HTMLElement) {
+function restorePanelState(panel: HTMLElement) {
   const id = panel.id;
-  const pos = getCookie(`panel-${id}`);
-  console.log(id, pos);
+
+  const pos = getCookie(`panel-${id}-position`);
+  const size = getCookie(`panel-${id}-size`);
+
   if (pos) {
     const [left, top] = pos.split(",");
     panel.style.position = "absolute";
     panel.style.left = `${left}px`;
     panel.style.top = `${top}px`;
+  }
+
+  if (size) {
+    const [width, height] = size.split(",");
+    panel.style.width = `${width}px`;
+    panel.style.height = `${height}px`;
   }
 }
 
@@ -39,7 +47,7 @@ function makePanelDraggable(panel: HTMLElement) {
     isDragging = true;
     offsetX = e.clientX - panel.offsetLeft;
     offsetY = e.clientY - panel.offsetTop;
-    panel.style.zIndex = "10000";
+    panel.style.zIndex = "9999";
     document.body.style.userSelect = "none";
   });
 
@@ -55,16 +63,21 @@ function makePanelDraggable(panel: HTMLElement) {
     if (isDragging) {
       isDragging = false;
       document.body.style.userSelect = "";
+
       const id = panel.id;
       const left = parseInt(panel.style.left || "0", 10);
       const top = parseInt(panel.style.top || "0", 10);
-      setCookie(`panel-${id}`, `${left},${top}`);
+      const width = panel.offsetWidth;
+      const height = panel.offsetHeight;
+
+      setCookie(`panel-${id}-position`, `${left},${top}`);
+      setCookie(`panel-${id}-size`, `${width},${height}`);
     }
   });
 }
 
 // Initialize
 document.querySelectorAll<HTMLElement>(".panel").forEach((panel) => {
-  restorePanelPosition(panel);
+  restorePanelState(panel);
   makePanelDraggable(panel);
 });

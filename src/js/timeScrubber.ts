@@ -78,12 +78,6 @@ let isDragging = false;
 let offsetX = 0;
 let offsetY = 0;
 
-titlebar.addEventListener("mousedown", (e) => {
-  isDragging = true;
-  offsetX = e.clientX - (<any>window).playbackControlsEl.offsetLeft;
-  offsetY = e.clientY - (<any>window).playbackControlsEl.offsetTop;
-});
-
 document.addEventListener("mousemove", (e) => {
   if (isDragging) {
     (<any>window).playbackControlsEl.style.left = `${e.clientX - offsetX}px`;
@@ -95,7 +89,7 @@ document.addEventListener("mouseup", () => {
   isDragging = false;
 });
 
-document.getElementById("minimize-playback").addEventListener("click", () => {
-  playbackBody.style.display =
-    playbackBody.style.display === "none" ? "flex" : "none";
-});
+// document.getElementById("minimize-playback").addEventListener("click", () => {
+//   playbackBody.style.display =
+//     playbackBody.style.display === "none" ? "flex" : "none";
+// });

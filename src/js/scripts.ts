@@ -77,7 +77,8 @@ var compass = document.getElementById("compass");
 scene.add(axisHelper);
 scene.add(grid);
 
-camera.position.set(0, 40, 40);
+camera.position.set(0, 108, 30);
+
 controls.update();
 
 /**
@@ -95,7 +96,6 @@ const windVars = new GlobalWindVars(
   new THREE.Vector3(0, 0, 2) // winds at 3,000
 );
 
-console.log((<any>window).devConsoleVars.planeSpeed);
 class Plane {
   initialPosition: any;
   position: any;
@@ -152,7 +152,7 @@ class Jumper {
       new THREE.SphereGeometry(0.2, 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xff0000 })
     );
-    this.deployed ?? scene.add(new THREE.SphereGeometry(1, 16, 16));
+    // this.deployed ?? scene.add(new THREE.SphereGeometry(1, 16, 16));
     scene.add(this.mesh);
     this.position = new THREE.Vector3();
   }
@@ -229,6 +229,10 @@ function updateSimulation(simulationTime) {
 }
 
 let lastSimTime = -1;
+
+controls.addEventListener("change", (event) => {
+  // console.log(camera.fov);
+});
 
 renderer.setAnimationLoop(() => {
   const now = performance.now();

@@ -1,4 +1,3 @@
-// Make draggable
 const consoleEl = document.getElementById("devConsole");
 let isDragging = false;
 let offsetX = 0;
@@ -23,13 +22,13 @@ document.addEventListener("mouseup", () => {
   isDragging = false;
 });
 
-// Global values for integration
 (<any>window).devConsoleVars = {
   separation: 2,
   pullAltitude: 1000,
   planeSpeed: 5,
   bellySpeed: 55,
   freeflySpeed: 75,
+  // deprecate
   winds: {
     12000: -5,
     9000: -3,
@@ -55,39 +54,7 @@ function updateVarsFromUI() {
   (<any>window).devConsoleVars.freeflySpeed = parseFloat(
     document.getElementById("freeflySpeed").value
   );
-  (<any>window).devConsoleVars.winds[12000] = parseFloat(
-    document.getElementById("wind12000").value
-  );
-  (<any>window).devConsoleVars.winds[9000] = parseFloat(
-    document.getElementById("wind9000").value
-  );
-  (<any>window).devConsoleVars.winds[6000] = parseFloat(
-    document.getElementById("wind6000").value
-  );
-  (<any>window).devConsoleVars.winds[3000] = parseFloat(
-    document.getElementById("wind3000").value
-  );
-  (<any>window).devConsoleVars.winds.ground = parseFloat(
-    document.getElementById("windGround").value
-  );
 }
-
-// scrubber interactions
-(<any>window).rewindButton.addEventListener("click", () =>
-  (<any>window).updateScrubber((<any>window).currentTime - 1)
-);
-(<any>window).forwardButton.addEventListener("click", () =>
-  (<any>window).updateScrubber((<any>window).currentTime + 1)
-);
-(<any>window).startButton.addEventListener("click", () =>
-  (<any>window).updateScrubber(0)
-);
-(<any>window).endButton.addEventListener("click", () =>
-  (<any>window).updateScrubber((<any>window).maxTime)
-);
-(<any>window).scrubber.addEventListener("input", (e) =>
-  (<any>window).updateScrubber(parseFloat(e.target.value))
-);
 
 document.querySelectorAll("input").forEach((input) => {
   input.addEventListener("input", updateVarsFromUI);

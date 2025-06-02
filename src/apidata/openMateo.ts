@@ -1,55 +1,84 @@
 import { fetchWeatherApi } from "openmeteo";
 
-const params = {
-  latitude: 52.52,
-  longitude: 13.41,
-  daily: "weather_code",
-  hourly: [
-    "temperature_2m",
-    "wind_speed_10m",
-    "wind_speed_1000hPa",
-    "wind_speed_975hPa",
-    "wind_speed_950hPa",
-    "wind_speed_925hPa",
-    "wind_speed_900hPa",
-    "wind_speed_850hPa",
-    "wind_speed_800hPa",
-    "wind_speed_700hPa",
-    "wind_speed_600hPa",
-    "wind_speed_500hPa",
-    "wind_direction_1000hPa",
-    "wind_direction_975hPa",
-    "wind_direction_950hPa",
-    "wind_direction_925hPa",
-    "wind_direction_900hPa",
-    "wind_direction_850hPa",
-    "wind_direction_800hPa",
-    "wind_direction_700hPa",
-    "wind_direction_600hPa",
-    "wind_direction_500hPa",
-    "visibility",
-    "cloud_cover_high",
-    "cloud_cover_low",
-    "cloud_cover_mid",
-  ],
-  current: [
-    "cloud_cover",
-    "weather_code",
-    "wind_gusts_10m",
-    "wind_direction_10m",
-    "wind_speed_10m",
-  ],
+const url = "https://api.open-meteo.com/v1/forecast";
+
+const fetchButton = document.getElementById("fetch-button");
+
+type MateoParams = {
+  latitude: number;
+  longitude: number;
+  daily: string;
+  hourly: string[];
+  current: string[];
+  wind_speed_unit: "mph" | "kmh" | "ms";
+  temperature_unit: "fahrenheit" | "celsius";
+};
+
+var params: MateoParams = {
+  latitude: 0,
+  longitude: 0,
+  daily: "",
+  hourly: [],
+  current: [],
   wind_speed_unit: "mph",
   temperature_unit: "fahrenheit",
 };
-const url = "https://api.open-meteo.com/v1/forecast";
-(async () => {
+
+function declareParams() {
+  const dz = (<any>window).selectedDropzone;
+  if (!dz || dz.latitude == null || dz.longitude == null) {
+    throw new Error("Selected dropzone does not have valid coordinates.");
+  }
+  params = {
+    latitude: (<any>window).selectedDropzone.latitude,
+    longitude: (<any>window).selectedDropzone.longitude,
+    daily: "weather_code",
+    hourly: [
+      "temperature_2m",
+      "wind_speed_10m",
+      "wind_speed_1000hPa",
+      "wind_speed_975hPa",
+      "wind_speed_950hPa",
+      "wind_speed_925hPa",
+      "wind_speed_900hPa",
+      "wind_speed_850hPa",
+      "wind_speed_800hPa",
+      "wind_speed_700hPa",
+      "wind_speed_600hPa",
+      "wind_speed_500hPa",
+      "wind_direction_1000hPa",
+      "wind_direction_975hPa",
+      "wind_direction_950hPa",
+      "wind_direction_925hPa",
+      "wind_direction_900hPa",
+      "wind_direction_850hPa",
+      "wind_direction_800hPa",
+      "wind_direction_700hPa",
+      "wind_direction_600hPa",
+      "wind_direction_500hPa",
+      "visibility",
+      "cloud_cover_high",
+      "cloud_cover_low",
+      "cloud_cover_mid",
+    ],
+    current: [
+      "cloud_cover",
+      "weather_code",
+      "wind_gusts_10m",
+      "wind_direction_10m",
+      "wind_speed_10m",
+    ],
+    wind_speed_unit: "mph",
+    temperature_unit: "fahrenheit",
+  };
+}
+
+async function fetchWeatherData() {
+  if ((<any>window).selectedDropzone.latitude == 0) return;
   const responses = await fetchWeatherApi(url, params);
 
-  // Process first location. Add a for-loop for multiple locations or weather models
   const response = responses[0];
 
-  // Attributes for timezone and location
   const utcOffsetSeconds = response.utcOffsetSeconds();
   const timezone = response.timezone();
   const timezoneAbbreviation = response.timezoneAbbreviation();
@@ -60,7 +89,6 @@ const url = "https://api.open-meteo.com/v1/forecast";
   const hourly = response.hourly()!;
   const daily = response.daily()!;
 
-  // Note: The order of weather variables in the URL query and the indices below need to match!
   const weatherData = {
     current: {
       time: new Date((Number(current.time()) + utcOffsetSeconds) * 1000),
@@ -71,11 +99,12 @@ const url = "https://api.open-meteo.com/v1/forecast";
       windSpeed10m: current.variables(4)!.value(),
     },
     hourly: {
-      time: [
-        ...Array(
-          (Number(hourly.timeEnd()) - Number(hourly.time())) / hourly.interval()
-        ),
-      ].map(
+      time: Array.from(
+        {
+          length:
+            (Number(hourly.timeEnd()) - Number(hourly.time())) /
+            hourly.interval(),
+        },
         (_, i) =>
           new Date(
             (Number(hourly.time()) + i * hourly.interval() + utcOffsetSeconds) *
@@ -110,11 +139,11 @@ const url = "https://api.open-meteo.com/v1/forecast";
       cloudCoverMid: hourly.variables(25)!.valuesArray()!,
     },
     daily: {
-      time: [
-        ...Array(
-          (Number(daily.timeEnd()) - Number(daily.time())) / daily.interval()
-        ),
-      ].map(
+      time: Array.from(
+        {
+          length:
+            (Number(daily.timeEnd()) - Number(daily.time())) / daily.interval(),
+        },
         (_, i) =>
           new Date(
             (Number(daily.time()) + i * daily.interval() + utcOffsetSeconds) *
@@ -125,48 +154,16 @@ const url = "https://api.open-meteo.com/v1/forecast";
     },
   };
 
-  // `weatherData` now contains a simple structure with arrays for datetime and weather data
-  for (let i = 0; i < weatherData.hourly.time.length; i++) {
-    // console.log(weatherData.hourly.time[i].toLocaleString(), {
-    //   time: weatherData.hourly.time[i].toLocaleString(),
-    //   temperature2m: `${weatherData.hourly.temperature2m[i]} °F`,
-    //   windSpeeds: {
-    //     "10m": `${weatherData.hourly.windSpeed10m[i]} mph`,
-    //     "1000hPa": `${weatherData.hourly.windSpeed1000hPa[i]} mph`,
-    //     "975hPa": `${weatherData.hourly.windSpeed975hPa[i]} mph`,
-    //     "950hPa": `${weatherData.hourly.windSpeed950hPa[i]} mph`,
-    //     "925hPa": `${weatherData.hourly.windSpeed925hPa[i]} mph`,
-    //     "900hPa": `${weatherData.hourly.windSpeed900hPa[i]} mph`,
-    //     "850hPa": `${weatherData.hourly.windSpeed850hPa[i]} mph`,
-    //     "800hPa": `${weatherData.hourly.windSpeed800hPa[i]} mph`,
-    //     "700hPa": `${weatherData.hourly.windSpeed700hPa[i]} mph`,
-    //     "600hPa": `${weatherData.hourly.windSpeed600hPa[i]} mph`,
-    //     "500hPa": `${weatherData.hourly.windSpeed500hPa[i]} mph`,
-    //   },
-    //   windDirections: {
-    //     "1000hPa": `${weatherData.hourly.windDirection1000hPa[i]}°`,
-    //     "975hPa": `${weatherData.hourly.windDirection975hPa[i]}°`,
-    //     "950hPa": `${weatherData.hourly.windDirection950hPa[i]}°`,
-    //     "925hPa": `${weatherData.hourly.windDirection925hPa[i]}°`,
-    //     "900hPa": `${weatherData.hourly.windDirection900hPa[i]}°`,
-    //     "850hPa": `${weatherData.hourly.windDirection850hPa[i]}°`,
-    //     "800hPa": `${weatherData.hourly.windDirection800hPa[i]}°`,
-    //     "700hPa": `${weatherData.hourly.windDirection700hPa[i]}°`,
-    //     "600hPa": `${weatherData.hourly.windDirection600hPa[i]}°`,
-    //     "500hPa": `${weatherData.hourly.windDirection500hPa[i]}°`,
-    //   },
-    //   visibility: `${weatherData.hourly.visibility[i]} m`,
-    //   cloudCover: {
-    //     high: `${weatherData.hourly.cloudCoverHigh[i]}%`,
-    //     mid: `${weatherData.hourly.cloudCoverMid[i]}%`,
-    //     low: `${weatherData.hourly.cloudCoverLow[i]}%`,
-    //   },
-    // });
-  }
+  // Output daily summary
   for (let i = 0; i < weatherData.daily.time.length; i++) {
     console.log(
       weatherData.daily.time[i].toISOString(),
       weatherData.daily.weatherCode[i]
     );
   }
-})();
+}
+
+fetchButton?.addEventListener("click", async () => {
+  declareParams();
+  fetchWeatherData();
+});
