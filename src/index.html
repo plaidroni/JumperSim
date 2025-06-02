@@ -7,14 +7,15 @@
     <link rel="stylesheet" href="./css/devconsole.css" />
     <link rel="stylesheet" href="./css/tooltip.css" />
     <link rel="stylesheet" href="./css/playback-controls.css" />
+    <script src="./js/globalVars.ts" type="module" defer></script>
+    <script src="./js/devConsole.ts" type="module"></script>
+    <script src="./js/timeScrubber.ts" type="module"></script>
+    <script src="./js/scripts.ts" type="module" defer></script>
+    <script src="./apidata/openMateo.ts" type="module"></script>
+    <script src="./js/panelDrag.ts" type="module"></script>
   </head>
-  <style>
-    body {
-      margin: 0;
-    }
-  </style>
+
   <body>
-    <div id="info-tooltip"></div>
     <div id="compassContainer" style="position: absolute; padding: 1rem">
       <img src="./svg/compass.svg" alt="Compass" id="compass" />
       <text
@@ -27,95 +28,181 @@
     </div>
     <div id="devConsole">
       <div class="panel">
-        <h2>Jump Settings</h2>
-        <label>
-          Separation (s):
-          <input
-            type="number"
-            id="separation"
-            min="0"
-            max="10"
-            step="0.1"
-            value="2"
-          />
-        </label>
-        <label>
-          Pull Altitude (m):
-          <input
-            type="number"
-            id="pullAltitude"
-            min="500"
-            max="6000"
-            step="100"
-            value="1000"
-          />
-        </label>
+        <div class="panel-header">
+          <h2>Jump Settings</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label>
+            Separation (s):
+            <input
+              type="number"
+              id="separation"
+              min="0"
+              max="10"
+              step="0.1"
+              value="2"
+            />
+          </label>
+          <label>
+            Pull Altitude (m):
+            <input
+              type="number"
+              id="pullAltitude"
+              min="500"
+              max="6000"
+              step="100"
+              value="1000"
+            />
+          </label>
+        </div>
       </div>
 
       <div class="panel">
-        <h2>Speed Settings</h2>
-        <label>
-          Plane Speed (knots):
-          <input
-            type="number"
-            id="planeSpeed"
-            min="50"
-            max="150"
-            step="1"
-            value="90"
-          />
-        </label>
-        <label>
-          Belly Jumper Speed (m/s):
-          <input
-            type="number"
-            id="bellySpeed"
-            min="30"
-            max="60"
-            step="1"
-            value="55"
-          />
-        </label>
-        <label>
-          Freefly Jumper Speed (m/s):
-          <input
-            type="number"
-            id="freeflySpeed"
-            min="50"
-            max="90"
-            step="1"
-            value="75"
-          />
-        </label>
+        <div class="panel-header">
+          <h2>Speed Settings</h2>
+          <div class="panel-controls">
+            <button>-</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label>
+            Plane Speed (knots):
+            <input
+              type="number"
+              id="planeSpeed"
+              min="50"
+              max="150"
+              step="1"
+              value="90"
+            />
+          </label>
+          <label>
+            Belly Jumper Speed (m/s):
+            <input
+              type="number"
+              id="bellySpeed"
+              min="30"
+              max="60"
+              step="1"
+              value="55"
+            />
+          </label>
+          <label>
+            Freefly Jumper Speed (m/s):
+            <input
+              type="number"
+              id="freeflySpeed"
+              min="50"
+              max="90"
+              step="1"
+              value="75"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Wind Layers</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label>
+            Wind @ 12,000 ft (m/s):
+            <input
+              type="number"
+              id="wind12000"
+              min="-20"
+              max="20"
+              step="0.5"
+              value="-5"
+            />
+          </label>
+          <label>
+            Wind @ 9,000 ft (m/s):
+            <input
+              type="number"
+              id="wind9000"
+              min="-20"
+              max="20"
+              step="0.5"
+              value="-3"
+            />
+          </label>
+          <label>
+            Wind @ 6,000 ft (m/s):
+            <input
+              type="number"
+              id="wind6000"
+              min="-20"
+              max="20"
+              step="0.5"
+              value="-2"
+            />
+          </label>
+          <label>
+            Wind @ 3,000 ft (m/s):
+            <input
+              type="number"
+              id="wind3000"
+              min="-20"
+              max="20"
+              step="0.5"
+              value="-1"
+            />
+          </label>
+          <label>
+            Wind @ Ground (m/s):
+            <input
+              type="number"
+              id="windGround"
+              min="-20"
+              max="20"
+              step="0.5"
+              value="0"
+            />
+          </label>
+        </div>
       </div>
     </div>
 
-    <div id="playback-controls">
-      <button id="start">⏮</button>
-      <button id="rewind">⏴</button>
-      <button id="playPause">▶</button>
-      <button id="forward">⏵</button>
-      <button id="end">⏭</button>
-      <input
-        type="range"
-        id="scrubber"
-        min="0"
-        max="100"
-        value="0"
-        step="0.1"
-        style="flex: 1"
-      />
-      <span
-        id="timeLabel"
-        style="min-width: 60px; text-align: right; color: #fff"
-        >0.0s</span
-      >
-    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <h2>Playback Controls</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="panel-controls">
+          <button id="start">⏮</button>
+          <button id="rewind">⏴</button>
+          <button id="playPause">▶</button>
+          <button id="forward">⏵</button>
+          <button id="end">⏭</button>
+        </div>
 
-    <script src="./js/globalVars.ts" type="module" defer></script>
-    <script src="./js/devConsole.ts" type="module"></script>
-    <script src="./js/timeScrubber.ts" type="module"></script>
-    <script src="./js/scripts.ts" type="module" defer></script>
-    <script src="./apidata/openMateo.ts" type="module"></script>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value="0"
+          step="0.1"
+          style="flex: 1"
+        />
+        <span style="min-width: 60px; text-align: right; color: #fff"
+          >0.0s</span
+        >
+      </div>
+    </div>
   </body>
 </html>

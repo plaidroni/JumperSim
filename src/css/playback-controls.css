@@ -1,3 +1,8 @@
-.playback-controls {
-  width: 100%;
+#playback-controls-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#playback-controls {
+  background-color: aqua;
 }
