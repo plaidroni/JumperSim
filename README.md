@@ -1,7 +1,9 @@
 # 🪂 JumperSim
+
 A visual physics simulation built with Three.js, modeling skydiver dynamics under the influence of layered wind and user-controlled playback. Features include a draggable Unity-style developer console, time scrubber with full playback control, and configurable environmental conditions.
 
 ## Simulation Logic
+
 Plane class moves based on time and vector
 
 Jumper class transitions from freefall to canopy
@@ -16,7 +18,9 @@ Three.JS
 
 OrbitControls
 
-Parcel
+~Parcel~
+
+Vite
 
 OpenMateo(for wind vectors)
 
@@ -26,4 +30,6 @@ To install and start local server:
 
 git clone https://github.com/plaidroni/JumperSim.git
 
-npx parcel ./src/index.html
+~npx parcel ./src/index.html~
+
+npm run start

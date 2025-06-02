@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JumperSim</title>
+    <link rel="stylesheet" href="./src/css/devconsole.css" />
+    <link rel="stylesheet" href="./src/css/tooltip.css" />
+    <link rel="stylesheet" href="./src/css/playback-controls.css" />
+  </head>
+  <body>
+    <div id="compassContainer" style="position: absolute; padding: 1rem">
+      <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
+      <text
+        transform="matrix(1 0 0 1 77 37)"
+        fill="#575756"
+        font-family="Arial"
+        font-size="12"
+        >N</text
+      >
+    </div>
+    <div id="devConsole"></div>
+    <div class="panel" id="sim-panel">
+      <div class="panel-header">
+        <h2>Jump Settings</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <label>
+          Separation (s):
+          <input
+            type="number"
+            id="separation"
+            min="0"
+            max="10"
+            step="0.1"
+            value="2"
+          />
+        </label>
+        <label>
+          Pull Altitude (m):
+          <input
+            type="number"
+            id="pullAltitude"
+            min="500"
+            max="6000"
+            step="100"
+            value="1000"
+          />
+        </label>
+      </div>
+      <div class="panel" id="speed-panel">
+        <div class="panel-header">
+          <h2>Speed Settings</h2>
+          <div class="panel-controls">
+            <button>-</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label>
+            Plane Speed (knots):
+            <input
+              type="number"
+              id="planeSpeed"
+              min="50"
+              max="150"
+              step="1"
+              value="90"
+            />
+          </label>
+          <label>
+            Belly Jumper Speed (m/s):
+            <input
+              type="number"
+              id="bellySpeed"
+              min="30"
+              max="60"
+              step="1"
+              value="55"
+            />
+          </label>
+          <label>
+            Freefly Jumper Speed (m/s):
+            <input
+              type="number"
+              id="freeflySpeed"
+              min="50"
+              max="90"
+              step="1"
+              value="75"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div class="panel" id="location-panel">
+        <div class="panel-header">
+          <h2>Location</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div- class="panel" id="info-tooltip"></div->
+
+    <div class="panel" id="playback-panel">
+      <div class="panel-header">
+        <h2>Playback Controls</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="panel-controls">
+          <button id="start">⏮</button>
+          <button id="rewind">⏴</button>
+          <button id="playPause">▶</button>
+          <button id="forward">⏵</button>
+          <button id="end">⏭</button>
+        </div>
+
+        <input
+          type="range"
+          id="scrubber"
+          min="0"
+          max="100"
+          value="0"
+          step="0.1"
+          style="flex: 1"
+        />
+        <span
+          id="timeLabel"
+          style="min-width: 60px; text-align: right; color: #fff"
+          >0.0s</span
+        >
+      </div>
+    </div>
+    <script src="./src/js/globalVars.ts" type="module" defer></script>
+    <script src="./src/js/devConsole.ts" type="module"></script>
+    <script src="./src/js/timeScrubber.ts" type="module"></script>
+    <script src="./src/js/scripts.ts" type="module" defer></script>
+    <script src="./src/apidata/openMateo.ts" type="module"></script>
+    <script src="./src/js/panelDrag.ts" type="module"></script>
+  </body>
+</html>

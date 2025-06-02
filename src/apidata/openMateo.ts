@@ -127,41 +127,41 @@ const url = "https://api.open-meteo.com/v1/forecast";
 
   // `weatherData` now contains a simple structure with arrays for datetime and weather data
   for (let i = 0; i < weatherData.hourly.time.length; i++) {
-    console.log(weatherData.hourly.time[i].toLocaleString(), {
-      time: weatherData.hourly.time[i].toLocaleString(),
-      temperature2m: `${weatherData.hourly.temperature2m[i]} °F`,
-      windSpeeds: {
-        "10m": `${weatherData.hourly.windSpeed10m[i]} mph`,
-        "1000hPa": `${weatherData.hourly.windSpeed1000hPa[i]} mph`,
-        "975hPa": `${weatherData.hourly.windSpeed975hPa[i]} mph`,
-        "950hPa": `${weatherData.hourly.windSpeed950hPa[i]} mph`,
-        "925hPa": `${weatherData.hourly.windSpeed925hPa[i]} mph`,
-        "900hPa": `${weatherData.hourly.windSpeed900hPa[i]} mph`,
-        "850hPa": `${weatherData.hourly.windSpeed850hPa[i]} mph`,
-        "800hPa": `${weatherData.hourly.windSpeed800hPa[i]} mph`,
-        "700hPa": `${weatherData.hourly.windSpeed700hPa[i]} mph`,
-        "600hPa": `${weatherData.hourly.windSpeed600hPa[i]} mph`,
-        "500hPa": `${weatherData.hourly.windSpeed500hPa[i]} mph`,
-      },
-      windDirections: {
-        "1000hPa": `${weatherData.hourly.windDirection1000hPa[i]}°`,
-        "975hPa": `${weatherData.hourly.windDirection975hPa[i]}°`,
-        "950hPa": `${weatherData.hourly.windDirection950hPa[i]}°`,
-        "925hPa": `${weatherData.hourly.windDirection925hPa[i]}°`,
-        "900hPa": `${weatherData.hourly.windDirection900hPa[i]}°`,
-        "850hPa": `${weatherData.hourly.windDirection850hPa[i]}°`,
-        "800hPa": `${weatherData.hourly.windDirection800hPa[i]}°`,
-        "700hPa": `${weatherData.hourly.windDirection700hPa[i]}°`,
-        "600hPa": `${weatherData.hourly.windDirection600hPa[i]}°`,
-        "500hPa": `${weatherData.hourly.windDirection500hPa[i]}°`,
-      },
-      visibility: `${weatherData.hourly.visibility[i]} m`,
-      cloudCover: {
-        high: `${weatherData.hourly.cloudCoverHigh[i]}%`,
-        mid: `${weatherData.hourly.cloudCoverMid[i]}%`,
-        low: `${weatherData.hourly.cloudCoverLow[i]}%`,
-      },
-    });
+    // console.log(weatherData.hourly.time[i].toLocaleString(), {
+    //   time: weatherData.hourly.time[i].toLocaleString(),
+    //   temperature2m: `${weatherData.hourly.temperature2m[i]} °F`,
+    //   windSpeeds: {
+    //     "10m": `${weatherData.hourly.windSpeed10m[i]} mph`,
+    //     "1000hPa": `${weatherData.hourly.windSpeed1000hPa[i]} mph`,
+    //     "975hPa": `${weatherData.hourly.windSpeed975hPa[i]} mph`,
+    //     "950hPa": `${weatherData.hourly.windSpeed950hPa[i]} mph`,
+    //     "925hPa": `${weatherData.hourly.windSpeed925hPa[i]} mph`,
+    //     "900hPa": `${weatherData.hourly.windSpeed900hPa[i]} mph`,
+    //     "850hPa": `${weatherData.hourly.windSpeed850hPa[i]} mph`,
+    //     "800hPa": `${weatherData.hourly.windSpeed800hPa[i]} mph`,
+    //     "700hPa": `${weatherData.hourly.windSpeed700hPa[i]} mph`,
+    //     "600hPa": `${weatherData.hourly.windSpeed600hPa[i]} mph`,
+    //     "500hPa": `${weatherData.hourly.windSpeed500hPa[i]} mph`,
+    //   },
+    //   windDirections: {
+    //     "1000hPa": `${weatherData.hourly.windDirection1000hPa[i]}°`,
+    //     "975hPa": `${weatherData.hourly.windDirection975hPa[i]}°`,
+    //     "950hPa": `${weatherData.hourly.windDirection950hPa[i]}°`,
+    //     "925hPa": `${weatherData.hourly.windDirection925hPa[i]}°`,
+    //     "900hPa": `${weatherData.hourly.windDirection900hPa[i]}°`,
+    //     "850hPa": `${weatherData.hourly.windDirection850hPa[i]}°`,
+    //     "800hPa": `${weatherData.hourly.windDirection800hPa[i]}°`,
+    //     "700hPa": `${weatherData.hourly.windDirection700hPa[i]}°`,
+    //     "600hPa": `${weatherData.hourly.windDirection600hPa[i]}°`,
+    //     "500hPa": `${weatherData.hourly.windDirection500hPa[i]}°`,
+    //   },
+    //   visibility: `${weatherData.hourly.visibility[i]} m`,
+    //   cloudCover: {
+    //     high: `${weatherData.hourly.cloudCoverHigh[i]}%`,
+    //     mid: `${weatherData.hourly.cloudCoverMid[i]}%`,
+    //     low: `${weatherData.hourly.cloudCoverLow[i]}%`,
+    //   },
+    // });
   }
   for (let i = 0; i < weatherData.daily.time.length; i++) {
     console.log(

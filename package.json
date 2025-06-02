@@ -2,9 +2,14 @@
   "name": "jumpersim",
   "version": "1.0.1",
   "description": "a physics based skydiving simulator for visualizing jumprun strafes",
-  "default": "index.js",
+  "default": "index.ts",
+  "type": "module",
   "scripts": {
-    "test": "test"
+    "test": "test",
+    "build": "vite build",
+    "clean": "rm -rf dist",
+    "preview": "vite preview",
+    "start": "vite --open"
   },
   "repository": {
     "type": "git",
@@ -17,9 +22,12 @@
   },
   "homepage": "https://github.com/plaidroni/JumperSim#readme",
   "dependencies": {
+    "node": "^22.16.0",
+    "openmeteo": "^1.2.0",
     "three": "^0.176.0"
   },
   "devDependencies": {
-    "parcel": "^2.14.4"
+    "@types/node": "^22.15.29",
+    "vite": "^6.3.5"
   }
 }

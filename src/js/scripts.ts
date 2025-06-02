@@ -132,6 +132,7 @@ class Jumper {
   plane: any;
   initialVelocity: any;
   mesh: any;
+  deployed: boolean;
   position: any;
   constructor(
     index,
@@ -151,6 +152,7 @@ class Jumper {
       new THREE.SphereGeometry(0.2, 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xff0000 })
     );
+    this.deployed ?? scene.add(new THREE.SphereGeometry(1, 16, 16));
     scene.add(this.mesh);
     this.position = new THREE.Vector3();
   }
@@ -190,7 +192,7 @@ class Jumper {
   }
 }
 
-const plane = new Plane(new THREE.Vector3(0, 20, 0));
+const plane = new Plane(new THREE.Vector3(0, 130, 0));
 
 const jumpers = Array.from({ length: 10 }, (_, i) => new Jumper(i, plane));
 let simulationTime = 0;
@@ -211,15 +213,13 @@ planeMesh.userData = {
 };
 scene.add(planeMesh);
 
-// not needed because we have scrubber now?
-function restartSimulation() {}
-
 function updateSimulation(simulationTime) {
   plane.update(simulationTime);
   planeMesh.position.copy(plane.position);
 
   for (const jumper of jumpers) {
-    jumper.update(simulationTime, windVars, 5); // deploy canopy at 5m
+    jumper.update(simulationTime, windVars, 5); // canopy deploy = 5
+
     jumper.mesh.userData = {
       label: `Jumper #${jumper.index}`,
       canopySize: `${jumper.canopySize} sqft`,
