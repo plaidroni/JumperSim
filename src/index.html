@@ -6,6 +6,7 @@
     <title>JumperSim</title>
     <link rel="stylesheet" href="./css/devconsole.css" />
     <link rel="stylesheet" href="./css/tooltip.css" />
+    <link rel="stylesheet" href="./css/playback-controls.css" />
   </head>
   <style>
     body {
@@ -87,89 +88,13 @@
           />
         </label>
       </div>
-
-      <div class="panel">
-        <h2>Wind Layers</h2>
-        <label>
-          Wind @ 12,000 ft (m/s):
-          <input
-            type="number"
-            id="wind12000"
-            min="-20"
-            max="20"
-            step="0.5"
-            value="-5"
-          />
-        </label>
-        <label>
-          Wind @ 9,000 ft (m/s):
-          <input
-            type="number"
-            id="wind9000"
-            min="-20"
-            max="20"
-            step="0.5"
-            value="-3"
-          />
-        </label>
-        <label>
-          Wind @ 6,000 ft (m/s):
-          <input
-            type="number"
-            id="wind6000"
-            min="-20"
-            max="20"
-            step="0.5"
-            value="-2"
-          />
-        </label>
-        <label>
-          Wind @ 3,000 ft (m/s):
-          <input
-            type="number"
-            id="wind3000"
-            min="-20"
-            max="20"
-            step="0.5"
-            value="-1"
-          />
-        </label>
-        <label>
-          Wind @ Ground (m/s):
-          <input
-            type="number"
-            id="windGround"
-            min="-20"
-            max="20"
-            step="0.5"
-            value="0"
-          />
-        </label>
-      </div>
     </div>
 
-    <div
-      id="playback-controls"
-      style="
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: #2d2d2d;
-        padding: 1rem;
-        border: 1px solid #444;
-        border-radius: 6px;
-        z-index: 9999;
-        resize: both;
-        overflow: auto;
-      "
-    >
+    <div id="playback-controls">
       <button id="start">⏮</button>
-      <button id="rewind">⏪</button>
-      <button id="playPause">▶️</button>
-      <button id="forward">⏩</button>
+      <button id="rewind">⏴</button>
+      <button id="playPause">▶</button>
+      <button id="forward">⏵</button>
       <button id="end">⏭</button>
       <input
         type="range"
@@ -187,9 +112,10 @@
       >
     </div>
 
-    <script src="./js/globalVars.js" type="module" defer></script>
-    <script src="./js/devConsole.js" type="module"></script>
-    <script src="./js/timeScrubber.js" type="module"></script>
-    <script src="./js/scripts.js" type="module" defer></script>
+    <script src="./js/globalVars.ts" type="module" defer></script>
+    <script src="./js/devConsole.ts" type="module"></script>
+    <script src="./js/timeScrubber.ts" type="module"></script>
+    <script src="./js/scripts.ts" type="module" defer></script>
+    <script src="./apidata/openMateo.ts" type="module"></script>
   </body>
 </html>

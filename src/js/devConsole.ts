@@ -24,7 +24,7 @@ document.addEventListener("mouseup", () => {
 });
 
 // Global values for integration
-window.devConsoleVars = {
+(<any>window).devConsoleVars = {
   separation: 2,
   pullAltitude: 1000,
   planeSpeed: 5,
@@ -40,51 +40,53 @@ window.devConsoleVars = {
 };
 
 function updateVarsFromUI() {
-  window.devConsoleVars.separation = parseFloat(
+  (<any>window).devConsoleVars.separation = parseFloat(
     document.getElementById("separation").value
   );
-  window.devConsoleVars.pullAltitude = parseFloat(
+  (<any>window).devConsoleVars.pullAltitude = parseFloat(
     document.getElementById("pullAltitude").value
   );
-  window.devConsoleVars.planeSpeed = parseFloat(
+  (<any>window).devConsoleVars.planeSpeed = parseFloat(
     document.getElementById("planeSpeed").value
   );
-  window.devConsoleVars.bellySpeed = parseFloat(
+  (<any>window).devConsoleVars.bellySpeed = parseFloat(
     document.getElementById("bellySpeed").value
   );
-  window.devConsoleVars.freeflySpeed = parseFloat(
+  (<any>window).devConsoleVars.freeflySpeed = parseFloat(
     document.getElementById("freeflySpeed").value
   );
-  window.devConsoleVars.winds[12000] = parseFloat(
+  (<any>window).devConsoleVars.winds[12000] = parseFloat(
     document.getElementById("wind12000").value
   );
-  window.devConsoleVars.winds[9000] = parseFloat(
+  (<any>window).devConsoleVars.winds[9000] = parseFloat(
     document.getElementById("wind9000").value
   );
-  window.devConsoleVars.winds[6000] = parseFloat(
+  (<any>window).devConsoleVars.winds[6000] = parseFloat(
     document.getElementById("wind6000").value
   );
-  window.devConsoleVars.winds[3000] = parseFloat(
+  (<any>window).devConsoleVars.winds[3000] = parseFloat(
     document.getElementById("wind3000").value
   );
-  window.devConsoleVars.winds.ground = parseFloat(
+  (<any>window).devConsoleVars.winds.ground = parseFloat(
     document.getElementById("windGround").value
   );
 }
 
 // scrubber interactions
-window.rewindButton.addEventListener("click", () =>
-  window.updateScrubber(window.currentTime - 1)
+(<any>window).rewindButton.addEventListener("click", () =>
+  (<any>window).updateScrubber((<any>window).currentTime - 1)
 );
-window.forwardButton.addEventListener("click", () =>
-  window.updateScrubber(window.currentTime + 1)
+(<any>window).forwardButton.addEventListener("click", () =>
+  (<any>window).updateScrubber((<any>window).currentTime + 1)
 );
-window.startButton.addEventListener("click", () => window.updateScrubber(0));
-window.endButton.addEventListener("click", () =>
-  window.updateScrubber(window.maxTime)
+(<any>window).startButton.addEventListener("click", () =>
+  (<any>window).updateScrubber(0)
 );
-window.scrubber.addEventListener("input", (e) =>
-  window.updateScrubber(parseFloat(e.target.value))
+(<any>window).endButton.addEventListener("click", () =>
+  (<any>window).updateScrubber((<any>window).maxTime)
+);
+(<any>window).scrubber.addEventListener("input", (e) =>
+  (<any>window).updateScrubber(parseFloat(e.target.value))
 );
 
 document.querySelectorAll("input").forEach((input) => {

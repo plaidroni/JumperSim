@@ -8,7 +8,7 @@ import { GlobalWindVars } from "./globalVars";
  */
 const renderer = new THREE.WebGLRenderer();
 
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize((<any>window).innerWidth, (<any>window).innerHeight);
 
 // inject renderer into dom
 document.body.appendChild(renderer.domElement);
@@ -18,7 +18,7 @@ const scene = new THREE.Scene();
 // setting up camera
 const camera = new THREE.PerspectiveCamera(
   50,
-  window.innerWidth / window.innerHeight,
+  (<any>window).innerWidth / (<any>window).innerHeight,
   0.1,
   1000
 );
@@ -36,8 +36,8 @@ const mouse = new THREE.Vector2();
 const tooltip = document.getElementById("info-tooltip");
 
 function onMouseMove(event) {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  mouse.x = (event.clientX / (<any>window).innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / (<any>window).innerHeight) * 2 + 1;
 
   tooltip.style.left = `${event.clientX + 10}px`;
   tooltip.style.top = `${event.clientY + 10}px`;
@@ -95,17 +95,23 @@ const windVars = new GlobalWindVars(
   new THREE.Vector3(0, 0, 2) // winds at 3,000
 );
 
-console.log(window.devConsoleVars.planeSpeed);
+console.log((<any>window).devConsoleVars.planeSpeed);
 class Plane {
+  initialPosition: any;
+  position: any;
+  direction: any;
+  speed: number;
+  vector: any;
+  jumpersLeft: any;
   constructor(
     position,
-    speedKnots = window.devConsoleVars.planeSpeed,
+    speedKnots = (<any>window).devConsoleVars.planeSpeed,
     direction = new THREE.Vector3(1, 0, 0)
   ) {
     this.initialPosition = position.clone();
     this.position = position.clone();
     this.direction = direction.normalize();
-    this.speed = speedKnots * 0.51444 * window.simScale;
+    this.speed = speedKnots * 0.51444 * (<any>window).simScale;
     this.vector = this.direction.clone().multiplyScalar(this.speed);
   }
 
@@ -119,12 +125,20 @@ class Plane {
 }
 
 class Jumper {
+  index: any;
+  jumpTime: number;
+  deployDelay: number;
+  canopySize: number;
+  plane: any;
+  initialVelocity: any;
+  mesh: any;
+  position: any;
   constructor(
     index,
     plane,
-    jumpInterval = 15,
+    jumpInterval = 15, // in sec
     deployDelay = 7,
-    canopySize = 190
+    canopySize = 190 // in sqft
   ) {
     this.index = index;
     this.jumpTime = index * jumpInterval;
@@ -150,8 +164,12 @@ class Jumper {
       const deployTime = Math.max(0, timeSinceJump - this.deployDelay);
       const fallTime = Math.min(timeSinceJump, this.deployDelay);
 
-      const gravity = new THREE.Vector3(0, -9.81 * window.simScale, 0);
-      const canopyDescentRate = new THREE.Vector3(0, -2.5 * window.simScale, 0);
+      const gravity = new THREE.Vector3(0, -9.81 * (<any>window).simScale, 0);
+      const canopyDescentRate = new THREE.Vector3(
+        0,
+        -2.5 * (<any>window).simScale,
+        0
+      );
       // have they hit the ground yet?
       const freefall = gravity
         .clone()
@@ -217,11 +235,11 @@ renderer.setAnimationLoop(() => {
   const deltaTime = (now - lastFrameTime) / 1000;
   lastFrameTime = now;
 
-  if (window.isPlaying) {
+  if ((<any>window).isPlaying) {
     simulationTime += deltaTime;
-    window.updateScrubber(simulationTime);
+    (<any>window).updateScrubber(simulationTime);
   } else {
-    simulationTime = window.currentTime;
+    simulationTime = (<any>window).currentTime;
   }
 
   if (simulationTime !== lastSimTime) {

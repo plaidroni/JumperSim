@@ -1,0 +1,32 @@
+import * as THREE from "three";
+
+(<any>(<any>window)).simScale = 0.1; // 10x smaller units
+
+function calculatePositions(lengthOfSimulation: number) {
+  const kstepone = 0;
+  const ksteptwo = 0;
+  const kstepthree = 0;
+  // return array of jumpers' position vectors across time
+  /**
+   * Array of Jumper's Positions <x,y,z,t>
+   */
+  return Array<Array<THREE.Vector4>>;
+}
+
+export class GlobalWindVars {
+  twelveWinds: THREE.Vector3;
+  nineWinds: THREE.Vector3;
+  sixWinds: THREE.Vector3;
+  threeWinds: THREE.Vector3;
+  /**
+   *
+   * @param {ThreeJS.Vector3(x,x,x)} upperWinds
+   * @param {ThreeJS.Vector3(x,x,x)} lowerWinds
+   */
+  constructor(twelveWinds, nineWinds, sixWinds, threeWinds) {
+    this.twelveWinds = twelveWinds;
+    this.nineWinds = nineWinds;
+    this.sixWinds = sixWinds;
+    this.threeWinds = threeWinds;
+  }
+}
