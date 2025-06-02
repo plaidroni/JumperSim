@@ -18,9 +18,11 @@ Three.JS
 
 OrbitControls
 
-~Parcel~
+~Parcel~ (removed due to unresponsive developers)
 
 Vite
+
+## APIs used
 
 OpenMateo(for wind vectors)
 
