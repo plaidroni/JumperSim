@@ -1,26 +1,4 @@
 const consoleEl = document.getElementById("devConsole");
-let isDragging = false;
-let offsetX = 0;
-let offsetY = 0;
-
-consoleEl.addEventListener("mousedown", (e) => {
-  if (e.target.tagName !== "INPUT") {
-    isDragging = true;
-    offsetX = e.clientX - consoleEl.offsetLeft;
-    offsetY = e.clientY - consoleEl.offsetTop;
-  }
-});
-
-document.addEventListener("mousemove", (e) => {
-  if (isDragging) {
-    consoleEl.style.left = `${e.clientX - offsetX}px`;
-    consoleEl.style.top = `${e.clientY - offsetY}px`;
-  }
-});
-
-document.addEventListener("mouseup", () => {
-  isDragging = false;
-});
 
 (<any>window).devConsoleVars = {
   separation: 2,

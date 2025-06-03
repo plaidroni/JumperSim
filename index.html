@@ -8,9 +8,166 @@
     <link rel="stylesheet" href="./src/css/tooltip.css" />
     <link rel="stylesheet" href="./src/css/playback-controls.css" />
     <link rel="stylesheet" href="./src/css/loader.css" />
+    <link rel="stylesheet" href="./src/css/menu.css" />
   </head>
   <body>
-    <div id="compassContainer" style="position: absolute; padding: 1rem">
+    <div id="menu">
+      <div id="logocontainer"></div>
+      <div id="menu-items">
+        <span class="logo-text">Jumper Sim</span>
+
+        <div class="menu-item dropdown">
+          File
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="handleClick('New Scene')">
+              <span>Save</span>
+            </div>
+            <div class="dropdown-item">
+              <span>Load from File</span>
+            </div>
+            <div class="dropdown-item">
+              <span>Auto-Save</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item submenu">
+              <span>Import Formation</span>
+              <div class="dropdown-menu right">
+                <div class="dropdown-item" onclick="handleClick('From FBX')">
+                  <span>From FBX</span>
+                </div>
+                <div class="dropdown-item" onclick="handleClick('From GLTF')">
+                  <span>From GLTF</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-item dropdown">
+          Edit
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="handleClick('Undo')">
+              <span>Undo</span>
+            </div>
+            <div class="dropdown-item" onclick="handleClick('Redo')">
+              <span>Redo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-item dropdown">
+          Scene Objects
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="handleClick('Undo')">
+              <span>Undo</span>
+            </div>
+            <div class="dropdown-item" onclick="handleClick('Redo')">
+              <span>Redo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-item dropdown">
+          Window
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="handleClick('Undo')">
+              <span>Recenter Windows</span>
+            </div>
+            <div class="dropdown-item">
+              <span>Weather</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
+              <span>Location</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
+              <span>Playback Controls</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
+              <span>Scene Objects</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
+              <span>Jump Settings</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
+              <span>Speed Settings</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
+              <span>Credits</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="menu-item dropdown">
+          Help
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="handleClick('Undo')">
+              <span>Information</span>
+            </div>
+            <div class="dropdown-item" onclick="handleClick('Redo')">
+              <span>Redo</span>
+            </div>
+          </div>
+        </div>
+        <div class="menu-item dropdown">
+          Credits
+          <div class="dropdown-menu" style="gap: 10px">
+            <span>Sevan Evans B-63914</span>
+            <span>Cole Patterson</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 
+    <div id="menu">
+      <div id="logocontainer">
+        <img id="logoIcon" src="." alt="Logo" />
+      </div>
+      <div id="menu-items">
+        <span class="logo-text">Jumper Sim</span>
+        <span class="menu-item">File</span>
+        <span class="menu-item">Edit</span>
+        <span class="menu-item">Assets</span>
+        <span class="menu-item">Scene Objects</span>
+        <span class="menu-item">Component</span>
+        <span class="menu-item">Window</span>
+        <span class="menu-item">Help</span>
+      </div>
+    </div>
+
+  -->
+
+    <div id="compassContainer" style="position: absolute; margin: 3rem">
       <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
       <text
         transform="matrix(1 0 0 1 77 37)"
@@ -113,7 +270,7 @@
 
     <div class="panel" id="objects-panel">
       <div class="panel-header">
-        <h2>Active Objects</h2>
+        <h2>Scene Objects</h2>
         <div class="panel-controls">
           <button>–</button>
           <button>×</button>

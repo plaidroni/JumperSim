@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
 
@@ -22,6 +23,13 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
+
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(10, 10, 10);
+scene.add(light);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+scene.add(ambient);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -124,6 +132,60 @@ class Plane {
   }
 }
 
+/**
+ * handle loader
+ */
+
+// const planeMesh = new THREE.Mesh(
+//   new THREE.BoxGeometry(1, 0.3, 0.3),
+//   new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+// );
+
+const plane = new Plane(new THREE.Vector3(0, 130, 0));
+
+let planeMesh = new THREE.Mesh();
+const loader = new GLTFLoader();
+
+loader.load(
+  "/fabs/cessna.gltf",
+  function (gltf) {
+    gltf.scene.traverse((child) => {
+      if (child.isMesh) {
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0x00ff00,
+          wireframe: true,
+        });
+        gltf.scene.rotation.y = -Math.PI / 2; // Face east
+
+        planeMesh = child;
+        return;
+      }
+    });
+    if (planeMesh) {
+      planeMesh.rotation.x = -Math.PI / 2; // correct from "laying down" to upright
+      planeMesh.rotation.z = Math.PI / 2; // correct from "laying down" to upright
+
+      scene.add(planeMesh);
+    }
+  },
+  function (xhr) {
+    //while it's loading, log the progress
+    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+  },
+  function (error) {
+    console.log(error);
+  }
+);
+
+planeMesh.userData = {
+  label: "Plane",
+  jumpersLeft: `${plane.jumpersLeft}`,
+  speed: `${plane.speed.toFixed(2)} m/s`,
+  velocity: `(${plane.vector.x.toFixed(2)}, ${plane.vector.y.toFixed(
+    2
+  )}, ${plane.vector.z.toFixed(2)})`,
+};
+
 class Jumper {
   index: any;
   jumpTime: number;
@@ -192,27 +254,6 @@ class Jumper {
   }
 }
 
-const plane = new Plane(new THREE.Vector3(0, 130, 0));
-
-const jumpers = Array.from({ length: 10 }, (_, i) => new Jumper(i, plane));
-let simulationTime = 0;
-let lastFrameTime = performance.now();
-
-const planeMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 0.3, 0.3),
-  new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-);
-
-planeMesh.userData = {
-  label: "Plane",
-  jumpersLeft: `${plane.jumpersLeft}`,
-  speed: `${plane.speed.toFixed(2)} m/s`,
-  velocity: `(${plane.vector.x.toFixed(2)}, ${plane.vector.y.toFixed(
-    2
-  )}, ${plane.vector.z.toFixed(2)})`,
-};
-scene.add(planeMesh);
-
 function updateSimulation(simulationTime) {
   plane.update(simulationTime);
   planeMesh.position.copy(plane.position);
@@ -227,6 +268,10 @@ function updateSimulation(simulationTime) {
     };
   }
 }
+
+const jumpers = Array.from({ length: 10 }, (_, i) => new Jumper(i, plane));
+let simulationTime = 0;
+let lastFrameTime = performance.now();
 
 let lastSimTime = -1;
 
@@ -261,5 +306,14 @@ renderer.setAnimationLoop(() => {
   }deg)`;
   checkHoverIntersect([...jumpers.map((j) => j.mesh), planeMesh]);
 });
+
+// handle window resizing
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.render(scene, camera);
+}
+window.addEventListener("resize", onWindowResize, false);
 
 document.addEventListener("mousemove", onMouseMove);
