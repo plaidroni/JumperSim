@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./src/css/devconsole.css" />
     <link rel="stylesheet" href="./src/css/tooltip.css" />
     <link rel="stylesheet" href="./src/css/playback-controls.css" />
+    <link rel="stylesheet" href="./src/css/loader.css" />
   </head>
   <body>
     <div id="compassContainer" style="position: absolute; padding: 1rem">
@@ -38,7 +39,15 @@
         </select>
         <div id="dropzone-details" style="margin-top: 1em"></div>
         <div class="panel-controls">
-          <button id="fetch-button">Fetch</button>
+          <div id="fetch-container">
+            <button id="fetchWeather">Fetch Weather</button>
+            <label>Model: Open-Mateo.com</label>
+            <div
+              id="fetchWeather-loader"
+              class="dot-carousel"
+              style="display: none"
+            ></div>
+          </div>
         </div>
       </div>
     </div>
@@ -74,6 +83,47 @@
             value="1000"
           />
         </label>
+      </div>
+    </div>
+
+    <div class="panel" id="weatherdata-panel">
+      <div class="panel-header">
+        <h2>Weather</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body"></div>
+    </div>
+
+    <div class="panel" id="credits-panel">
+      <div class="panel-header">
+        <h2>Credits</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <label>Sevan Evans B-63914</label>
+        <label>Cole Patterson</label>
+      </div>
+    </div>
+
+    <div class="panel" id="objects-panel">
+      <div class="panel-header">
+        <h2>Active Objects</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <label
+          >TODO: add current active jumpers and planes where you can view stats
+          and look at objects</label
+        >
       </div>
     </div>
 

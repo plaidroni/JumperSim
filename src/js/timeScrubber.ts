@@ -73,7 +73,6 @@ const playbackBody = document.getElementById("playback-body");
   play: (<any>window).play,
 };
 
-// Draggable via title bar
 let isDragging = false;
 let offsetX = 0;
 let offsetY = 0;

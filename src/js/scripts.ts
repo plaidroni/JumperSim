@@ -198,11 +198,11 @@ const jumpers = Array.from({ length: 10 }, (_, i) => new Jumper(i, plane));
 let simulationTime = 0;
 let lastFrameTime = performance.now();
 
-// Plane mesh
 const planeMesh = new THREE.Mesh(
   new THREE.BoxGeometry(1, 0.3, 0.3),
   new THREE.MeshBasicMaterial({ color: 0x00ff00 })
 );
+
 planeMesh.userData = {
   label: "Plane",
   jumpersLeft: `${plane.jumpersLeft}`,

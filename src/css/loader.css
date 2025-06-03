@@ -1,17 +1,28 @@
-.loader {
-  border: 8px solid #f3f3f3;
-  border-top: 8px solid #3498db;
-  border-radius: 50%;
-  width: 120px;
-  height: 120px;
-  animation: spin 2s linear infinite;
+/** thanks https://codepen.io/nzbin/pen/GGrXbp */
+
+.dot-carousel {
+  position: relative;
+  left: -9999px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #ffd700;
+  color: #ffd700;
+  box-shadow: 9984px 0 0 0 #ffd700, 9999px 0 0 0 #ffd700, 10014px 0 0 0 #ffd700;
+  animation: dot-carousel 1.5s infinite linear;
 }
 
-@keyframes spin {
+@keyframes dot-carousel {
   0% {
-    transform: rotate(0deg);
+    box-shadow: 9984px 0 0 -1px #ffd700, 9999px 0 0 1px #ffd700,
+      10014px 0 0 -1px #ffd700;
+  }
+  50% {
+    box-shadow: 10014px 0 0 -1px #ffd700, 9984px 0 0 -1px #ffd700,
+      9999px 0 0 1px #ffd700;
   }
   100% {
-    transform: rotate(360deg);
+    box-shadow: 9999px 0 0 1px #ffd700, 10014px 0 0 -1px #ffd700,
+      9984px 0 0 -1px #ffd700;
   }
 }
