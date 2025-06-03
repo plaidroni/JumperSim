@@ -17,6 +17,29 @@ type MateoParams = {
   temperature_unit: "fahrenheit" | "celsius";
 };
 
+export type WeatherSnapshot = {
+  time: string;
+  temperature2m: string;
+  /**
+   * "1000hPa:" "12mph"
+   */
+  windSpeeds: {
+    [key: string]: string;
+  };
+  /**
+   * "975hPa:" "220°"
+   */
+  windDirections: {
+    [key: string]: string;
+  };
+  visibility: string;
+  cloudCover: {
+    high: string;
+    mid: string;
+    low: string;
+  };
+};
+
 var params: MateoParams = {
   latitude: 0,
   longitude: 0,
@@ -164,8 +187,12 @@ async function fetchWeatherData() {
       },
     };
 
+    // set global var for current weather data time
+    if (!Array.isArray((<any>window).weatherSnapshotLog)) {
+      (<any>window).weatherSnapshotLog = [];
+    }
     for (let i = 0; i < weatherData.daily.time.length; i++) {
-      console.log(weatherData.hourly.time[i].toLocaleString(), {
+      const snapshot = {
         time: weatherData.hourly.time[i].toLocaleString(),
         temperature2m: `${weatherData.hourly.temperature2m[i]} °F`,
         windSpeeds: {
@@ -199,7 +226,12 @@ async function fetchWeatherData() {
           mid: `${weatherData.hourly.cloudCoverMid[i]}%`,
           low: `${weatherData.hourly.cloudCoverLow[i]}%`,
         },
-      });
+      };
+
+      (<any>window).currentWeatherData = snapshot;
+      (<any>window).weatherSnapshotLog.push(snapshot);
+
+      console.log(snapshot.time);
       console.log(
         weatherData.daily.time[i].toISOString(),
         weatherData.daily.weatherCode[i]
@@ -210,6 +242,7 @@ async function fetchWeatherData() {
   } finally {
     loader.style.display = "none";
     fetchButton.style.display = "inline-block";
+    populateWeatherPanel((<any>window).weatherSnapshotLog[0]);
   }
 }
 
@@ -217,3 +250,45 @@ fetchButton?.addEventListener("click", async () => {
   declareParams();
   fetchWeatherData();
 });
+
+function populateWeatherPanel(snapshot: WeatherSnapshot) {
+  const panelBody = document.querySelector("#weatherdata-panel .panel-body");
+  if (!panelBody) return;
+
+  panelBody.innerHTML = "";
+
+  const toKnots = (mph: string) => {
+    const number = parseFloat(mph);
+    return Math.round(number / 1.15078);
+  };
+
+  const formatCell = (label: string, dirDeg: string, speedMph: string) => {
+    const speedKnots = toKnots(speedMph);
+    return `${label}: ${dirDeg.replace("°", "°")} at ${speedKnots} kts`;
+  };
+
+  const pressureToLabel: Record<string, string> = {
+    "10m": "Surface",
+    "1000hPa": "300 ft",
+    "975hPa": "1200 ft",
+    "950hPa": "2000 ft",
+    "925hPa": "2500 ft",
+    "900hPa": "3300 ft",
+    "850hPa": "5000 ft",
+    "800hPa": "6500 ft",
+    "700hPa": "10000 ft",
+    "600hPa": "14000 ft",
+    "500hPa": "18000 ft",
+  };
+
+  for (const level of Object.keys(snapshot.windSpeeds)) {
+    const label = pressureToLabel[level] || level;
+    const direction = snapshot.windDirections[level] || "—";
+    const speed = snapshot.windSpeeds[level] || "0 mph";
+
+    const cell = document.createElement("div");
+    cell.className = "weather-datapoint-cell";
+    cell.textContent = formatCell(label, direction, speed);
+    panelBody.appendChild(cell);
+  }
+}

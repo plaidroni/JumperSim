@@ -7,13 +7,6 @@ const consoleEl = document.getElementById("devConsole");
   bellySpeed: 55,
   freeflySpeed: 75,
   // deprecate
-  winds: {
-    12000: -5,
-    9000: -3,
-    6000: -2,
-    3000: -1,
-    ground: 0,
-  },
 };
 
 function updateVarsFromUI() {
