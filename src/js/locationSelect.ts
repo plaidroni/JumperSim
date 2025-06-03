@@ -22,8 +22,6 @@ async function loadDropzones() {
       detailsDiv.innerHTML = `
           <strong>${dz.name}</strong><br>
           Country: ${dz.country}<br>
-          State: ${dz.state || "N/A"}<br>
-          City: ${dz.city}<br>
           Latitude: ${dz.latitude}<br>
           Longitude: ${dz.longitude}
         `;

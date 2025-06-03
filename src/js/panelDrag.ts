@@ -76,6 +76,23 @@ function makePanelDraggable(panel: HTMLElement) {
   });
 }
 
+export function reCenterAllWindows() {
+  const panels = document.getElementsByClassName(
+    "panel"
+  ) as HTMLCollectionOf<HTMLElement>;
+
+  for (const panel of panels) {
+    const panelWidth = panel.offsetWidth;
+    const panelHeight = panel.offsetHeight;
+
+    const centerX = (window.innerWidth - panelWidth) / 2;
+    const centerY = (window.innerHeight - panelHeight) / 2;
+
+    panel.style.position = "absolute";
+    panel.style.left = `${centerX}px`;
+    panel.style.top = `${centerY}px`;
+  }
+}
 // Initialize
 document.querySelectorAll<HTMLElement>(".panel").forEach((panel) => {
   restorePanelState(panel);

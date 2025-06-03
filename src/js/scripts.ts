@@ -3,6 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
+import { setupPanelMinimization } from "./minimized-windows";
 
 /**
  * START BASIC THREEJS SETUP
@@ -317,3 +318,5 @@ function onWindowResize() {
 window.addEventListener("resize", onWindowResize, false);
 
 document.addEventListener("mousemove", onMouseMove);
+
+setupPanelMinimization();

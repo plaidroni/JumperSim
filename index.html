@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="./src/css/playback-controls.css" />
     <link rel="stylesheet" href="./src/css/loader.css" />
     <link rel="stylesheet" href="./src/css/menu.css" />
+    <link rel="stylesheet" href="./src/css/minimized-windows.css" />
   </head>
   <body>
     <div id="menu">
@@ -32,17 +33,6 @@
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item submenu">
-              <span>Import Formation</span>
-              <div class="dropdown-menu right">
-                <div class="dropdown-item" onclick="handleClick('From FBX')">
-                  <span>From FBX</span>
-                </div>
-                <div class="dropdown-item" onclick="handleClick('From GLTF')">
-                  <span>From GLTF</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -59,7 +49,38 @@
         </div>
 
         <div class="menu-item dropdown">
-          Scene Objects
+          Formations
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="handleClick('Undo')">
+              <span>Save Formation</span>
+            </div>
+            <div class="dropdown-item submenu">
+              <span>Import Formation</span>
+              <div class="dropdown-menu right">
+                <div class="dropdown-item" onclick="handleClick('From FBX')">
+                  <span>From FBX</span>
+                </div>
+                <div class="dropdown-item" onclick="handleClick('From GLTF')">
+                  <span>From GLTF</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-item dropdown">
+          Weather
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="handleClick('Undo')">
+              <span>Undo</span>
+            </div>
+            <div class="dropdown-item" onclick="handleClick('Redo')">
+              <span>Redo</span>
+            </div>
+          </div>
+        </div>
+        <div class="menu-item dropdown">
+          View
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="handleClick('Undo')">
               <span>Undo</span>
@@ -73,8 +94,8 @@
         <div class="menu-item dropdown">
           Window
           <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="handleClick('Undo')">
-              <span>Recenter Windows</span>
+            <div class="dropdown-item" onclick="reCenterAllWindows('Undo')">
+              <span>Re-center Windows</span>
             </div>
             <div class="dropdown-item">
               <span>Weather</span>
@@ -133,9 +154,6 @@
             <div class="dropdown-item" onclick="handleClick('Undo')">
               <span>Information</span>
             </div>
-            <div class="dropdown-item" onclick="handleClick('Redo')">
-              <span>Redo</span>
-            </div>
           </div>
         </div>
         <div class="menu-item dropdown">
@@ -145,28 +163,14 @@
             <span>Cole Patterson</span>
           </div>
         </div>
+        <div></div>
       </div>
     </div>
 
-    <!-- 
-    <div id="menu">
-      <div id="logocontainer">
-        <img id="logoIcon" src="." alt="Logo" />
-      </div>
-      <div id="menu-items">
-        <span class="logo-text">Jumper Sim</span>
-        <span class="menu-item">File</span>
-        <span class="menu-item">Edit</span>
-        <span class="menu-item">Assets</span>
-        <span class="menu-item">Scene Objects</span>
-        <span class="menu-item">Component</span>
-        <span class="menu-item">Window</span>
-        <span class="menu-item">Help</span>
-      </div>
-    </div>
+    <!-- for holding the minimized tabs in the bottom -->
+    <div id="minimized-bar"></div>
 
-  -->
-
+    <!-- compass -->
     <div id="compassContainer" style="position: absolute; margin: 3rem">
       <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
       <text
@@ -177,8 +181,6 @@
         >N</text
       >
     </div>
-
-    <div id="devConsole"></div>
 
     <div class="panel" id="location-panel">
       <div class="panel-header">
@@ -230,14 +232,14 @@
           />
         </label>
         <label>
-          Pull Altitude (m):
+          Pull Altitude (ft):
           <input
             type="number"
             id="pullAltitude"
             min="500"
             max="6000"
             step="100"
-            value="1000"
+            value="3500"
           />
         </label>
       </div>
@@ -305,25 +307,25 @@
           />
         </label>
         <label>
-          Belly Jumper Speed (m/s):
+          Belly Jumper Speed (ft/s):
           <input
             type="number"
             id="bellySpeed"
-            min="30"
-            max="60"
+            min="90"
+            max="150"
             step="1"
-            value="55"
+            value="130"
           />
         </label>
         <label>
-          Freefly Jumper Speed (m/s):
+          Freefly Jumper Speed (ft/s):
           <input
             type="number"
             id="freeflySpeed"
-            min="50"
-            max="90"
+            min="100"
+            max="200"
             step="1"
-            value="75"
+            value="160"
           />
         </label>
       </div>
@@ -371,5 +373,10 @@
     <script src="./src/apidata/openMateo.ts" type="module"></script>
     <script src="./src/js/panelDrag.ts" type="module"></script>
     <script src="./src/js/locationSelect.ts" type="module"></script>
+    <script type="module">
+      import { reCenterAllWindows } from "./src/js/panelDrag.js";
+
+      window.reCenterAllWindows = reCenterAllWindows;
+    </script>
   </body>
 </html>

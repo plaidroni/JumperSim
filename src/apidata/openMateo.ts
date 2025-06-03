@@ -187,10 +187,8 @@ async function fetchWeatherData() {
       },
     };
 
-    // set global var for current weather data time
-    if (!Array.isArray((<any>window).weatherSnapshotLog)) {
-      (<any>window).weatherSnapshotLog = [];
-    }
+    (<any>window).weatherSnapshotLog = [];
+
     for (let i = 0; i < weatherData.daily.time.length; i++) {
       const snapshot = {
         time: weatherData.hourly.time[i].toLocaleString(),

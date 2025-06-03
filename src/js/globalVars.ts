@@ -2,6 +2,9 @@ import * as THREE from "three";
 
 (<any>(<any>window)).simScale = 0.1; // 10x smaller units
 
+// To Cole: use (<any>window).weatherSnapshotLog[0]
+// to get the current weather data
+
 function calculatePositions(lengthOfSimulation: number) {
   const kstepone = 0;
   const ksteptwo = 0;
