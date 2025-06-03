@@ -28,12 +28,14 @@ Vite
 
 OpenMateo(for wind vectors)
 
-## Libraries & Addons used
+## Installation
 
 To install and start local server:
 
 git clone https://github.com/plaidroni/JumperSim.git
 
 ~npx parcel ./src/index.html~
+
+npm i
 
 npm run start
