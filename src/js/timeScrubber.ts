@@ -1,6 +1,6 @@
 (<any>window).isPlaying = false;
 (<any>window).currentTime = 0;
-(<any>window).maxTime = 100;
+(<any>window).maxTime = 250;
 (<any>window).playbackInterval = null;
 
 (<any>window).playPauseButton = document.getElementById("playPause");
