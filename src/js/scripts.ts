@@ -46,6 +46,19 @@ const tooltip = document.getElementById("info-tooltip");
 const compass = document.getElementById("compass");
 const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
+let clickedThisFrame = false;
+
+window.addEventListener("mousedown", () => {
+  if (controls && controls.state === 0) {
+    clickedThisFrame = true;
+
+    // if this causes issues or lag put into animate frame instead
+
+    setTimeout(() => {
+      clickedThisFrame = false;
+    }, 1);
+  }
+});
 
 function onMouseMove(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -57,29 +70,39 @@ function onMouseMove(event) {
 
 document.addEventListener("mousemove", onMouseMove);
 
-function checkHoverIntersect(objects) {
+function checkHoverIntersect(objects: THREE.Object3D[]) {
   if (!objects || objects.length === 0 || !camera || !raycaster) return;
 
   raycaster.setFromCamera(mouse, camera);
-
-  // ensure validity
   const validObjects = objects.filter((obj) => obj != null);
   if (validObjects.length === 0) return;
 
   try {
     const intersects = raycaster.intersectObjects(validObjects, true);
+
     if (intersects.length > 0) {
       const obj = intersects[0].object;
       const data = obj.userData;
+
       if (data?.label) {
         let html = `<strong>${data.label}</strong><br>`;
         for (const key in data)
           if (key !== "label") html += `${key}: ${data[key]}<br>`;
         tooltip.innerHTML = html;
         tooltip.style.display = "block";
-        return;
       }
+
+      if (clickedThisFrame) {
+        followTarget = obj;
+        const box = new THREE.Box3().setFromObject(obj);
+        const center = box.getCenter(new THREE.Vector3());
+        cameraOffset = new THREE.Vector3().subVectors(camera.position, center);
+        clickedThisFrame = false;
+      }
+
+      return;
     }
+
     tooltip.style.display = "none";
   } catch (err) {
     console.warn("Raycast error:", err);
