@@ -119,6 +119,20 @@
               />
             </div>
             <div class="dropdown-item">
+              <span>Formation Settings</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
+              <span>Plane Settings</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'Auto-Save')"
+              />
+            </div>
+            <div class="dropdown-item">
               <span>Scene Objects</span>
               <input
                 type="checkbox"
@@ -286,6 +300,26 @@
       </div>
     </div>
 
+    <div class="panel" id="following-panel">
+      <div class="panel-header">
+        <h2>Following</h2>
+        <div class="panel-controls">
+          <button>–</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <label id="following-label"
+          >You're not following anything.
+          <span id="hidden-message"></span> Check out the Scene Objects tab!</span>
+        </label>
+        <label id="following-id"></label>
+        <div class="panel-controls">
+          <button>Stop following</button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="speed-panel">
       <div class="panel-header">
         <h2>Speed Settings</h2>
@@ -366,6 +400,29 @@
         >
       </div>
     </div>
+
+    <div class="panel" id="plane-panel">
+      <div class="panel-header">
+        <h2>Plane Settings</h2>
+        <div class="panel-controls">
+          <button>-</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body"></div>
+    </div>
+
+    <div class="panel" id="formation-panel">
+      <div class="panel-header">
+        <h2>Formation Settings</h2>
+        <div class="panel-controls">
+          <button>-</button>
+          <button>×</button>
+        </div>
+      </div>
+      <div class="panel-body"></div>
+    </div>
+
     <script src="./src/js/globalVars.ts" type="module" defer></script>
     <script src="./src/js/devConsole.ts" type="module"></script>
     <script src="./src/js/timeScrubber.ts" type="module"></script>

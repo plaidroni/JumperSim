@@ -50,6 +50,10 @@ export class Jumper {
   mesh: THREE.Mesh;
   deployed: boolean;
   position: THREE.Vector3;
+  velocity: THREE.Vector3;
+  name: String;
+  height: number;
+  area: number;
 
   constructor(
     index: number,
@@ -107,5 +111,10 @@ export class Jumper {
 
   getMesh(): THREE.Mesh {
     return this.mesh;
+  }
+
+  setMesh(mesh: THREE.Object3D) {
+    this.mesh = mesh;
+    this.mesh.position.copy(this.position);
   }
 }

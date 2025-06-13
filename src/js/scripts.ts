@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { ThreeMFLoader } from "three/addons/loaders/3MFLoader.js";
 import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
 import { setupPanelMinimization } from "./minimized-windows";
@@ -86,14 +87,54 @@ function checkHoverIntersect(objects) {
   }
 }
 
-// === PLANE + SIMULATION ===
+// === PLANE +JUMPER + SIMULATION ===
 const loader = new GLTFLoader();
+const threemfloader = new ThreeMFLoader();
 const simPlane = new SimPlane(
   new THREE.Vector3(0, 130, 0),
   90,
   new THREE.Vector3(90, 0, 0)
 );
 let planeMesh = new THREE.Mesh();
+
+// === SIMULATION DATA ===
+simPlane.precalculate(180);
+const simJumpers = Array.from(
+  { length: 10 },
+  (_, i) => new SimJumper(i, simPlane, 10, 50, 190)
+);
+simJumpers.forEach((jumper) => {
+  jumper.precalculate(180);
+  scene.add(jumper.getMesh());
+});
+
+/**
+ *potentially uncomment later, need to downsize 3mf file or get new stl from amanda
+ */
+// threemfloader.load(
+//   "/fabs/jumper.3mf",
+//   (object) => {
+//     simJumpers.forEach((jumper) => {
+//       const modelClone = object.clone(true);
+
+//       modelClone.traverse((child) => {
+//         if (child.isMesh) {
+//           child.material = child.material.clone();
+//         }
+//       });
+
+//       jumper.setMesh(modelClone);
+//       jumper.precalculate(180);
+//       scene.add(jumper.getMesh());
+//     });
+//   },
+//   (xhr) => {
+//     console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+//   },
+//   (error) => {
+//     console.error("error with loading jumper", error);
+//   }
+// );
 
 loader.load(
   "/fabs/cessna.gltf",
@@ -129,16 +170,93 @@ loader.load(
   }
 );
 
-// === SIMULATION DATA ===
-simPlane.precalculate(180);
-const simJumpers = Array.from(
-  { length: 10 },
-  (_, i) => new SimJumper(i, simPlane, 10, 50, 190)
-);
-simJumpers.forEach((jumper) => {
-  jumper.precalculate(180);
-  scene.add(jumper.getMesh());
+// === LOOKING AT SCENE OBJECT ===
+
+const panelBody = document.querySelector("#objects-panel .panel-body");
+
+let followTarget: THREE.Object3D | null = null;
+let isUserControllingCamera = false;
+
+panelBody.innerHTML = "";
+
+const planeEntry = document.createElement("div");
+planeEntry.className = "object-entry";
+planeEntry.innerHTML = `
+  <span>Plane</span>
+  <button class="focus-button" data-type="plane">👀</button>
+`;
+panelBody.appendChild(planeEntry);
+
+simJumpers.forEach((jumper, i) => {
+  const jumperEntry = document.createElement("div");
+  jumperEntry.className = "object-entry";
+  jumperEntry.innerHTML = `
+    <span>Jumper ${i}</span>
+    <button class="focus-button" data-type="jumper" data-index="${i}">👀</button>
+  `;
+  panelBody.appendChild(jumperEntry);
 });
+
+document.querySelectorAll(".focus-button").forEach((btn) =>
+  btn.addEventListener("click", (e) => {
+    const button = e.currentTarget as HTMLButtonElement;
+    const type = button.dataset.type;
+    const index = Number(button.dataset.index);
+
+    const objectToFollow =
+      type === "plane" ? simPlane.getMesh() : simJumpers[index].getMesh();
+    // follow behavior
+    if (followTarget === objectToFollow) {
+      followTarget = null;
+      button.classList.remove("following");
+    } else {
+      followTarget = objectToFollow;
+      document
+        .querySelectorAll(".focus-button.following")
+        .forEach((b) => b.classList.remove("following"));
+      button.classList.add("following");
+    }
+  })
+);
+
+controls.addEventListener("start", () => {
+  // cancel if the user starts panning
+  if (controls.state === 3) {
+    isUserControllingCamera = true;
+    followTarget = null;
+    document
+      .querySelectorAll(".focus-button.following")
+      .forEach((b) => b.classList.remove("following"));
+  }
+});
+controls.addEventListener("end", () => {
+  if (controls.state !== 3) {
+    isUserControllingCamera = false;
+  }
+});
+
+let cameraOffset = new THREE.Vector3(10, 10, 10);
+const followButton = document.querySelector("#following-panel");
+const followLabel = document.querySelector("#following-label");
+
+followButton?.addEventListener("click", () => {
+  followTarget = null;
+  isUserControllingCamera = true;
+});
+
+function updateCameraFollow() {
+  if (followTarget && !isUserControllingCamera) {
+    const box = new THREE.Box3().setFromObject(followTarget);
+    const center = box.getCenter(new THREE.Vector3());
+
+    controls.target.copy(center);
+    camera.position.lerp(
+      center.clone().add(new THREE.Vector3(10, 10, 10)),
+      0.05
+    );
+    controls.update();
+  }
+}
 
 // === ANIMATION LOOP ===
 let simulationTime = 0;
@@ -160,6 +278,9 @@ function updateFromPrecalc(time) {
       pos: `(${sample.position.x.toFixed(1)}, ${sample.position.y.toFixed(
         1
       )}, ${sample.position.z.toFixed(1)})`,
+      velocity: `(${sample.position.x.toFixed(1)}, ${sample.position.y.toFixed(
+        1
+      )}, ${sample.position.z.toFixed(1)})`,
     };
   });
 }
@@ -179,7 +300,6 @@ renderer.setAnimationLoop(() => {
     updateFromPrecalc(simulationTime);
     lastSimTime = simulationTime;
   }
-
   controls.update();
   renderer.render(scene, camera);
 
@@ -192,6 +312,7 @@ renderer.setAnimationLoop(() => {
     simPlane.getMesh(),
     ...simJumpers.map((j) => j.getMesh()),
   ]);
+  updateCameraFollow();
 });
 
 // === RESIZE HANDLER ===
