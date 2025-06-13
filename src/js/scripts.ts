@@ -244,13 +244,11 @@ document.querySelectorAll(".focus-button").forEach((btn) =>
 
 controls.addEventListener("start", () => {
   // cancel if the user starts panning
-  if (controls.state === 3) {
-    isUserControllingCamera = true;
-    followTarget = null;
-    document
-      .querySelectorAll(".focus-button.following")
-      .forEach((b) => b.classList.remove("following"));
-  }
+  isUserControllingCamera = true;
+  followTarget = null;
+  document
+    .querySelectorAll(".focus-button.following")
+    .forEach((b) => b.classList.remove("following"));
 });
 controls.addEventListener("end", () => {
   if (controls.state !== 3) {
@@ -301,9 +299,7 @@ function updateFromPrecalc(time) {
       pos: `(${sample.position.x.toFixed(1)}, ${sample.position.y.toFixed(
         1
       )}, ${sample.position.z.toFixed(1)})`,
-      velocity: `(${sample.position.x.toFixed(1)}, ${sample.position.y.toFixed(
-        1
-      )}, ${sample.position.z.toFixed(1)})`,
+      velocity: `(${jumper?.velocity}, ${jumper?.velocity}, ${jumper.velocity})`,
     };
   });
 }
