@@ -2,9 +2,9 @@ import { fetchWeatherApi } from "openmeteo";
 
 const url = "https://api.open-meteo.com/v1/forecast";
 
-const fetchButton = document.getElementById(
-  "fetchWeather"
-) as HTMLButtonElement;
+const dropzoneDropdown = document.getElementById(
+  "dropzone-select"
+) as HTMLSelectElement;
 const loader = document.getElementById("fetchWeather-loader") as HTMLDivElement;
 
 type MateoParams = {
@@ -53,7 +53,7 @@ var params: MateoParams = {
 function declareParams() {
   const dz = (<any>window).selectedDropzone;
   if (!dz || dz.latitude == null || dz.longitude == null) {
-    throw new Error("Selected dropzone does not have valid coordinates.");
+    throw new Error("bad coords for selected dropzone");
   }
   params = {
     latitude: (<any>window).selectedDropzone.latitude,
@@ -102,8 +102,8 @@ function declareParams() {
 async function fetchWeatherData() {
   if ((<any>window).selectedDropzone.latitude == 0) return;
 
-  fetchButton.style.display = "none";
-  loader.style.display = "block";
+  // fetchButton.style.display = "none";
+  // loader.style.display = "block";
   try {
     const responses = await fetchWeatherApi(url, params);
 
@@ -143,6 +143,7 @@ async function fetchWeatherData() {
                 1000
             )
         ),
+        // from open-mateo.com code generator
         temperature2m: hourly.variables(0)!.valuesArray()!,
         windSpeed10m: hourly.variables(1)!.valuesArray()!,
         windSpeed1000hPa: hourly.variables(2)!.valuesArray()!,
@@ -225,6 +226,7 @@ async function fetchWeatherData() {
           low: `${weatherData.hourly.cloudCoverLow[i]}%`,
         },
       };
+      console.log(snapshot);
 
       (<any>window).currentWeatherData = snapshot;
       (<any>window).weatherSnapshotLog.push(snapshot);
@@ -238,13 +240,13 @@ async function fetchWeatherData() {
   } catch (error) {
     console.error("Weather fetch failed", error);
   } finally {
-    loader.style.display = "none";
-    fetchButton.style.display = "inline-block";
+    // loader.style.display = "none";
+    // fetchButton.style.display = "inline-block";
     populateWeatherPanel((<any>window).weatherSnapshotLog[0]);
   }
 }
 
-fetchButton?.addEventListener("click", async () => {
+dropzoneDropdown?.addEventListener("change", async () => {
   declareParams();
   fetchWeatherData();
 });
@@ -253,7 +255,7 @@ function populateWeatherPanel(snapshot: WeatherSnapshot) {
   const panelBody = document.querySelector("#weatherdata-panel .panel-body");
   if (!panelBody) return;
 
-  panelBody.innerHTML = "";
+  // panelBody.innerHTML = "";
 
   const toKnots = (mph: string) => {
     const number = parseFloat(mph);
@@ -290,3 +292,5 @@ function populateWeatherPanel(snapshot: WeatherSnapshot) {
     panelBody.appendChild(cell);
   }
 }
+
+export { declareParams, fetchWeatherData };

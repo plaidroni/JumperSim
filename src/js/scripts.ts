@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { ThreeMFLoader } from "three/addons/loaders/3MFLoader.js";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
 import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
 import { setupPanelMinimization } from "./minimized-windows";
@@ -15,7 +15,7 @@ const camera = new THREE.PerspectiveCamera(
   50,
   window.innerWidth / window.innerHeight,
   0.1,
-  1000
+  100000
 );
 const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -28,18 +28,10 @@ scene.add(light);
 const ambient = new THREE.AmbientLight(0xffffff, 0.3);
 scene.add(ambient);
 scene.add(new THREE.AxesHelper(5));
-scene.add(new THREE.GridHelper(250, 50, "aqua", "gray"));
+scene.add(new THREE.GridHelper(2500, 250, "aqua", "grey"));
 
 camera.position.set(0, 108, 30);
 controls.update();
-
-// === GLOBAL VARS ===
-const windVars = new GlobalWindVars(
-  new THREE.Vector3(0, 4, 1),
-  new THREE.Vector3(0, 0, 2),
-  new THREE.Vector3(0, 0, 2),
-  new THREE.Vector3(0, 0, 2)
-);
 
 // === TOOLTIP ===
 const tooltip = document.getElementById("info-tooltip");
@@ -112,9 +104,9 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
 
 // === PLANE +JUMPER + SIMULATION ===
 const loader = new GLTFLoader();
-const threemfloader = new ThreeMFLoader();
+const stlLoader = new STLLoader();
 const simPlane = new SimPlane(
-  new THREE.Vector3(0, 130, 0),
+  new THREE.Vector3(0, 1300, 0),
   90,
   new THREE.Vector3(90, 0, 0)
 );
@@ -134,31 +126,43 @@ simJumpers.forEach((jumper) => {
 /**
  *potentially uncomment later, need to downsize 3mf file or get new stl from amanda
  */
-// threemfloader.load(
-//   "/fabs/jumper.3mf",
-//   (object) => {
-//     simJumpers.forEach((jumper) => {
-//       const modelClone = object.clone(true);
+stlLoader.load(
+  "/fabs/skydiver.stl",
+  (geometry) => {
+    simJumpers.forEach((jumper) => {
+      const color = new THREE.Color(
+        Math.random(),
+        Math.random(),
+        Math.random()
+      );
 
-//       modelClone.traverse((child) => {
-//         if (child.isMesh) {
-//           child.material = child.material.clone();
-//         }
-//       });
+      const material = new THREE.MeshBasicMaterial({
+        color,
+        wireframe: true,
+      });
 
-//       jumper.setMesh(modelClone);
-//       jumper.precalculate(180);
-//       scene.add(jumper.getMesh());
-//     });
-//   },
-//   (xhr) => {
-//     console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-//   },
-//   (error) => {
-//     console.error("error with loading jumper", error);
-//   }
-// );
+      const mesh = new THREE.Mesh(geometry, material);
 
+      mesh.scale.set(0.17, 0.17, 0.17);
+      mesh.rotation.x = -Math.PI / 2;
+
+      geometry.computeBoundingBox();
+      const center = new THREE.Vector3();
+      geometry.boundingBox.getCenter(center);
+      mesh.geometry.translate(-center.x, -center.y, -center.z);
+
+      jumper.setMesh(mesh);
+      jumper.precalculate(180);
+      scene.add(jumper.getMesh());
+    });
+  },
+  (xhr) => {
+    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+  },
+  (error) => {
+    console.error("error with loading jumper", error);
+  }
+);
 loader.load(
   "/fabs/cessna.gltf",
   function (gltf) {
@@ -244,13 +248,11 @@ document.querySelectorAll(".focus-button").forEach((btn) =>
 
 controls.addEventListener("start", () => {
   // cancel if the user starts panning
-  if (controls.state === 3) {
-    isUserControllingCamera = true;
-    followTarget = null;
-    document
-      .querySelectorAll(".focus-button.following")
-      .forEach((b) => b.classList.remove("following"));
-  }
+  isUserControllingCamera = true;
+  followTarget = null;
+  document
+    .querySelectorAll(".focus-button.following")
+    .forEach((b) => b.classList.remove("following"));
 });
 controls.addEventListener("end", () => {
   if (controls.state !== 3) {
@@ -291,8 +293,9 @@ const sph = new THREE.Spherical();
 function updateFromPrecalc(time) {
   const planeSample = simPlane.track.getInterpolatedSample(time);
   if (planeMesh) planeMesh.position.copy(planeSample.position);
-
   simJumpers.forEach((jumper) => {
+    console.log(jumper.velocity);
+
     const sample = jumper.track.getInterpolatedSample(time);
     jumper.getMesh().position.copy(sample.position);
     jumper.getMesh().userData = {
@@ -301,9 +304,9 @@ function updateFromPrecalc(time) {
       pos: `(${sample.position.x.toFixed(1)}, ${sample.position.y.toFixed(
         1
       )}, ${sample.position.z.toFixed(1)})`,
-      velocity: `(${sample.position.x.toFixed(1)}, ${sample.position.y.toFixed(
+      velocity: `(${sample?.velocity.x.toFixed(
         1
-      )}, ${sample.position.z.toFixed(1)})`,
+      )}, ${sample?.velocity.y.toFixed(1)}, ${sample?.velocity.z.toFixed(1)})`,
     };
   });
 }
