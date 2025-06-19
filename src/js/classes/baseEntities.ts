@@ -4,8 +4,8 @@ export class Plane {
   initialPosition: THREE.Vector3;
   position: THREE.Vector3;
   direction: THREE.Vector3;
-  speed: number;
   vector: THREE.Vector3;
+  speed: number;
   jumpersLeft: number;
   mesh: THREE.Object3D | null = null;
 
@@ -50,6 +50,7 @@ export class Jumper {
   mesh: THREE.Mesh;
   deployed: boolean;
   position: THREE.Vector3;
+  currentVelocity: THREE.Vector3;
   velocity: THREE.Vector3;
   name: String;
   height: number;

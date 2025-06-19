@@ -177,11 +177,21 @@
             <span>Cole Patterson</span>
           </div>
         </div>
-        <div></div>
+
+        <div class="mainselection">
+          <select class="weather-select-menu" id="dropzone-select">
+            <option value="">-- Select a dropzone --</option>
+        </select>
+        </div>
+        <!-- <div class="weather-select-menu">
+          <select id="dropzone-select">
+          <option value="">-- Select a dropzone --</option>
+        </select> -->
+        
+        </div>
       </div>
     </div>
 
-    <!-- for holding the minimized tabs in the bottom -->
     <div id="minimized-bar"></div>
 
     <!-- compass -->
@@ -205,15 +215,13 @@
         </div>
       </div>
       <div class="panel-body">
-        <label for="dropzone-select">Choose a dropzone:</label>
-
-        <select id="dropzone-select">
-          <option value="">-- Select a dropzone --</option>
-        </select>
-        <div id="dropzone-details" style="margin-top: 1em"></div>
+        <!-- <label for="dropzone-select">Choose a dropzone:</label> -->
         <div class="panel-controls">
           <div id="fetch-container">
-            <button id="fetchWeather">Fetch Weather</button>
+            <div id="dropzone-details">
+
+            </div>
+            <!-- <button id="fetchWeather">Fetch Weather</button> -->
             <label>Model: Open-Mateo.com</label>
             <div
               id="fetchWeather-loader"
@@ -222,6 +230,7 @@
             ></div>
           </div>
         </div>
+        
       </div>
     </div>
 
@@ -267,7 +276,9 @@
           <button>×</button>
         </div>
       </div>
-      <div class="panel-body"></div>
+      <div class="panel-body">
+        
+      </div>
     </div>
 
     <div class="panel" id="credits-panel">
