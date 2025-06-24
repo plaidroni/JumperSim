@@ -1,7 +1,9 @@
 import { declareParams, fetchWeatherData } from "../apidata/openMateo";
 import { getCookie, setCookie } from "./utils";
+import { loadEnv } from "vite";
+import * as THREE from "three";
 
-async function loadDropzones() {
+export async function loadDropzones(scene: THREE.Scene) {
   const response = await fetch("/src/json/dropzones.json");
   const dropzones = await response.json();
 
@@ -10,7 +12,6 @@ async function loadDropzones() {
   ) as HTMLSelectElement;
   const detailsDiv = document.getElementById("dropzone-details");
 
-  // Populate dropdown
   dropzones.forEach((dz, index) => {
     const option = document.createElement("option");
     option.value = index.toString();
@@ -18,7 +19,6 @@ async function loadDropzones() {
     select.appendChild(option);
   });
 
-  // Restore selection from cookie if exists
   const savedIndex = getCookie("selectedDropzoneIndex");
   if (savedIndex && dropzones[savedIndex]) {
     select.value = savedIndex;
@@ -28,7 +28,7 @@ async function loadDropzones() {
   select.addEventListener("change", (event) => {
     const selectedIndex = (event.target as HTMLSelectElement).value;
     if (selectedIndex !== "") {
-      setCookie("selectedDropzoneIndex", selectedIndex, 30); // Save for 30 days
+      setCookie("selectedDropzoneIndex", selectedIndex, 30);
       triggerSelection(dropzones, parseInt(selectedIndex));
     } else {
       detailsDiv.innerHTML = "";
@@ -36,6 +36,7 @@ async function loadDropzones() {
   });
 
   function triggerSelection(dropzones: any[], index: number) {
+    console.log("loading selection");
     const dz = dropzones[index];
     (window as any).selectedDropzone = dz;
     console.log("Selected DZ:", dz);
@@ -49,7 +50,27 @@ async function loadDropzones() {
 
     declareParams();
     fetchWeatherData();
+
+    const centerLat = dz.latitude;
+    const centerLon = dz.longitude;
+    const zoom = 15;
+    const accessToken = import.meta.env.VITE_MAPBOX;
+    const mapStyle = "mapbox/dark-v11";
+
+    const mapUrl = `https://api.mapbox.com/styles/v1/${mapStyle}/static/${centerLon},${centerLat},${zoom}/512x512?access_token=${accessToken}`;
+
+    const loader = new THREE.TextureLoader();
+    loader.load(mapUrl, (texture) => {
+      const planeSize = 1609;
+      const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+      const material = new THREE.MeshBasicMaterial({ map: texture });
+      const mapPlane = new THREE.Mesh(geometry, material);
+      mapPlane.rotation.x = -Math.PI / 2;
+      scene.add(mapPlane);
+
+      const gridHelper = new THREE.GridHelper(planeSize, 16);
+
+      scene.add(gridHelper);
+    });
   }
 }
-
-loadDropzones().catch(console.error);

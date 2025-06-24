@@ -1,6 +1,6 @@
-import { MathUtils, Vector3 } from "three";
+import * as THREE from "three";
 export function clampVectorAboveYZero(vector) {
-  vector.y = MathUtils.clamp(vector.y, 0, Infinity); // Clamp y to be >= 0
+  vector.y = THREE.MathUtils.clamp(vector.y, 0, Infinity); // Clamp y to be >= 0
   return vector;
 }
 
@@ -20,4 +20,15 @@ export function getCookie(name: string): string | null {
           .split("=")[1]
       )
     : null;
+}
+
+export function latLonToOffset(lat, lon, centerLat, centerLon) {
+  const earthRadius = 6371000; // meters
+  const dLat = (lat - centerLat) * (Math.PI / 180);
+  const dLon = (lon - centerLon) * (Math.PI / 180);
+
+  const x = dLon * earthRadius * Math.cos((centerLat * Math.PI) / 180);
+  const z = -dLat * earthRadius;
+
+  return new THREE.Vector3(x, 0, z);
 }

@@ -197,13 +197,7 @@
     <!-- compass -->
     <div id="compassContainer" style="position: absolute; margin: 3rem">
       <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
-      <text
-        transform="matrix(1 0 0 1 77 37)"
-        fill="#575756"
-        font-family="Arial"
-        font-size="12"
-        >N</text
-      >
+
     </div>
 
     <div class="panel" id="location-panel">
@@ -413,14 +407,25 @@
     </div>
 
     <div class="panel" id="plane-panel">
-      <div class="panel-header">
-        <h2>Plane Settings</h2>
-        <div class="panel-controls">
-          <button>-</button>
-          <button>×</button>
+        <div class="panel-header">
+            <h2>Plane Settings</h2>
+            <div class="panel-controls">
+                <button>-</button>
+                <button>×</button>
+            </div>
         </div>
-      </div>
-      <div class="panel-body"></div>
+        <div class="panel-body">
+            <div class="mainselection">
+                <select class="weather-select-menu" id="plane-select">
+                    <option value="">-- Select a plane --</option>
+                    <option value="cessna-172">Cessna-172</option>
+                    <option value="skyvan">Skyvan</option>
+                    <option value="dc-9">DC-9</option>
+                    <option value="twin-otter">Twin Otter</option>
+                </select>
+            </div>
+            <div  id="plane-status">No plane selected</div>
+        </div>
     </div>
 
     <div class="panel" id="formation-panel">
