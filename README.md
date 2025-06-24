@@ -14,6 +14,10 @@ Wind speeds at all heights at 1,000agl steps based on latitude and longitude abo
 
 Time-aware updates for scrubbing and playback
 
+Dynamic satellite imagery of chosen dropzone (Mapbox.com)
+
+Choose between 4 different planes with different flight characteristics (DC-9, Skyvan, Twin Otter, Cessna-172)
+
 ## Libraries & Addons used
 
 Three.JS
@@ -27,6 +31,8 @@ Vite
 ## APIs used
 
 OpenMateo(for wind vectors)
+
+Mapbox(satellite view)
 
 ## Installation
 
