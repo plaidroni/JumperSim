@@ -36,6 +36,8 @@ Mapbox(satellite view)
 
 ## Installation
 
+(DISCLAIMER: Your own Mapbox public API must be declared as VITE_MAPBOX="..." in root dir.)
+
 To install and start local server:
 
 git clone https://github.com/plaidroni/JumperSim.git
