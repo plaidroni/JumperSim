@@ -7,6 +7,8 @@ import { GlobalWindVars } from "./globalVars";
 import { setupPanelMinimization } from "./minimized-windows";
 import { Plane, Jumper } from "./classes/baseEntities";
 import { SimJumper, SimPlane } from "./classes/simEntities";
+import { loadDropzones } from "./locationSelect";
+import { initializePlaneManager } from "./planeSelect";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -28,7 +30,6 @@ scene.add(light);
 const ambient = new THREE.AmbientLight(0xffffff, 0.3);
 scene.add(ambient);
 scene.add(new THREE.AxesHelper(5));
-scene.add(new THREE.GridHelper(2500, 250, "aqua", "grey"));
 
 camera.position.set(0, 108, 30);
 controls.update();
@@ -39,6 +40,9 @@ const compass = document.getElementById("compass");
 const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
 let clickedThisFrame = false;
+
+const gridHelper = new THREE.GridHelper(1609, 16); // 16 subdivisions = 100m spacing
+scene.add(gridHelper);
 
 window.addEventListener("mousedown", () => {
   if (controls && controls.state === 0) {
@@ -103,7 +107,6 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
 }
 
 // === PLANE +JUMPER + SIMULATION ===
-const loader = new GLTFLoader();
 const stlLoader = new STLLoader();
 const simPlane = new SimPlane(
   new THREE.Vector3(0, 1300, 0),
@@ -143,7 +146,7 @@ stlLoader.load(
 
       const mesh = new THREE.Mesh(geometry, material);
 
-      mesh.scale.set(0.17, 0.17, 0.17);
+      mesh.scale.set(1, 1, 1);
       mesh.rotation.x = -Math.PI / 2;
 
       geometry.computeBoundingBox();
@@ -163,39 +166,39 @@ stlLoader.load(
     console.error("error with loading jumper", error);
   }
 );
-loader.load(
-  "/fabs/cessna.gltf",
-  function (gltf) {
-    gltf.scene.traverse((child) => {
-      if (child.isMesh) {
-        child.material = new THREE.MeshStandardMaterial({
-          color: 0x00ff00,
-          wireframe: true,
-        });
-        gltf.scene.rotation.y = -Math.PI / 2;
+// loader.load(
+//   "/fabs/cessna.gltf",
+//   function (gltf) {
+//     gltf.scene.traverse((child) => {
+//       if (child.isMesh) {
+//         child.material = new THREE.MeshStandardMaterial({
+//           color: 0x00ff00,
+//           wireframe: true,
+//         });
+//         gltf.scene.rotation.y = -Math.PI / 2;
 
-        planeMesh = child;
-        return;
-      }
-    });
-    if (planeMesh) {
-      planeMesh.userData.label = "Plane";
-      planeMesh.raycast = THREE.Mesh.prototype.raycast;
+//         planeMesh = child;
+//         return;
+//       }
+//     });
+//     if (planeMesh) {
+//       planeMesh.userData.label = "Plane";
+//       planeMesh.raycast = THREE.Mesh.prototype.raycast;
 
-      planeMesh.rotation.x = -Math.PI / 2;
-      planeMesh.rotation.z = Math.PI / 2;
-
-      simPlane.setMesh(planeMesh);
-      scene.add(planeMesh);
-    }
-  },
-  function (xhr) {
-    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-  },
-  function (error) {
-    console.log(error);
-  }
-);
+//       planeMesh.rotation.x = -Math.PI / 2;
+//       planeMesh.rotation.z = Math.PI / 2;
+//       planeMesh.scale.set(8, 8, 8);
+//       simPlane.setMesh(planeMesh);
+//       scene.add(planeMesh);
+//     }
+//   },
+//   function (xhr) {
+//     console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+//   },
+//   function (error) {
+//     console.log(error);
+//   }
+// );
 
 // === LOOKING AT SCENE OBJECT ===
 
@@ -349,3 +352,5 @@ window.addEventListener("resize", () => {
 });
 
 setupPanelMinimization();
+loadDropzones(scene).catch(console.error);
+initializePlaneManager(scene, simPlane);
