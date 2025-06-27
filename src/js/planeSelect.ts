@@ -8,28 +8,32 @@ const loader = new GLTFLoader();
 
 const planeConfigs = {
   "cessna-172": {
-    file: "/fabs/cessna.gltf",
+    file: "/fabs/cessna_fix.glb",
     scale: [8, 8, 8],
     color: 0x00ff00,
     name: "Cessna-172",
+    rotation: [0, 0, 0],
   },
   skyvan: {
-    file: "/fabs/skyvan.gltf",
-    scale: [6, 6, 6],
+    file: "/fabs/skyvan_fix.glb",
+    scale: [8, 8, 8],
     color: 0x0066ff,
     name: "Skyvan",
+    rotation: [0, 0, 0],
   },
   "dc-9": {
     file: "/fabs/dc9.gltf",
-    scale: [1, 1, 1],
+    scale: [0.2, 0.2, 0.2],
     color: 0xff6600,
     name: "DC-9",
+    rotation: [0, 0, 0],
   },
   "twin-otter": {
-    file: "/fabs/twin_otter.gltf",
-    scale: [7, 7, 7],
+    file: "/fabs/twin_otter_fix.glb",
+    scale: [8, 8, 8],
     color: 0xff0066,
     name: "Twin Otter",
+    rotation: [0, 0, 0],
   },
 };
 
@@ -74,12 +78,23 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
       if (meshes.length > 0) {
         gltf.scene.scale.set(...config.scale);
 
+        if (config.rotation) {
+          const [xDeg, yDeg, zDeg] = config.rotation;
+          gltf.scene.rotation.set(
+            THREE.MathUtils.degToRad(xDeg),
+            THREE.MathUtils.degToRad(yDeg),
+            THREE.MathUtils.degToRad(zDeg)
+          );
+        }
+        addNoseLine(gltf.scene, scene);
         gltf.scene.userData.label = "Plane";
 
         planeMesh = gltf.scene;
 
         simPlane.setMesh(planeMesh);
         scene.add(planeMesh);
+
+        simPlane.precalculate(180);
 
         updateStatus(
           `${config.name} loaded successfully (${meshes.length} components)`
@@ -125,3 +140,17 @@ export function initializePlaneManager(scene, simPlane) {
   loadPlane,
   planeConfigs,
 };
+
+function addNoseLine(model, scene) {
+  const length = 10;
+  const noseLineGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 0, length),
+  ]);
+
+  const noseLineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+
+  const noseLine = new THREE.Line(noseLineGeometry, noseLineMaterial);
+
+  model.add(noseLine);
+}

@@ -15,7 +15,7 @@ export class SimPlane extends Plane {
     this.track = new KinematicTrack();
   }
 
-  precalculate(duration, step = 0.01) {
+  precalculate(duration, step = 0.1) {
     this.track.samples = [];
     for (let t = 0; t <= duration; t += step) {
       super.update(t);
@@ -39,7 +39,9 @@ export class SimJumper extends Jumper {
     this.velocity = plane.vector.clone();
   }
 
-  precalculate(duration, step = 0.01) {
+  addLandingSpot() {}
+
+  precalculate(duration, step = 0.1) {
     this.track.samples = [];
     let timeSinceJump = 0;
     let currentPosition = this.plane.initialPosition

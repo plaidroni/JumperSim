@@ -334,6 +334,7 @@ renderer.setAnimationLoop(() => {
 
   camera.getWorldDirection(dir);
   sph.setFromVector3(dir);
+  // thx guy on stack overflow <3
   compass.style.transform = `rotate(${
     THREE.MathUtils.radToDeg(sph.theta) - 180
   }deg)`;
