@@ -16,9 +16,16 @@ export class SimPlane extends Plane {
   }
 
   precalculate(duration, step = 0.1) {
+    console.log("Calculating Plane Vector");
+
     this.track.samples = [];
     for (let t = 0; t <= duration; t += step) {
       super.update(t);
+      console.log(
+        `Plane Sample at t=${t.toFixed(
+          2
+        )}: position=${this.position.toArray()}, vector=${this.vector.toArray()}`
+      );
       this.track.addSample(t, this.position, this.vector);
     }
   }
@@ -26,14 +33,7 @@ export class SimPlane extends Plane {
 
 export class SimJumper extends Jumper {
   track: KinematicTrack;
-  constructor(
-    index,
-    plane,
-    jumpInterval,
-    deployDelay,
-    canopySize,
-    initialVelocity
-  ) {
+  constructor(index, plane: SimPlane, jumpInterval, deployDelay, canopySize) {
     super(index, plane, jumpInterval, deployDelay, canopySize);
     this.track = new KinematicTrack();
     this.velocity = plane.vector.clone();
@@ -42,18 +42,23 @@ export class SimJumper extends Jumper {
   addLandingSpot() {}
 
   precalculate(duration, step = 0.1) {
+    // --KEEP--
     this.track.samples = [];
     let timeSinceJump = 0;
-    let currentPosition = this.plane.initialPosition
-      .clone()
-      .add(this.plane.vector.clone().multiplyScalar(this.jumpTime));
-    this.velocity = this.plane.vector.clone();
 
+    const planeSampleAtJump = this.plane.track.getInterpolatedSample(
+      this.jumpTime
+    );
+    let currentPosition = planeSampleAtJump.position.clone();
+    this.velocity = planeSampleAtJump.velocity.clone();
+    // --END KEEP--
     for (let t = 0; t <= duration; t += step) {
       const simTime = t;
+
       if (simTime < this.jumpTime) {
-        currentPosition = this.plane.position.clone();
-        this.velocity = this.plane.vector.clone();
+        const sample = this.plane.track.getInterpolatedSample(simTime);
+        currentPosition = sample.position.clone();
+        this.velocity = sample.velocity.clone();
       } else {
         timeSinceJump = simTime - this.jumpTime;
         const deployTime = Math.max(0, timeSinceJump - this.deployDelay);
@@ -64,8 +69,6 @@ export class SimJumper extends Jumper {
 
         const gravity = v_grav.clone().multiplyScalar((window as any).simScale);
 
-        // drag = 0.5 * rho * v^2 * Cd * A
-        // doesn't fit quite right need to calculate on paper with simscale = 0.1 to test
         const dragForce = this.velocity
           .clone()
           .multiplyScalar(-1)
@@ -80,6 +83,7 @@ export class SimJumper extends Jumper {
 
         const totalForce = gravity.clone().multiplyScalar(mass).add(dragForce);
         const acceleration = totalForce.clone().divideScalar(mass);
+
         this.velocity.add(acceleration.clone().multiplyScalar(step));
         currentPosition.add(this.velocity.clone().multiplyScalar(step));
 

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { SimPlane } from "./simEntities";
 
 export class Plane {
   initialPosition: THREE.Vector3;
@@ -45,7 +46,8 @@ export class Jumper {
   jumpTime: number;
   deployDelay: number;
   canopySize: number;
-  plane: Plane;
+  direction: THREE.Vector;
+  plane: SimPlane;
   initialVelocity: THREE.Vector3;
   mesh: THREE.Mesh;
   deployed: boolean;
@@ -65,10 +67,11 @@ export class Jumper {
   ) {
     this.index = index;
     this.jumpTime = index * jumpInterval;
+    this.direction = plane.direction;
     this.deployDelay = deployDelay;
     this.canopySize = canopySize;
     this.plane = plane;
-    this.initialVelocity = new THREE.Vector3(0, 0, 0);
+    this.initialVelocity = plane.vector;
     this.position = new THREE.Vector3();
 
     this.mesh = new THREE.Mesh(

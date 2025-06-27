@@ -8,7 +8,7 @@ import { setupPanelMinimization } from "./minimized-windows";
 import { Plane, Jumper } from "./classes/baseEntities";
 import { SimJumper, SimPlane } from "./classes/simEntities";
 import { loadDropzones } from "./locationSelect";
-import { initializePlaneManager } from "./planeSelect";
+import { handlePlaneSelection, initializePlaneManager } from "./planeSelect";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -109,12 +109,12 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
 // === PLANE +JUMPER + SIMULATION ===
 const stlLoader = new STLLoader();
 const simPlane = new SimPlane(
-  new THREE.Vector3(0, 1300, 0),
+  new THREE.Vector3(0, 13000, 0),
   90,
   new THREE.Vector3(90, 0, 0)
 );
 let planeMesh = new THREE.Mesh();
-
+handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
 simPlane.precalculate(180);
 const simJumpers = Array.from(
@@ -295,10 +295,19 @@ const sph = new THREE.Spherical();
 
 function updateFromPrecalc(time) {
   const planeSample = simPlane.track.getInterpolatedSample(time);
-  if (planeMesh) planeMesh.position.copy(planeSample.position);
+  // if (!planeSample) console.warn("No sample found at time", time);
+  // console.log(
+  //   "Time:",
+  //   time,
+  //   "Plane sample pos:",
+  //   planeSample.position.toArray()
+  // );
+  const mesh = simPlane.getMesh();
+  if (mesh) {
+    mesh.position.copy(planeSample.position);
+    mesh.quaternion.copy(mesh.quaternion ?? new THREE.Quaternion());
+  }
   simJumpers.forEach((jumper) => {
-    console.log(jumper.velocity);
-
     const sample = jumper.track.getInterpolatedSample(time);
     jumper.getMesh().position.copy(sample.position);
     jumper.getMesh().userData = {

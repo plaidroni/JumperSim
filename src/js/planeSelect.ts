@@ -12,7 +12,7 @@ const planeConfigs = {
     scale: [8, 8, 8],
     color: 0x00ff00,
     name: "Cessna-172",
-    rotation: [0, 0, 0],
+    rotation: [90, 0, 0],
   },
   skyvan: {
     file: "/fabs/skyvan_fix.glb",
@@ -33,11 +33,11 @@ const planeConfigs = {
     scale: [8, 8, 8],
     color: 0xff0066,
     name: "Twin Otter",
-    rotation: [0, 0, 0],
+    rotation: [0, 90, 0],
   },
 };
-
-function handlePlaneSelection(
+// selectedPlane is string of plane
+export function handlePlaneSelection(
   selectedPlane,
   scene: THREE.Scene,
   simPlane: SimPlane
@@ -49,7 +49,7 @@ function handlePlaneSelection(
 
   currentPlane = selectedPlane;
   const config = planeConfigs[selectedPlane];
-
+  console.log(config.name);
   updateStatus(`Loading ${config.name}...`);
 
   // remve existing plane
@@ -94,11 +94,10 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
         simPlane.setMesh(planeMesh);
         scene.add(planeMesh);
 
-        simPlane.precalculate(180);
-
         updateStatus(
           `${config.name} loaded successfully (${meshes.length} components)`
         );
+        simPlane.precalculate(180);
       }
     },
     function (xhr) {
@@ -111,6 +110,7 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
     }
   );
 }
+
 // replace with notification system
 function updateStatus(message) {
   const statusElement = document.getElementById("plane-status");
