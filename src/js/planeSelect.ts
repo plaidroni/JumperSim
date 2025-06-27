@@ -12,14 +12,14 @@ const planeConfigs = {
     scale: [8, 8, 8],
     color: 0x00ff00,
     name: "Cessna-172",
-    rotation: [90, 0, 0],
+    rotation: [0, 90, 0],
   },
   skyvan: {
     file: "/fabs/skyvan_fix.glb",
     scale: [8, 8, 8],
     color: 0x0066ff,
     name: "Skyvan",
-    rotation: [0, 0, 0],
+    rotation: [0, 90, 0],
   },
   "dc-9": {
     file: "/fabs/dc9.gltf",
@@ -97,7 +97,7 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
         updateStatus(
           `${config.name} loaded successfully (${meshes.length} components)`
         );
-        simPlane.precalculate(180);
+        simPlane.precalculate(500);
       }
     },
     function (xhr) {

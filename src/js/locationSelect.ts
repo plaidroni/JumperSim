@@ -53,7 +53,7 @@ export async function loadDropzones(scene: THREE.Scene) {
 
     const centerLat = dz.latitude;
     const centerLon = dz.longitude;
-    const zoom = 14;
+    const zoom = 12.5;
     const accessToken = import.meta.env.VITE_MAPBOX;
     const mapStyle = "mapbox/dark-v11";
 
@@ -61,7 +61,7 @@ export async function loadDropzones(scene: THREE.Scene) {
 
     const loader = new THREE.TextureLoader();
     loader.load(mapUrl, (texture) => {
-      const planeSize = 4618;
+      const planeSize = 12000;
       const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const mapPlane = new THREE.Mesh(geometry, material);

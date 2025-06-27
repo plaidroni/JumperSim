@@ -116,13 +116,13 @@ const simPlane = new SimPlane(
 let planeMesh = new THREE.Mesh();
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
-simPlane.precalculate(180);
+simPlane.precalculate(500);
 const simJumpers = Array.from(
   { length: 10 },
   (_, i) => new SimJumper(i, simPlane, 10, 50, 190)
 );
 simJumpers.forEach((jumper) => {
-  jumper.precalculate(180);
+  jumper.precalculate(500);
   scene.add(jumper.getMesh());
 });
 
@@ -155,7 +155,7 @@ stlLoader.load(
       mesh.geometry.translate(-center.x, -center.y, -center.z);
 
       jumper.setMesh(mesh);
-      jumper.precalculate(180);
+      jumper.precalculate(500);
       scene.add(jumper.getMesh());
     });
   },
@@ -279,7 +279,7 @@ function updateCameraFollow() {
 
     controls.target.copy(center);
     camera.position.lerp(
-      center.clone().add(new THREE.Vector3(10, 10, 10)),
+      center.clone().add(new THREE.Vector3(100, 100, 100)),
       0.05
     );
     controls.update();

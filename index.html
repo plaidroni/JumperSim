@@ -97,63 +97,63 @@
             <div class="dropdown-item" onclick="reCenterAllWindows('Undo')">
               <span>Re-center Windows</span>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="weather-tab-visible">
               <span>Weather</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="location-tab-visible">
               <span>Location</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="playback-controls-tab-visible">
               <span>Playback Controls</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="formation-tab-visible">
               <span>Formation Settings</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="plane-tab-visible">
               <span>Plane Settings</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="scene-tab-visible">
               <span>Scene Objects</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="jump-tab-visible">
               <span>Jump Settings</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="speed-tab-visible">
               <span>Speed Settings</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
               />
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="credits-tab-visible">
               <span>Credits</span>
               <input
                 type="checkbox"
@@ -393,7 +393,7 @@
           type="range"
           id="scrubber"
           min="0"
-          max="250"
+          max="500"
           value="0"
           step="0.1"
           style="flex: 1"
