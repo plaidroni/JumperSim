@@ -8,7 +8,7 @@ Plane class moves based on time and vector
 
 Jumper class transitions from freefall to canopy
 
-List of all major USPA regulated dropzones with accurate realtime Weather data (Open-Mateo.com)
+List of all major USPA regulated dropzones with accurate realtime Weather data (https://www.Open-Meteo.com)
 
 Wind speeds at all heights at 1,000agl steps based on latitude and longitude above ground level
 
