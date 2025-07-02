@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { WeatherSnapshot } from "../apidata/openMateo";
 export function clampVectorAboveYZero(vector) {
   vector.y = THREE.MathUtils.clamp(vector.y, 0, Infinity); // Clamp y to be >= 0
   return vector;
@@ -31,4 +32,39 @@ export function latLonToOffset(lat, lon, centerLat, centerLon) {
   const z = -dLat * earthRadius;
 
   return new THREE.Vector3(x, 0, z);
+}
+
+const pressureToAltitude: Record<string, number> = {
+  "1000hPa": 110, // in meters
+  "975hPa": 350,
+  "950hPa": 610,
+  "925hPa": 760,
+  "900hPa": 1000,
+  "850hPa": 1460,
+  "800hPa": 2000,
+  "750hPa": 2500,
+  "700hPa": 3100,
+};
+
+export function convertWeatherSnapshotToWindLayers(snapshot: WeatherSnapshot) {
+  const windLayers: Array<any> = [];
+
+  for (const [pressure, speedStr] of Object.entries(snapshot.windSpeeds)) {
+    const directionStr = snapshot.windDirections[pressure];
+    const altitude = pressureToAltitude[pressure.replace(":", "")];
+
+    if (!altitude || !speedStr || !directionStr) continue;
+
+    const speedMph = parseFloat(speedStr.replace(/[^\d.]/g, ""));
+    const angleDeg = parseFloat(directionStr.replace(/[^\d.]/g, ""));
+    const speedKts = speedMph * 0.868976;
+
+    windLayers.push({
+      altitude,
+      angleDeg,
+      speedKts,
+    });
+  }
+
+  return windLayers.sort((a, b) => a.altitude - b.altitude);
 }

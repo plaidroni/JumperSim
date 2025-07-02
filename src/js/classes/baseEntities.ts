@@ -18,7 +18,8 @@ export class Plane {
     this.initialPosition = position.clone();
     this.position = position.clone();
     this.direction = direction.normalize();
-    this.speed = speedKnots * 0.51444 * (window as any).simScale;
+    // this.speed = speedKnots * 0.51444 * (window as any).simScale;
+    this.speed = speedKnots * 0.51444;
     this.vector = this.direction.clone().multiplyScalar(this.speed);
   }
 
@@ -88,10 +89,12 @@ export class Jumper {
       const deployTime = Math.max(0, timeSinceJump - this.deployDelay);
       const fallTime = Math.min(timeSinceJump, this.deployDelay);
 
-      const gravity = new THREE.Vector3(0, -9.81 * (window as any).simScale, 0);
+      // const gravity = new THREE.Vector3(0, -9.81 * (window as any).simScale, 0);
+      const gravity = new THREE.Vector3(0, -9.81, 0);
       const canopyDescentRate = new THREE.Vector3(
         0,
-        -2.5 * (window as any).simScale,
+        // -2.5 * (window as any).simScale,
+        -2.5,
         0
       );
 

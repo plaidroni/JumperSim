@@ -109,7 +109,7 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
 // === PLANE +JUMPER + SIMULATION ===
 const stlLoader = new STLLoader();
 const simPlane = new SimPlane(
-  new THREE.Vector3(0, 13000, 0),
+  new THREE.Vector3(0, 3962, 0),
   90,
   new THREE.Vector3(90, 0, 0)
 );
@@ -286,6 +286,20 @@ function updateCameraFollow() {
   }
 }
 
+// === READY CHECKS ===
+
+let dropzonesReadyResolve: () => void;
+export const dropzonesReady = new Promise<void>((resolve) => {
+  dropzonesReadyResolve = resolve;
+});
+
+// async function waitAllSystems() {
+//   const meshReady;
+//   const weatherDataReady;
+
+//   await Promise.all;
+// }
+
 // === ANIMATION LOOP ===
 let simulationTime = 0;
 let lastFrameTime = performance.now();
@@ -310,15 +324,16 @@ function updateFromPrecalc(time) {
   simJumpers.forEach((jumper) => {
     const sample = jumper.track.getInterpolatedSample(time);
     jumper.getMesh().position.copy(sample.position);
+    const posFeet = sample.position.clone().multiplyScalar(3.28084);
     jumper.getMesh().userData = {
       label: `Jumper #${jumper.index}`,
       time: sample.time.toFixed(2),
-      pos: `(${sample.position.x.toFixed(1)}, ${sample.position.y.toFixed(
+      pos: `(${posFeet.x.toFixed(1)}, ${posFeet.y.toFixed(
         1
-      )}, ${sample.position.z.toFixed(1)})`,
-      velocity: `(${sample?.velocity.x.toFixed(
+      )}, ${posFeet.z.toFixed(1)}) ft`,
+      velocity: `(${sample.velocity.x.toFixed(1)}, ${sample.velocity.y.toFixed(
         1
-      )}, ${sample?.velocity.y.toFixed(1)}, ${sample?.velocity.z.toFixed(1)})`,
+      )}, ${sample.velocity.z.toFixed(1)}) m/s`,
     };
   });
 }
