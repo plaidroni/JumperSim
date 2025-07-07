@@ -2,6 +2,7 @@ import { declareParams, fetchWeatherData } from "../apidata/openMateo";
 import { getCookie, setCookie } from "./utils";
 import { loadEnv } from "vite";
 import * as THREE from "three";
+import { signalMeshReady } from "./scripts";
 
 export async function loadDropzones(scene: THREE.Scene) {
   const response = await fetch("/src/json/dropzones.json");
@@ -19,6 +20,12 @@ export async function loadDropzones(scene: THREE.Scene) {
     select.appendChild(option);
   });
 
+  // this is for the ready callback for our systems OK in scripts.ts
+  // let readyResolve: () => void;
+  // const readyPromise = new Promise<void>((resolve) => {
+  //   readyResolve = resolve;
+  // });
+
   const savedIndex = getCookie("selectedDropzoneIndex");
   if (savedIndex && dropzones[savedIndex]) {
     select.value = savedIndex;
@@ -35,7 +42,14 @@ export async function loadDropzones(scene: THREE.Scene) {
     }
   });
 
-  function triggerSelection(dropzones: any[], index: number) {
+  function loadTexture(url: string): Promise<THREE.Texture> {
+    return new Promise((resolve, reject) => {
+      const loader = new THREE.TextureLoader();
+      loader.load(url, resolve, undefined, reject);
+    });
+  }
+
+  async function triggerSelection(dropzones: any[], index: number) {
     console.log("loading selection");
     const dz = dropzones[index];
     (window as any).selectedDropzone = dz;
@@ -60,17 +74,17 @@ export async function loadDropzones(scene: THREE.Scene) {
     const mapUrl = `https://api.mapbox.com/styles/v1/${mapStyle}/static/${centerLon},${centerLat},${zoom}/512x512?access_token=${accessToken}`;
 
     const loader = new THREE.TextureLoader();
-    loader.load(mapUrl, (texture) => {
-      const planeSize = 4618;
-      const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
-      const material = new THREE.MeshBasicMaterial({ map: texture });
-      const mapPlane = new THREE.Mesh(geometry, material);
-      mapPlane.rotation.x = -Math.PI / 2;
-      scene.add(mapPlane);
+    const texture = await loadTexture(mapUrl);
+    const planeSize = 4618;
+    const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const mapPlane = new THREE.Mesh(geometry, material);
+    mapPlane.rotation.x = -Math.PI / 2;
+    scene.add(mapPlane);
 
-      const gridHelper = new THREE.GridHelper(planeSize, 16);
+    const gridHelper = new THREE.GridHelper(planeSize, 16);
+    scene.add(gridHelper);
 
-      scene.add(gridHelper);
-    });
+    signalMeshReady();
   }
 }

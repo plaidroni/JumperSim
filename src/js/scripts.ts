@@ -121,51 +121,7 @@ const simJumpers = Array.from(
   { length: 10 },
   (_, i) => new SimJumper(i, simPlane, 10, 50, 190)
 );
-simJumpers.forEach((jumper) => {
-  jumper.precalculate(180);
-  scene.add(jumper.getMesh());
-});
 
-/**
- *potentially uncomment later, need to downsize 3mf file or get new stl from amanda
- */
-stlLoader.load(
-  "/fabs/skydiver.stl",
-  (geometry) => {
-    simJumpers.forEach((jumper) => {
-      const color = new THREE.Color(
-        Math.random(),
-        Math.random(),
-        Math.random()
-      );
-
-      const material = new THREE.MeshBasicMaterial({
-        color,
-        wireframe: true,
-      });
-
-      const mesh = new THREE.Mesh(geometry, material);
-
-      mesh.scale.set(1, 1, 1);
-      mesh.rotation.x = -Math.PI / 2;
-
-      geometry.computeBoundingBox();
-      const center = new THREE.Vector3();
-      geometry.boundingBox.getCenter(center);
-      mesh.geometry.translate(-center.x, -center.y, -center.z);
-
-      jumper.setMesh(mesh);
-      jumper.precalculate(180);
-      scene.add(jumper.getMesh());
-    });
-  },
-  (xhr) => {
-    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-  },
-  (error) => {
-    console.error("error with loading jumper", error);
-  }
-);
 // loader.load(
 //   "/fabs/cessna.gltf",
 //   function (gltf) {
@@ -288,86 +244,155 @@ function updateCameraFollow() {
 
 // === READY CHECKS ===
 
-let dropzonesReadyResolve: () => void;
-export const dropzonesReady = new Promise<void>((resolve) => {
-  dropzonesReadyResolve = resolve;
+let meshReadyResolve: () => void;
+let weatherReadyResolve: () => void;
+
+export const meshReady = new Promise<void>((resolve) => {
+  meshReadyResolve = resolve;
 });
 
-// async function waitAllSystems() {
-//   const meshReady;
-//   const weatherDataReady;
+export const weatherReady = new Promise<void>((resolve) => {
+  weatherReadyResolve = resolve;
+});
 
-//   await Promise.all;
-// }
-
-// === ANIMATION LOOP ===
-let simulationTime = 0;
-let lastFrameTime = performance.now();
-let lastSimTime = -1;
-const dir = new THREE.Vector3();
-const sph = new THREE.Spherical();
-
-function updateFromPrecalc(time) {
-  const planeSample = simPlane.track.getInterpolatedSample(time);
-  // if (!planeSample) console.warn("No sample found at time", time);
-  // console.log(
-  //   "Time:",
-  //   time,
-  //   "Plane sample pos:",
-  //   planeSample.position.toArray()
-  // );
-  const mesh = simPlane.getMesh();
-  if (mesh) {
-    mesh.position.copy(planeSample.position);
-    mesh.quaternion.copy(mesh.quaternion ?? new THREE.Quaternion());
-  }
-  simJumpers.forEach((jumper) => {
-    const sample = jumper.track.getInterpolatedSample(time);
-    jumper.getMesh().position.copy(sample.position);
-    const posFeet = sample.position.clone().multiplyScalar(3.28084);
-    jumper.getMesh().userData = {
-      label: `Jumper #${jumper.index}`,
-      time: sample.time.toFixed(2),
-      pos: `(${posFeet.x.toFixed(1)}, ${posFeet.y.toFixed(
-        1
-      )}, ${posFeet.z.toFixed(1)}) ft`,
-      velocity: `(${sample.velocity.x.toFixed(1)}, ${sample.velocity.y.toFixed(
-        1
-      )}, ${sample.velocity.z.toFixed(1)}) m/s`,
-    };
-  });
+export function signalMeshReady() {
+  meshReadyResolve?.();
 }
 
-renderer.setAnimationLoop(() => {
-  const now = performance.now();
-  const deltaTime = (now - lastFrameTime) / 1000;
-  lastFrameTime = now;
+export function signalWeatherReady() {
+  weatherReadyResolve?.();
+}
 
-  simulationTime = (window as any).isPlaying
-    ? simulationTime + deltaTime
-    : (window as any).currentTime;
-
-  (window as any).updateScrubber?.(simulationTime);
-
-  if (simulationTime !== lastSimTime) {
-    updateFromPrecalc(simulationTime);
-    lastSimTime = simulationTime;
+async function waitAllSystems(): Promise<void> {
+  try {
+    await Promise.all([meshReady, weatherReady]);
+    console.log("Systems: OK");
+  } catch (e) {
+    console.error("One or more systems failed:", e);
   }
-  controls.update();
-  renderer.render(scene, camera);
+}
 
-  camera.getWorldDirection(dir);
-  sph.setFromVector3(dir);
-  // thx guy on stack overflow <3
-  compass.style.transform = `rotate(${
-    THREE.MathUtils.radToDeg(sph.theta) - 180
-  }deg)`;
-  checkHoverIntersect([
-    simPlane.getMesh(),
-    ...simJumpers.map((j) => j.getMesh()),
-  ]);
-  updateCameraFollow();
+export const systemsOK = waitAllSystems();
+
+// === JUMPER LOGIC ===
+systemsOK.then(() => {
+  simJumpers.forEach((jumper) => {
+    jumper.precalculate(180);
+    scene.add(jumper.getMesh());
+  });
+
+  stlLoader.load(
+    "/fabs/skydiver.stl",
+    (geometry) => {
+      simJumpers.forEach((jumper) => {
+        const color = new THREE.Color(
+          Math.random(),
+          Math.random(),
+          Math.random()
+        );
+
+        const material = new THREE.MeshBasicMaterial({
+          color,
+          wireframe: true,
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+
+        mesh.scale.set(1, 1, 1);
+        mesh.rotation.x = -Math.PI / 2;
+
+        geometry.computeBoundingBox();
+        const center = new THREE.Vector3();
+        geometry.boundingBox.getCenter(center);
+        mesh.geometry.translate(-center.x, -center.y, -center.z);
+
+        jumper.setMesh(mesh);
+        scene.add(jumper.getMesh());
+      });
+    },
+    (xhr) => {
+      console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+    },
+    (error) => {
+      console.error("error with loading jumper", error);
+    }
+  );
+
+  let simulationTime = 0;
+  let lastFrameTime = performance.now();
+  let lastSimTime = -1;
+  const dir = new THREE.Vector3();
+  const sph = new THREE.Spherical();
+
+  function updateFromPrecalc(time) {
+    const planeSample = simPlane.track.getInterpolatedSample(time);
+    // if (!planeSample) console.warn("No sample found at time", time);
+    // console.log(
+    //   "Time:",
+    //   time,
+    //   "Plane sample pos:",
+    //   planeSample.position.toArray()
+    // );
+    const mesh = simPlane.getMesh();
+    if (mesh) {
+      mesh.position.copy(planeSample.position);
+      mesh.quaternion.copy(mesh.quaternion ?? new THREE.Quaternion());
+    }
+    simJumpers.forEach((jumper) => {
+      const sample = jumper.track.getInterpolatedSample(time);
+      jumper.getMesh().position.copy(sample.position);
+      const posFeet = sample.position.clone().multiplyScalar(3.28084);
+      jumper.getMesh().userData = {
+        label: `Jumper #${jumper.index}`,
+        time: sample.time.toFixed(2),
+        pos: `(${posFeet.x.toFixed(1)}, ${posFeet.y.toFixed(
+          1
+        )}, ${posFeet.z.toFixed(1)}) ft`,
+        velocity: `(${sample.velocity.x.toFixed(
+          1
+        )}, ${sample.velocity.y.toFixed(1)}, ${sample.velocity.z.toFixed(
+          1
+        )}) m/s`,
+      };
+    });
+  }
+
+  renderer.setAnimationLoop(() => {
+    const now = performance.now();
+    const deltaTime = (now - lastFrameTime) / 1000;
+    lastFrameTime = now;
+
+    simulationTime = (window as any).isPlaying
+      ? simulationTime + deltaTime
+      : (window as any).currentTime;
+
+    (window as any).updateScrubber?.(simulationTime);
+
+    if (simulationTime !== lastSimTime) {
+      updateFromPrecalc(simulationTime);
+      lastSimTime = simulationTime;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+
+    camera.getWorldDirection(dir);
+    sph.setFromVector3(dir);
+    // thx guy on stack overflow <3
+    compass.style.transform = `rotate(${
+      THREE.MathUtils.radToDeg(sph.theta) - 180
+    }deg)`;
+    checkHoverIntersect([
+      simPlane.getMesh(),
+      ...simJumpers.map((j) => j.getMesh()),
+    ]);
+    updateCameraFollow();
+  });
 });
+/**
+ *potentially uncomment later, need to downsize 3mf file or get new stl from amanda
+ */
+
+// === ANIMATION LOOP ===
 
 // === RESIZE HANDLER ===
 window.addEventListener("resize", () => {

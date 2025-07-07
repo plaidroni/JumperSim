@@ -1,4 +1,5 @@
 import { fetchWeatherApi } from "openmeteo";
+import { signalWeatherReady } from "../js/scripts";
 
 const url = "https://api.open-meteo.com/v1/forecast";
 
@@ -227,7 +228,6 @@ async function fetchWeatherData() {
         },
       };
       console.log(snapshot);
-
       (<any>window).currentWeatherData = snapshot;
       (<any>window).weatherSnapshotLog.push(snapshot);
 
@@ -243,6 +243,7 @@ async function fetchWeatherData() {
     // loader.style.display = "none";
     // fetchButton.style.display = "inline-block";
     populateWeatherPanel((<any>window).weatherSnapshotLog[0]);
+    signalWeatherReady();
   }
 }
 
@@ -255,7 +256,7 @@ function populateWeatherPanel(snapshot: WeatherSnapshot) {
   const panelBody = document.querySelector("#weatherdata-panel .panel-body");
   if (!panelBody) return;
 
-  // panelBody.innerHTML = "";
+  panelBody.innerHTML = "";
 
   const toKnots = (mph: string) => {
     const number = parseFloat(mph);

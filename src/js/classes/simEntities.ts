@@ -54,15 +54,15 @@ export class SimJumper extends Jumper {
 
     const knotsToMs = (knots: number) => knots * 0.514444;
 
-    const windLayers = [
-      { altitude: 300, angleDeg: 100.89, speedKts: 5 },
-      { altitude: 1200, angleDeg: 281.31, speedKts: 5 },
-      { altitude: 2000, angleDeg: 282.99, speedKts: 5 },
-      { altitude: 2500, angleDeg: 100.56, speedKts: 12 },
-    ];
-    // const windLayers = convertWeatherSnapshotToWindLayers(
-    //   (<any>window).weatherSnapshotLog[0]
-    // );
+    // const windLayers = [
+    //   { altitude: 300, angleDeg: 100.89, speedKts: 5 },
+    //   { altitude: 1200, angleDeg: 281.31, speedKts: 5 },
+    //   { altitude: 2000, angleDeg: 282.99, speedKts: 5 },
+    //   { altitude: 2500, angleDeg: 100.56, speedKts: 12 },
+    // ];
+    const windLayers = convertWeatherSnapshotToWindLayers(
+      (<any>window).weatherSnapshotLog[0]
+    );
 
     function windVectorAt(altitude: number): THREE.Vector3 {
       let lower = windLayers[0];
@@ -121,13 +121,13 @@ export class SimJumper extends Jumper {
 
         const speed = relativeVelocity.length();
         const dragMag = 0.5 * Cd * rho * A * speed * speed;
-        if (simTime >= this.jumpTime && Math.abs(simTime % 0.5) < 1e-6) {
-          console.log(
-            `t=${simTime.toFixed(1)}s: v=${this.velocity
-              .length()
-              .toFixed(2)} m/s, alt=${currentPosition.y.toFixed(2)}m`
-          );
-        }
+        // if (simTime >= this.jumpTime && Math.abs(simTime % 0.5) < 1e-6) {
+        //   console.log(
+        //     `t=${simTime.toFixed(1)}s: v=${this.velocity
+        //       .length()
+        //       .toFixed(2)} m/s, alt=${currentPosition.y.toFixed(2)}m`
+        //   );
+        // }
         const drag = relativeVelocity
           .clone()
           .normalize()
