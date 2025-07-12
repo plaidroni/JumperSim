@@ -6,7 +6,11 @@ import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
 import { setupPanelMinimization } from "./minimized-windows";
 import { Plane, Jumper } from "./classes/baseEntities";
-import { SimJumper, SimPlane } from "./classes/simEntities";
+import {
+  createDefaultSimJumpers,
+  SimJumper,
+  SimPlane,
+} from "./classes/simEntities";
 import { loadDropzones } from "./locationSelect";
 import { handlePlaneSelection, initializePlaneManager } from "./planeSelect";
 
@@ -117,10 +121,7 @@ let planeMesh = new THREE.Mesh();
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
 simPlane.precalculate(180);
-const simJumpers = Array.from(
-  { length: 10 },
-  (_, i) => new SimJumper(i, simPlane, 10, 50, 190)
-);
+const simJumpers = createDefaultSimJumpers(21, simPlane);
 
 // loader.load(
 //   "/fabs/cessna.gltf",
@@ -235,7 +236,7 @@ function updateCameraFollow() {
 
     controls.target.copy(center);
     camera.position.lerp(
-      center.clone().add(new THREE.Vector3(10, 10, 10)),
+      center.clone().add(new THREE.Vector3(100, 100, 100)),
       0.05
     );
     controls.update();

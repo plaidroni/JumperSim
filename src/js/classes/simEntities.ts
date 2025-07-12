@@ -34,6 +34,9 @@ export class SimPlane extends Plane {
 
 export class SimJumper extends Jumper {
   track: KinematicTrack;
+  formationOffset: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+  isInFormation: boolean = false;
+
   constructor(index, plane: SimPlane, jumpInterval, deployDelay, canopySize) {
     super(index, plane, jumpInterval, deployDelay, canopySize);
     this.track = new KinematicTrack();
@@ -152,4 +155,11 @@ export class SimJumper extends Jumper {
       );
     }
   }
+}
+
+export function createDefaultSimJumpers(count, plane) {
+  return Array.from(
+    { length: count },
+    (_, i) => new SimJumper(i, plane, 10, 50, 190)
+  );
 }

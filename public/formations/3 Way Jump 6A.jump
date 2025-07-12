@@ -1,0 +1,306 @@
+{
+  "whiteBackpacks" : false,
+  "docVersion" : 2,
+  "people" : [
+
+  ],
+  "points" : [
+    {
+      "inter" : false,
+      "slots" : [
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 123.15694089776521,
+          "origin" : [
+            -80.40416380520962,
+            -49.419911886129725
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 1.046505211194585,
+          "origin" : [
+            -8.29147931490959,
+            86.618185001595
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 237.5851070478793,
+          "origin" : [
+            68.82722179094951,
+            -49.17778074741363
+          ]
+        }
+      ]
+    },
+    {
+      "inter" : false,
+      "slots" : [
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 93.48107298003447,
+          "origin" : [
+            -116.3712392250697,
+            -26.49595340092978
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 93.34669821959554,
+          "origin" : [
+            2.481130262215936,
+            47.70884911219277
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 263.3100339213129,
+          "origin" : [
+            128.8778846473603,
+            -24.12507371914596
+          ]
+        }
+      ]
+    },
+    {
+      "inter" : false,
+      "slots" : [
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 122.4056578310249,
+          "origin" : [
+            -77.77811338504155,
+            -54.67201272646586
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 1.046505211194585,
+          "origin" : [
+            -1.288664837678269,
+            82.24142094453174
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 237.5851070478793,
+          "origin" : [
+            68.82722179094951,
+            -49.17778074741363
+          ]
+        }
+      ]
+    },
+    {
+      "inter" : false,
+      "slots" : [
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 122.4056578310249,
+          "origin" : [
+            -77.77811338504155,
+            -45.918524682688776
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 1.046505211194585,
+          "origin" : [
+            -1.288664837678269,
+            82.24142094453174
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 237.5851070478793,
+          "origin" : [
+            68.82722179094951,
+            -49.17778074741363
+          ]
+        }
+      ]
+    },
+    {
+      "inter" : false,
+      "slots" : [
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 209.4906718235316,
+          "origin" : [
+            -43.14890752236049,
+            -36.06113294760386
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 19.780732136099992,
+          "origin" : [
+            -18.74708880980809,
+            104.6378910541534
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 222.5343515225197,
+          "origin" : [
+            70.38071751594543,
+            -81.93905154863992
+          ]
+        }
+      ]
+    },
+    {
+      "inter" : false,
+      "slots" : [
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 122.4056578310249,
+          "origin" : [
+            -77.77811338504155,
+            -54.67201272646586
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 1.046505211194585,
+          "origin" : [
+            -1.288664837678269,
+            82.24142094453174
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 237.5851070478793,
+          "origin" : [
+            68.82722179094951,
+            -49.17778074741363
+          ]
+        }
+      ]
+    },
+    {
+      "inter" : false,
+      "slots" : [
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 122.4056578310249,
+          "origin" : [
+            -92.99259632825851,
+            -62.30823695659637
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 301.7769125521667,
+          "origin" : [
+            99.77276736583578,
+            52.94273140466961
+          ]
+        },
+        {
+          "stance" : "bellyNarrowArms",
+          "info" : null,
+          "angleDeg" : 297.7263469258614,
+          "origin" : [
+            47.70720998446148,
+            -57.37068752447763
+          ]
+        }
+      ]
+    }
+  ],
+  "tunnelFt" : 0,
+  "jumpers" : [
+    {
+      "selected" : true,
+      "planeSlot" : null,
+      "person" : null,
+      "color" : "#FF2600"
+    },
+    {
+      "selected" : false,
+      "planeSlot" : null,
+      "person" : null,
+      "color" : "#00F900"
+    },
+    {
+      "selected" : false,
+      "planeSlot" : null,
+      "person" : null,
+      "color" : "#0433FF"
+    }
+  ],
+  "planes" : [
+
+  ],
+  "exportInfo" : {
+    "title" : "3 Way Jump 6A",
+    "showSlotting" : false,
+    "pages" : [
+      {
+        "point" : 0,
+        "singleLineLabel" : false,
+        "title" : "1",
+        "slotColours" : "jumpers",
+        "labels" : 8
+      },
+      {
+        "point" : 1,
+        "singleLineLabel" : false,
+        "title" : "2",
+        "slotColours" : "jumpers",
+        "labels" : 8
+      },
+      {
+        "point" : 2,
+        "singleLineLabel" : false,
+        "title" : "3",
+        "slotColours" : "jumpers",
+        "labels" : 8
+      },
+      {
+        "point" : 3,
+        "singleLineLabel" : false,
+        "title" : "4",
+        "slotColours" : "jumpers",
+        "labels" : 8
+      },
+      {
+        "point" : 4,
+        "singleLineLabel" : false,
+        "title" : "5",
+        "slotColours" : "jumpers",
+        "labels" : 8
+      },
+      {
+        "point" : 5,
+        "singleLineLabel" : false,
+        "title" : "6",
+        "slotColours" : "jumpers",
+        "labels" : 8
+      }
+    ]
+  },
+  "title" : "3 Way Jump 6A"
+}
