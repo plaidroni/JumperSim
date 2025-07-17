@@ -73,18 +73,22 @@ export async function loadDropzones(scene: THREE.Scene) {
 
     const mapUrl = `https://api.mapbox.com/styles/v1/${mapStyle}/static/${centerLon},${centerLat},${zoom}/512x512?access_token=${accessToken}`;
 
-    const loader = new THREE.TextureLoader();
-    const texture = await loadTexture(mapUrl);
-    const planeSize = 4618;
-    const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    const mapPlane = new THREE.Mesh(geometry, material);
-    mapPlane.rotation.x = -Math.PI / 2;
-    scene.add(mapPlane);
+    try {
+      const loader = new THREE.TextureLoader();
+      const texture = await loadTexture(mapUrl);
+      const planeSize = 4618;
+      const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+      const material = new THREE.MeshBasicMaterial({ map: texture });
+      const mapPlane = new THREE.Mesh(geometry, material);
+      mapPlane.rotation.x = -Math.PI / 2;
+      scene.add(mapPlane);
+      signalMeshReady();
+    } catch (err) {
+      console.error("Map texture load failed. Did you check the API Key?", err);
+      signalMeshReady();
+    }
 
     const gridHelper = new THREE.GridHelper(planeSize, 16);
     scene.add(gridHelper);
-
-    signalMeshReady();
   }
 }
