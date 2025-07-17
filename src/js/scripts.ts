@@ -373,9 +373,6 @@ systemsOK.then(() => {
     const deltaTime = (now - lastFrameTime) / 1000;
     lastFrameTime = now;
 
-    renderer.setClearColor(0xff00ff);
-    console.log("Renderer, scene, camera are alive:", renderer, scene, camera);
-
     simulationTime = (window as any).isPlaying
       ? simulationTime + deltaTime
       : (window as any).currentTime;
