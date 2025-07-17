@@ -97,7 +97,7 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
         updateStatus(
           `${config.name} loaded successfully (${meshes.length} components)`
         );
-        simPlane.precalculate(180);
+        simPlane.precalculate(300);
       }
     },
     function (xhr) {

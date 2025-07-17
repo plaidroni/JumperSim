@@ -36,6 +36,8 @@ export class SimJumper extends Jumper {
   track: KinematicTrack;
   formationOffset: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   isInFormation: boolean = false;
+  hasLanded: boolean;
+  hasJumped: boolean;
 
   constructor(index, plane: SimPlane, jumpInterval, deployDelay, canopySize) {
     super(index, plane, jumpInterval, deployDelay, canopySize);
@@ -117,6 +119,7 @@ export class SimJumper extends Jumper {
         currentPosition = sample.position.clone();
         this.velocity = sample.velocity.clone();
       } else {
+        this.hasJumped = true;
         timeSinceJump = simTime - this.jumpTime;
 
         const wind = windVectorAt(currentPosition.y);
@@ -145,6 +148,7 @@ export class SimJumper extends Jumper {
         if (currentPosition.y < 0) {
           currentPosition.y = 0;
           this.velocity.set(0, 0, 0);
+          this.hasLanded = true;
         }
       }
 
@@ -155,6 +159,59 @@ export class SimJumper extends Jumper {
       );
     }
   }
+}
+
+// FormationJumpLoader.js
+function computeFormationOffsets(slots) {
+  const center2D = slots.reduce(
+    (acc, slot) => {
+      acc.x += slot.origin[0];
+      acc.y += slot.origin[1];
+      return acc;
+    },
+    { x: 0, y: 0 }
+  );
+  center2D.x /= slots.length;
+  center2D.y /= slots.length;
+
+  return slots.map((slot) => {
+    const angleRad = THREE.MathUtils.degToRad(slot.angleDeg);
+    const offsetX = (slot.origin[0] - center2D.x) * 0.2;
+    const offsetZ = (slot.origin[1] - center2D.y) * 0.2;
+
+    const offset = new THREE.Vector3(offsetX, 0, offsetZ);
+    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleRad);
+    return offset;
+  });
+}
+
+export function loadFormationSequence(
+  formationData,
+  plane,
+  duration = 120,
+  step = 0.01
+) {
+  const { jumpers: jumperConfigs, points } = formationData;
+  const firstPoint = points[0];
+  const slots = firstPoint.slots;
+
+  const offsets = computeFormationOffsets(slots);
+  const simJumpers = [];
+
+  for (let i = 0; i < jumperConfigs.length; i++) {
+    const jumperData = jumperConfigs[i];
+    const offset = offsets[i];
+    if (!offset) continue;
+
+    const jumper = new SimJumper(i, plane, 0, 7, 190);
+    jumper.formationOffset = offset;
+    jumper.mesh.material.color.set(jumperData.color);
+    jumper.isInFormation = true;
+    jumper.precalculate(duration, step);
+    simJumpers.push(jumper);
+  }
+
+  return simJumpers;
 }
 
 export function createDefaultSimJumpers(count, plane) {

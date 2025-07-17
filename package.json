@@ -9,7 +9,8 @@
     "build": "vite build",
     "clean": "rm -rf dist",
     "preview": "vite preview",
-    "start": "vite --open"
+    "start": "vite",
+    "dev": "vite --open"
   },
   "repository": {
     "type": "git",

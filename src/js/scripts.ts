@@ -13,6 +13,11 @@ import {
 } from "./classes/simEntities";
 import { loadDropzones } from "./locationSelect";
 import { handlePlaneSelection, initializePlaneManager } from "./planeSelect";
+import {
+  createDynamicTrajectoryLine,
+  updateTrajectoryLines,
+  visualizeJumpers,
+} from "./ui/trajectoryLine";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -35,6 +40,8 @@ const ambient = new THREE.AmbientLight(0xffffff, 0.3);
 scene.add(ambient);
 scene.add(new THREE.AxesHelper(5));
 
+let clock = new THREE.Clock();
+
 camera.position.set(0, 108, 30);
 controls.update();
 
@@ -45,8 +52,8 @@ const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
 let clickedThisFrame = false;
 
-const gridHelper = new THREE.GridHelper(1609, 16); // 16 subdivisions = 100m spacing
-scene.add(gridHelper);
+// const gridHelper = new THREE.GridHelper(1609, 16); // 16 subdivisions = 100m spacing
+// scene.add(gridHelper);
 
 window.addEventListener("mousedown", () => {
   if (controls && controls.state === 0) {
@@ -120,7 +127,7 @@ const simPlane = new SimPlane(
 let planeMesh = new THREE.Mesh();
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
-simPlane.precalculate(180);
+simPlane.precalculate(300);
 const simJumpers = createDefaultSimJumpers(21, simPlane);
 
 // loader.load(
@@ -278,7 +285,7 @@ export const systemsOK = waitAllSystems();
 // === JUMPER LOGIC ===
 systemsOK.then(() => {
   simJumpers.forEach((jumper) => {
-    jumper.precalculate(180);
+    jumper.precalculate(300);
     scene.add(jumper.getMesh());
   });
 
@@ -358,6 +365,9 @@ systemsOK.then(() => {
     });
   }
 
+  const lines = simJumpers.map(createDynamicTrajectoryLine);
+  lines.forEach((l) => scene.add(l));
+
   renderer.setAnimationLoop(() => {
     const now = performance.now();
     const deltaTime = (now - lastFrameTime) / 1000;
@@ -374,6 +384,9 @@ systemsOK.then(() => {
       lastSimTime = simulationTime;
     }
     controls.update();
+
+    updateTrajectoryLines(lines, simulationTime);
+
     renderer.render(scene, camera);
 
     camera.getWorldDirection(dir);
@@ -388,6 +401,7 @@ systemsOK.then(() => {
     ]);
     updateCameraFollow();
   });
+  camera.lookAt(planeMesh);
 });
 /**
  *potentially uncomment later, need to downsize 3mf file or get new stl from amanda
