@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { signalMeshReady } from "./scripts";
 
 export async function loadDropzones(scene: THREE.Scene) {
-  const response = await fetch("/src/json/dropzones.json");
+  const response = await fetch("/json/dropzones.json");
   const dropzones = await response.json();
 
   const select = document.getElementById(
