@@ -290,7 +290,7 @@ systemsOK.then(() => {
   });
 
   stlLoader.load(
-    "/fabs/skydiver.stl",
+    "fabs/skydiver.stl",
     (geometry) => {
       simJumpers.forEach((jumper) => {
         const color = new THREE.Color(

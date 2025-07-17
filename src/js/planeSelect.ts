@@ -8,28 +8,28 @@ const loader = new GLTFLoader();
 
 const planeConfigs = {
   "cessna-172": {
-    file: "/fabs/cessna_fix.glb",
+    file: "fabs/cessna_fix.glb",
     scale: [8, 8, 8],
     color: 0x00ff00,
     name: "Cessna-172",
     rotation: [90, 0, 0],
   },
   skyvan: {
-    file: "/fabs/skyvan_fix.glb",
+    file: "fabs/skyvan_fix.glb",
     scale: [8, 8, 8],
     color: 0x0066ff,
     name: "Skyvan",
     rotation: [0, 0, 0],
   },
   "dc-9": {
-    file: "/fabs/dc9.gltf",
+    file: "fabs/dc9.gltf",
     scale: [0.2, 0.2, 0.2],
     color: 0xff6600,
     name: "DC-9",
     rotation: [0, 0, 0],
   },
   "twin-otter": {
-    file: "/fabs/twin_otter_fix.glb",
+    file: "fabs/twin_otter_fix.glb",
     scale: [8, 8, 8],
     color: 0xff0066,
     name: "Twin Otter",
