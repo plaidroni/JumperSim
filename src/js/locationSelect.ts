@@ -81,14 +81,13 @@ export async function loadDropzones(scene: THREE.Scene) {
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const mapPlane = new THREE.Mesh(geometry, material);
       mapPlane.rotation.x = -Math.PI / 2;
+      const gridHelper = new THREE.GridHelper(planeSize, 16);
+      scene.add(gridHelper);
       scene.add(mapPlane);
       signalMeshReady();
     } catch (err) {
       console.error("Map texture load failed. Did you check the API Key?", err);
       signalMeshReady();
     }
-
-    const gridHelper = new THREE.GridHelper(planeSize, 16);
-    scene.add(gridHelper);
   }
 }
