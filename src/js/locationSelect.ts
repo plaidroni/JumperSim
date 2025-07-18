@@ -68,17 +68,24 @@ export async function loadDropzones(scene: THREE.Scene) {
     const centerLat = dz.latitude;
     const centerLon = dz.longitude;
     const zoom = 14;
-    const accessToken = import.meta.env.VITE_MAPBOX;
-    const mapStyle = "mapbox/dark-v11";
-
-    const mapUrl = `https://api.mapbox.com/styles/v1/${mapStyle}/static/${centerLon},${centerLat},${zoom}/512x512?access_token=${accessToken}`;
+    const mapUrl = `/.netlify/functions/mapbox-proxy?lat=${centerLat}&lon=${centerLon}&zoom=${zoom}`;
     const planeSize = 4618;
 
     const gridHelper = new THREE.GridHelper(planeSize, 16);
     scene.add(gridHelper);
+
     try {
+      const response = await fetch(mapUrl);
+      if (!response.ok) throw new Error("Failed to load map image");
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
       const loader = new THREE.TextureLoader();
-      const texture = await loadTexture(mapUrl);
+      const texture = await new Promise((resolve, reject) => {
+        loader.load(objectUrl, resolve, undefined, reject);
+      });
+
       const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const mapPlane = new THREE.Mesh(geometry, material);
