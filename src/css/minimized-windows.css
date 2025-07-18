@@ -54,9 +54,6 @@
   transition: color 0.2s ease;
 }
 
-.close-btn:hover (turn parent red) {
-}
-
 .minimized-tab:hover .close-btn {
   color: #000;
 }
@@ -65,7 +62,6 @@
   color: red;
 }
 
-/* for hiding minimized windows */
 .hidden {
   display: none !important;
 }
