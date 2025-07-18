@@ -8,11 +8,15 @@ export async function handler(event) {
     };
   }
 
-  const url = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${lon},${lat},${zoom}/512x512?access_token=${process.env.MAPBOX_TOKEN}`;
+  const mapboxUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${lon},${lat},${zoom}/512x512?access_token=${process.env.MAPBOX_TOKEN}`;
 
   try {
-    const res = await fetch(url);
-    const buffer = await res.arrayBuffer();
+    const mapboxRes = await fetch(mapboxUrl);
+    if (!mapboxRes.ok) {
+      throw new Error(`Mapbox fetch failed with status ${mapboxRes.status}`);
+    }
+
+    const imageBuffer = await mapboxRes.arrayBuffer();
 
     return {
       statusCode: 200,
@@ -20,16 +24,14 @@ export async function handler(event) {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600",
       },
-      body: Buffer.from(buffer).toString("base64"),
+      body: Buffer.from(imageBuffer).toString("base64"),
       isBase64Encoded: true,
     };
   } catch (err) {
+    console.error("Function error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: "Mapbox fetch failed",
-        details: err.message,
-      }),
+      body: JSON.stringify({ error: "Proxy error", message: err.message }),
     };
   }
 }
