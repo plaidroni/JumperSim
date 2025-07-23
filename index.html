@@ -83,12 +83,14 @@
         <div class="menu-item dropdown">
           View
           <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="handleClick('Undo')">
-              <span>Undo</span>
+             <div class="dropdown-item">
+              <span>Enable Trajectory Lines</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'trajectory-lines')"
+              />
             </div>
-            <div class="dropdown-item" onclick="handleClick('Redo')">
-              <span>Redo</span>
-            </div>
+            
           </div>
         </div>
 
@@ -155,7 +157,7 @@
               />
             </div>
             <div class="dropdown-item">
-              <span>Credits</span>
+              <span>Contributors</span>
               <input
                 type="checkbox"
                 onclick="handleToggle(this, 'Auto-Save')"
@@ -172,10 +174,11 @@
           </div>
         </div>
         <div class="menu-item dropdown">
-          Credits
+          Contributors
           <div class="dropdown-menu" style="gap: 10px">
             <span>Sevan Evans B-63914</span>
             <span>Cole Patterson</span>
+            <span>Alex Olson</span>
           </div>
         </div>
 
@@ -229,7 +232,7 @@
       </div>
     </div>
 
-    <div class="panel" id="location-panel">
+    <div class="panel" id="jumprun-panel">
       <div class="panel-header">
         <h2>Jump-Run Settings</h2>
         <div class="panel-controls">
@@ -295,7 +298,7 @@
 
     <div class="panel" id="credits-panel">
       <div class="panel-header">
-        <h2>Credits</h2>
+        <h2>Contributors</h2>
         <div class="panel-controls">
           <button>–</button>
           <button>×</button>
@@ -304,6 +307,7 @@
       <div class="panel-body">
         <label>Sevan Evans B-63914</label>
         <label>Cole Patterson</label>
+        <label>Alex Olson</label>
       </div>
     </div>
 

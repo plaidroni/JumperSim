@@ -60,6 +60,7 @@ function makePanelDraggable(panel: HTMLElement) {
   });
 }
 
+// handles the centering of the windows in menu option (window>Re-center Windows)
 export function reCenterAllWindows() {
   const panels = document.getElementsByClassName(
     "panel"
@@ -77,8 +78,14 @@ export function reCenterAllWindows() {
     panel.style.top = `${centerY}px`;
   }
 }
-// Initialize
 document.querySelectorAll<HTMLElement>(".panel").forEach((panel) => {
   restorePanelState(panel);
   makePanelDraggable(panel);
+
+  if (panel.id !== "playback") {
+    const content = panel.querySelector(".panel-content") as HTMLElement;
+    if (content) {
+      content.style.display = "none";
+    }
+  }
 });
