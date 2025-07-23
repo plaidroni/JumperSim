@@ -422,4 +422,3 @@ window.addEventListener("resize", () => {
 setupPanelMinimization();
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
-// TODO: look at plane mesh object
