@@ -27,6 +27,11 @@ export async function loadDropzones(scene: THREE.Scene) {
   // });
 
   const savedIndex = getCookie("selectedDropzoneIndex");
+  // if no cookie is found, then load Skydive Perris
+  if (!savedIndex) {
+    select.value = "2"; 
+    triggerSelection(dropzones, 2);
+  }
   if (savedIndex && dropzones[savedIndex]) {
     select.value = savedIndex;
     triggerSelection(dropzones, parseInt(savedIndex));
