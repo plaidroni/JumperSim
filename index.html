@@ -83,12 +83,14 @@
         <div class="menu-item dropdown">
           View
           <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="handleClick('Undo')">
-              <span>Undo</span>
+             <div class="dropdown-item">
+              <span>Enable Trajectory Lines</span>
+              <input
+                type="checkbox"
+                onclick="handleToggle(this, 'trajectory-lines')"
+              />
             </div>
-            <div class="dropdown-item" onclick="handleClick('Redo')">
-              <span>Redo</span>
-            </div>
+            
           </div>
         </div>
 
@@ -229,7 +231,7 @@
       </div>
     </div>
 
-    <div class="panel" id="location-panel">
+    <div class="panel" id="jumprun-panel">
       <div class="panel-header">
         <h2>Jump-Run Settings</h2>
         <div class="panel-controls">

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { Plane, Jumper } from "./baseEntities";
 import { KinematicTrack } from "../kinematics";
 import { convertWeatherSnapshotToWindLayers } from "../utils";
+import { clamp } from "./../../../node_modules/@types/three/src/Three.TSL.d";
 
 const v_grav = new THREE.Vector3(0, -9.81, 0);
 const drag_air = 0.2;
@@ -55,16 +56,10 @@ export class SimJumper extends Jumper {
     const rho = 1.225;
     const Cd = 1.0;
     const A = 0.7;
-    const mass = 80;
+    const mass = Math.random() * 80;
 
     const knotsToMs = (knots: number) => knots * 0.514444;
 
-    // const windLayers = [
-    //   { altitude: 300, angleDeg: 100.89, speedKts: 5 },
-    //   { altitude: 1200, angleDeg: 281.31, speedKts: 5 },
-    //   { altitude: 2000, angleDeg: 282.99, speedKts: 5 },
-    //   { altitude: 2500, angleDeg: 100.56, speedKts: 12 },
-    // ];
     const windLayers = convertWeatherSnapshotToWindLayers(
       (<any>window).weatherSnapshotLog[0]
     );
@@ -161,7 +156,6 @@ export class SimJumper extends Jumper {
   }
 }
 
-// FormationJumpLoader.js
 function computeFormationOffsets(slots) {
   const center2D = slots.reduce(
     (acc, slot) => {
