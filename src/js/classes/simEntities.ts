@@ -56,7 +56,7 @@ export class SimJumper extends Jumper {
     const rho = 1.225;
     const Cd = 1.0;
     const A = 0.7;
-    const mass = Math.random() * 80;
+    const mass = 80;
 
     const knotsToMs = (knots: number) => knots * 0.514444;
 
