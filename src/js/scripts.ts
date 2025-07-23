@@ -289,6 +289,9 @@ systemsOK.then(() => {
     scene.add(jumper.getMesh());
   });
 
+  followTarget = simPlane.getMesh();
+  isUserControllingCamera = false; 
+
   stlLoader.load(
     "fabs/skydiver.stl",
     (geometry) => {
@@ -419,3 +422,4 @@ window.addEventListener("resize", () => {
 setupPanelMinimization();
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
+// TODO: look at plane mesh object
