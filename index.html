@@ -19,7 +19,7 @@
         <span class="logo-text">Jumper Sim</span>
 
         <div class="menu-item dropdown">
-          File
+          <span>File</span>
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="handleClick('New Scene')">
               <span>Save</span>
@@ -38,7 +38,7 @@
         </div>
 
         <div class="menu-item dropdown">
-          Edit
+          <span>Edit</span>
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="handleClick('Undo')">
               <span>Undo</span>
@@ -50,13 +50,13 @@
         </div>
 
         <div class="menu-item dropdown">
-          Formations
+          <span>Formations</span>
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="handleClick('Undo')">
               <span>Save Formation</span>
             </div>
             <div class="dropdown-item submenu">
-              <span>Import Formation</span>
+              <span>Import Formation ></span>
               <div class="dropdown-menu right">
                 <div class="dropdown-item" onclick="handleClick('From FBX')">
                   <span>From FBX</span>
@@ -70,7 +70,7 @@
         </div>
 
         <div class="menu-item dropdown">
-          Weather
+          <span>Weather</span>
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="handleClick('Undo')">
               <span>Undo</span>
@@ -81,7 +81,7 @@
           </div>
         </div>
         <div class="menu-item dropdown">
-          View
+          <span>View</span>
           <div class="dropdown-menu">
              <div class="dropdown-item">
               <span>Enable Trajectory Lines</span>
@@ -95,78 +95,91 @@
         </div>
 
         <div class="menu-item dropdown">
-          Window
+          <span>Window</span>
           <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="reCenterAllWindows('Undo')">
+            <div class="dropdown-item" id="recenter-windows">
               <span>Re-center Windows</span>
+            </div>
+            <div class="dropdown-item" id="minimize-windows">
+              <span>Minimize Windows</span>
             </div>
             <div class="dropdown-item">
               <span>Weather</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-weather"
               />
             </div>
             <div class="dropdown-item">
               <span>Location</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-location"
               />
             </div>
             <div class="dropdown-item">
               <span>Playback Controls</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-playback"
               />
             </div>
             <div class="dropdown-item">
               <span>Formation Settings</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-formation-settings"
               />
             </div>
             <div class="dropdown-item">
               <span>Plane Settings</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-plane-settings"
               />
             </div>
             <div class="dropdown-item">
               <span>Scene Objects</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-scene-objects"
               />
             </div>
             <div class="dropdown-item">
               <span>Jump Settings</span>
+              <input 
+                type="checkbox" 
+                name="show-jump-settings" 
+                id="show-jump-settings"
+                />
+            </div>
+            <div class="dropdown-item">
+              <span>Jump-Run Settings</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-jumprun-settings"
               />
             </div>
             <div class="dropdown-item">
               <span>Speed Settings</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+                id="show-speed-settings"
               />
             </div>
             <div class="dropdown-item">
-              <span>Contributors</span>
-              <input
-                type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
+              <span>Following</span>
+              <input 
+                type="checkbox" 
+                name="show-following" 
+                id="show-following"
               />
             </div>
+            
           </div>
         </div>
         <div class="menu-item dropdown">
-          Help
+          <span>Help</span>
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="handleClick('Undo')">
               <span>Information</span>
@@ -174,7 +187,7 @@
           </div>
         </div>
         <div class="menu-item dropdown">
-          Contributors
+          <span>Contributors</span>
           <div class="dropdown-menu" style="gap: 10px">
             <span>Sevan Evans B-63914</span>
             <span>Cole Patterson</span>
@@ -293,21 +306,6 @@
       </div>
       <div class="panel-body">
         
-      </div>
-    </div>
-
-    <div class="panel" id="credits-panel">
-      <div class="panel-header">
-        <h2>Contributors</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label>Sevan Evans B-63914</label>
-        <label>Cole Patterson</label>
-        <label>Alex Olsen</label>
       </div>
     </div>
 
@@ -466,12 +464,8 @@
     <script src="./src/js/timeScrubber.ts" type="module"></script>
     <script src="./src/js/scripts.ts" type="module" defer></script>
     <script src="./src/apidata/openMateo.ts" type="module"></script>
-    <script src="./src/js/panelDrag.ts" type="module"></script>
+    <script src="./src/js/panels.ts" type="module"></script>
     <script src="./src/js/locationSelect.ts" type="module"></script>
-    <script type="module">
-      import { reCenterAllWindows } from "./src/js/panelDrag.js";
-
-      window.reCenterAllWindows = reCenterAllWindows;
-    </script>
+    <script src="./src/js/menubar.ts" type="module"></script>
   </body>
 </html>

@@ -4,7 +4,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
 import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
-import { setupPanelMinimization } from "./minimized-windows";
+// import { setupPanelMinimization } from "./minimized-windows";
+import { setupPanels } from "./panels";
 import { Plane, Jumper } from "./classes/baseEntities";
 import {
   createDefaultSimJumpers,
@@ -389,7 +390,6 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-setupPanelMinimization();
+setupPanels({ startMinimized: true }); // Start with all non-playback panels minimized
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
-// TODO: look at plane mesh object
