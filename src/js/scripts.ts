@@ -420,6 +420,6 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-setupPanelMinimization({ startMinimized: true }); // Start with all non-playback panels minimized
+setupPanels({ startMinimized: true }); // Start with all non-playback panels minimized
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);

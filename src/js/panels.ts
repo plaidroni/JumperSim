@@ -4,7 +4,7 @@ interface PanelOptions {
   startMinimized?: boolean;
 }
 
-export function setupPanelMinimization(options: PanelOptions = {}) {
+export function setupPanels(options: PanelOptions = {}) {
   Panel.initialize(options);
 }
 
