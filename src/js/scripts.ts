@@ -131,7 +131,7 @@ handlePlaneSelection("twin-otter", scene, simPlane);
 simPlane.precalculate(300);
 // we should create a new simjumpers function
 // const simJumpers =
-// const simJumpers = createDefaultSimJumpers(21, simPlane);
+const simJumpers = createDefaultSimJumpers(21, simPlane);
 
 // === LOOKING AT SCENE OBJECT ===
 
