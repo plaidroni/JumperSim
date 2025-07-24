@@ -128,41 +128,11 @@ let planeMesh = new THREE.Mesh();
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
 simPlane.precalculate(300);
-const simJumpers = createDefaultSimJumpers(21, simPlane);
+// we should create a new simjumpers function
+const simJumpers = 
+// const simJumpers = createDefaultSimJumpers(21, simPlane);
 
-// loader.load(
-//   "/fabs/cessna.gltf",
-//   function (gltf) {
-//     gltf.scene.traverse((child) => {
-//       if (child.isMesh) {
-//         child.material = new THREE.MeshStandardMaterial({
-//           color: 0x00ff00,
-//           wireframe: true,
-//         });
-//         gltf.scene.rotation.y = -Math.PI / 2;
 
-//         planeMesh = child;
-//         return;
-//       }
-//     });
-//     if (planeMesh) {
-//       planeMesh.userData.label = "Plane";
-//       planeMesh.raycast = THREE.Mesh.prototype.raycast;
-
-//       planeMesh.rotation.x = -Math.PI / 2;
-//       planeMesh.rotation.z = Math.PI / 2;
-//       planeMesh.scale.set(8, 8, 8);
-//       simPlane.setMesh(planeMesh);
-//       scene.add(planeMesh);
-//     }
-//   },
-//   function (xhr) {
-//     console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-//   },
-//   function (error) {
-//     console.log(error);
-//   }
-// );
 
 // === LOOKING AT SCENE OBJECT ===
 
@@ -290,7 +260,7 @@ systemsOK.then(() => {
   });
 
   followTarget = simPlane.getMesh();
-  isUserControllingCamera = false; 
+  isUserControllingCamera = false;
 
   stlLoader.load(
     "fabs/skydiver.stl",
