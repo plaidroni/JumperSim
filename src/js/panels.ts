@@ -11,3 +11,7 @@ export function setupPanels(options: PanelOptions = {}) {
 export function reCenterAllWindows() {
   Panel.reCenterAllWindows();
 }
+
+export function minimizeAllWindows() {
+  Panel.minimizeWindows();
+}

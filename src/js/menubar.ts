@@ -8,11 +8,15 @@ function handleToggle(checkbox, label) {
 
 
 // initialize menu stuff
-import { reCenterAllWindows } from "./panels";
+import { minimizeAllWindows, reCenterAllWindows } from "./panels";
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("recenter-windows")?.addEventListener("click", () => { 
     reCenterAllWindows();
   });
+
+  document.getElementById("minimize-windows")?.addEventListener("click", () => {
+    minimizeAllWindows();
+  })
 })
 

@@ -187,4 +187,14 @@ export class Panel {
       panelInstance.center();
     });
   }
+
+  static minimizeWindows(): void {
+    document.querySelectorAll<HTMLElement>(".panel").forEach(panel => {
+      // TODO: Remove tooltip case
+      if (panel.id === "info-tooltip") return;
+      
+      const panelInstance = new Panel(panel);
+      panelInstance.minimize(panel.querySelector("h2")?.innerText);
+    })
+  }
 }
