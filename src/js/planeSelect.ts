@@ -127,6 +127,7 @@ function getCurrentPlane() {
 export function initializePlaneManager(scene, simPlane) {
   const planeSelect = document.getElementById("plane-select");
   if (planeSelect) {
+    planeSelect.value =  "twin-otter";
     planeSelect.addEventListener("change", function (event) {
       handlePlaneSelection(event.target.value, scene, simPlane);
     });
