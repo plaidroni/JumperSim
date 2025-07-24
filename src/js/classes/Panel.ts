@@ -29,10 +29,12 @@ export class Panel {
     this.restoreState();
     this.setupDragging();
     this.setupMinimization();
-    
+
     // Hide content initially except for playback panel
     if (this.element.id !== "playback") {
-      const content = this.element.querySelector(".panel-content") as HTMLElement;
+      const content = this.element.querySelector(
+        ".panel-content"
+      ) as HTMLElement;
       if (content) {
         content.style.display = "none";
       }
@@ -52,7 +54,7 @@ export class Panel {
       this.isDragging = true;
       this.dragOffset = {
         x: e.clientX - this.element.offsetLeft,
-        y: e.clientY - this.element.offsetTop
+        y: e.clientY - this.element.offsetTop,
       };
       this.element.style.zIndex = "9999";
       document.body.style.userSelect = "none";
@@ -165,8 +167,7 @@ export class Panel {
   }
 
   static initialize(defaultOptions: PanelOptions = {}): void {
-    document.querySelectorAll<HTMLElement>(".panel").forEach(panel => {
-    
+    document.querySelectorAll<HTMLElement>(".panel").forEach((panel) => {
       if (panel.id === "info-tooltip") {
         return;
       }
@@ -175,26 +176,27 @@ export class Panel {
       const options = {
         ...defaultOptions,
         // You can add panel-specific options here based on panel.id or panel.classList
-        startMinimized: defaultOptions.startMinimized || panel.id !== "playback-panel" // Example: keep playback panel visible
+        startMinimized:
+          defaultOptions.startMinimized || panel.id !== "playback-panel", // Example: keep playback panel visible
       };
       new Panel(panel, options);
     });
   }
 
   static reCenterAllWindows(): void {
-    document.querySelectorAll<HTMLElement>(".panel").forEach(panel => {
+    document.querySelectorAll<HTMLElement>(".panel").forEach((panel) => {
       const panelInstance = new Panel(panel);
       panelInstance.center();
     });
   }
 
   static minimizeWindows(): void {
-    document.querySelectorAll<HTMLElement>(".panel").forEach(panel => {
+    document.querySelectorAll<HTMLElement>(".panel").forEach((panel) => {
       // TODO: Remove tooltip case
       if (panel.id === "info-tooltip") return;
-      
+
       const panelInstance = new Panel(panel);
       panelInstance.minimize(panel.querySelector("h2")?.innerText);
-    })
+    });
   }
 }

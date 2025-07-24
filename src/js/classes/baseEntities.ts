@@ -47,7 +47,7 @@ export class Jumper {
   jumpTime: number;
   deployDelay: number;
   canopySize: number;
-  direction: THREE.Vector;
+  direction: THREE.Vector3;
   plane: SimPlane;
   initialVelocity: THREE.Vector3;
   mesh: THREE.Mesh;

@@ -1,4 +1,5 @@
 import { createDefaultSimJumpers, SimJumper, SimPlane } from "./simEntities";
+import * as THREE from "three";
 
 /**refer to .jump files for metrics */
 export type FormationSlot = {
@@ -57,44 +58,38 @@ export class Formation {
   public endTime: number = 60; // when formation flying ends
   public title: string = "";
   public isActive: boolean = false;
+  public SCALE_FACTOR: number = 1;
 
   constructor(data: FormationData) {
-    this.jumpers = createDefaultSimJumpers(data.jumpers.length, data.planes[0]);
     this.points = data.points;
     this.title = data.title;
   }
 
-  private createJumpersFromData(
-    formationData: FormationData,
-    plane: SimPlane
-  ): void {
-    const jumperConfigs = formationData.jumpers;
+  public createJumpersForPlane(plane: SimPlane, jumperConfigs: any[]) {
+    this.jumpers = [];
     const firstPoint = this.points[0];
-
     if (!firstPoint || !firstPoint.slots) {
       console.warn("No valid formation points found, cannot create formation!");
       return;
     }
-
     for (let i = 0; i < jumperConfigs.length; i++) {
       const jumperConfig = jumperConfigs[i];
+      console.log("jumperconfig:", jumperConfig);
       const slot = firstPoint.slots[i];
-
       if (!slot) continue;
-
       const jumper = new SimJumper(i, plane, 0, 7, 190);
-
       jumper.mesh.material.color.set(jumperConfig.color);
-      //calculate the offset based on slot position and position in formation
+      // set jumper quaternion based on slot angle from .jump file and point
       jumper.formationOffset = this.calculateSlotOffset(slot, firstPoint.slots);
       jumper.isInFormation = true;
-
       this.jumpers.push(jumper);
     }
   }
 
   // We love claude for handling JSON stuff <3
   private calculateSlotOffset(slot: any, allSlots: any[]): THREE.Vector3 {
+    console.log("Calculating slot offsets for:", allSlots);
+    // find the center of all slots in 2d
     const center2D = allSlots.reduce(
       (acc, s) => {
         acc.x += s.origin[0];
@@ -107,12 +102,14 @@ export class Formation {
     center2D.y /= allSlots.length;
 
     const offsetX = (slot.origin[0] - center2D.x) * this.SCALE_FACTOR;
+    // since threejs uses Y as up, we need to flip the Z axis
     const offsetZ = (slot.origin[1] - center2D.y) * this.SCALE_FACTOR;
 
-    // create 3D offset and apply quaterniononon rotation
     const offset = new THREE.Vector3(offsetX, 0, offsetZ);
-    const angleRad = THREE.MathUtils.degToRad(slot.angleDeg);
-    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleRad);
+    // convert to radians and apply rotation around the Y axis (hence the 0, 1, 0 vector)
+    console.log(`Calculating slot offset for ${slot.stance}:`, offset);
+
+    console.log(`Slot offset for ${slot.stance}:`, offset);
 
     return offset;
   }
@@ -147,7 +144,6 @@ export class Formation {
         const newOffset = this.calculateSlotOffset(slot, targetPoint.slots);
 
         if (transitionTime > 0) {
-          // Smooth transition to new position (could be enhanced with animation)
           jumper.formationOffset.lerp(newOffset, 0.1);
         } else {
           jumper.formationOffset.copy(newOffset);
@@ -212,7 +208,6 @@ export class Formation {
 
     this.jumpers.forEach((jumper, index) => {
       console.log(`Precalculating jumper ${index + 1}/${this.jumpers.length}`);
-      jumper.precalculate(duration, step);
     });
   }
 
@@ -238,10 +233,7 @@ export class Formation {
     return this.jumpers[index] || null;
   }
 
-  /**
-   * gets all jumpers in formation
-   */
   public getAllJumpers(): SimJumper[] {
-    return [...this.jumpers];
+    return this.jumpers;
   }
 }

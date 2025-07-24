@@ -19,6 +19,8 @@ import {
   updateTrajectoryLines,
   visualizeJumpers,
 } from "./ui/trajectoryLine";
+import { loadJumpFormation } from "./exampleData/formations";
+import { Formation } from "./classes/formations";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -129,9 +131,30 @@ let planeMesh = new THREE.Mesh();
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
 simPlane.precalculate(300);
-// we should create a new simjumpers function
-// const simJumpers =
-const simJumpers = createDefaultSimJumpers(21, simPlane);
+
+let formations: Formation[] = [];
+let simJumpers: SimJumper[] = [];
+
+try {
+  const formationData1 = await loadJumpFormation("/formations/3way6a.jump");
+  console.log("Loaded formation data:", formationData1);
+  const formation1 = new Formation(formationData1);
+  formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
+  simPlane.addFormation(formation1);
+  simJumpers = createDefaultSimJumpers(18, simPlane);
+
+  // const formationData2 = await loadJumpFormation("/formations/another.jump");
+  // const formation2 = new Formation(formationData2);
+  // formation2.createJumpersForPlane(simPlane, formationData2.jumpers);
+  // simPlane.addFormation(formation2);
+
+  formations = simPlane.formations;
+  // Gather all jumpers from all formations
+  simJumpers = formations.flatMap((f) => f.getAllJumpers());
+} catch (e) {
+  // fallback: no formation, use default jumpers
+  simJumpers = createDefaultSimJumpers(21, simPlane);
+}
 
 // === LOOKING AT SCENE OBJECT ===
 
@@ -279,14 +302,39 @@ systemsOK.then(() => {
         const mesh = new THREE.Mesh(geometry, material);
 
         mesh.scale.set(1, 1, 1);
-        mesh.rotation.x = -Math.PI / 2;
 
         geometry.computeBoundingBox();
         const center = new THREE.Vector3();
         geometry.boundingBox.getCenter(center);
         mesh.geometry.translate(-center.x, -center.y, -center.z);
-
+        const forward = new THREE.Vector3(1, 0, 0);
+        const fixQuat = new THREE.Quaternion().setFromAxisAngle(
+          forward,
+          -Math.PI / 2
+        );
         jumper.setMesh(mesh);
+        // set mesh rotation upright
+
+        if (jumper.isInFormation && jumper.formationOffset.lengthSq() > 0) {
+          mesh.position.copy(jumper.formationOffset);
+          const targetDir = jumper.formationOffset.clone().normalize().negate();
+          console.log("formation offset:", jumper.formationOffset);
+          if (targetDir.lengthSq() > 0) {
+            // The mesh's "forward" after fixQuat is (0, 0, 1)
+            const meshForward = new THREE.Vector3(0, 0, 1);
+            const formationQuat = new THREE.Quaternion().setFromUnitVectors(
+              meshForward,
+              jumper.formationOffset.clone().normalize()
+            );
+
+            // Combine fixQuat and formationQuat
+            mesh.quaternion.copy(formationQuat).multiply(fixQuat);
+          } else {
+            mesh.quaternion.copy(fixQuat);
+          }
+        } else {
+          mesh.quaternion.copy(fixQuat);
+        }
         scene.add(jumper.getMesh());
       });
     },
@@ -333,6 +381,11 @@ systemsOK.then(() => {
         )}, ${sample.velocity.y.toFixed(1)}, ${sample.velocity.z.toFixed(
           1
         )}) m/s`,
+        rotation: `(${jumper.direction.x.toFixed(
+          1
+        )}, ${jumper.direction.y.toFixed(1)}, ${jumper.direction.z.toFixed(
+          1
+        )}) deg`,
       };
     });
   }

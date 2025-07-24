@@ -3,6 +3,7 @@ import { Plane, Jumper } from "./baseEntities";
 import { KinematicTrack } from "../kinematics";
 import { convertWeatherSnapshotToWindLayers } from "../utils";
 import { clamp } from "./../../../node_modules/@types/three/src/Three.TSL.d";
+import { Formation } from "./formations"; // add this import
 
 const v_grav = new THREE.Vector3(0, -9.81, 0);
 const drag_air = 0.2;
@@ -12,9 +13,15 @@ const mass = 80;
 
 export class SimPlane extends Plane {
   track: KinematicTrack;
+  formations: Formation[] = [];
+
   constructor(position, speedKnots, direction) {
     super(position, speedKnots, direction);
     this.track = new KinematicTrack();
+  }
+
+  addFormation(formation: Formation) {
+    this.formations.push(formation);
   }
 
   precalculate(duration, step = 0.1) {
@@ -23,13 +30,10 @@ export class SimPlane extends Plane {
     this.track.samples = [];
     for (let t = 0; t <= duration; t += step) {
       super.update(t);
-      // console.log(
-      //   `Plane Sample at t=${t.toFixed(
-      //     2
-      //   )}: position=${this.position.toArray()}, vector=${this.vector.toArray()}`
-      // );
       this.track.addSample(t, this.position, this.vector);
     }
+
+    console.log("Calculating Formation Vectors");
   }
 }
 
@@ -62,6 +66,10 @@ export class SimJumper extends Jumper {
 
     const windLayers = convertWeatherSnapshotToWindLayers(
       (<any>window).weatherSnapshotLog[0]
+    );
+    // set quaternion to match formation offset
+    console.log(
+      `Calculating Jumper Vector for ${this.index} in formation: ${this.isInFormation}`
     );
 
     function windVectorAt(altitude: number): THREE.Vector3 {
@@ -151,7 +159,7 @@ export class SimJumper extends Jumper {
   }
 }
 
-export function createDefaultSimJumpers(count, plane) {
+export function createDefaultSimJumpers(count, plane): SimJumper[] {
   return Array.from(
     { length: count },
     (_, i) => new SimJumper(i, plane, 10, 50, 190)
