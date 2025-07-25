@@ -40,6 +40,7 @@ export class SimPlane extends Plane {
 export class SimJumper extends Jumper {
   track: KinematicTrack;
   formationOffset: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+  origin: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   isInFormation: boolean = false;
   hasLanded: boolean;
   hasJumped: boolean;
@@ -111,7 +112,7 @@ export class SimJumper extends Jumper {
     const planeSampleAtJump = this.plane.track.getInterpolatedSample(
       this.jumpTime
     );
-    let currentPosition = planeSampleAtJump.position.clone();
+    let currentPosition = planeSampleAtJump.position.clone().add(this.origin);
     this.velocity = planeSampleAtJump.velocity.clone();
 
     for (let t = 0; t <= duration; t += step) {

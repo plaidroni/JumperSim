@@ -58,7 +58,7 @@ export class Formation {
   public endTime: number = 60; // when formation flying ends
   public title: string = "";
   public isActive: boolean = false;
-  public SCALE_FACTOR: number = 1;
+  public SCALE_FACTOR: number = 0.1;
 
   constructor(data: FormationData) {
     this.points = data.points;
@@ -80,14 +80,31 @@ export class Formation {
       const jumper = new SimJumper(i, plane, 0, 7, 190);
       jumper.mesh.material.color.set(jumperConfig.color);
       // set jumper quaternion based on slot angle from .jump file and point
-      jumper.formationOffset = this.calculateSlotOffset(slot, firstPoint.slots);
+      jumper.formationOffset = this.calculateSlotOffset(
+        slot,
+        firstPoint.slots,
+        jumper
+      );
+      jumper.angle;
       jumper.isInFormation = true;
       this.jumpers.push(jumper);
     }
   }
 
+  private calculateAngleOffset(angleDeg: number): THREE.Quaternion {
+    const radians = (angleDeg * Math.PI) / 180;
+    return new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      radians
+    );
+  }
+
   // We love claude for handling JSON stuff <3
-  private calculateSlotOffset(slot: any, allSlots: any[]): THREE.Vector3 {
+  private calculateSlotOffset(
+    slot: any,
+    allSlots: any[],
+    jumper: SimJumper
+  ): THREE.Vector3 {
     console.log("Calculating slot offsets for:", allSlots);
     // find the center of all slots in 2d
     const center2D = allSlots.reduce(
@@ -98,14 +115,25 @@ export class Formation {
       },
       { x: 0, y: 0 }
     );
+
     center2D.x /= allSlots.length;
     center2D.y /= allSlots.length;
+
+    // setting jumper origin based on slot origin for positioning later on
+    // jumper.origin = new THREE.Vector3(
+    //   // convert to feet
+    //   (slot.origin[0] / 3.28084) * 0.35,
+    //   0,
+    //   (slot.origin[1] / 3.28084) * 0.35
+    // );
+    // console.log(`Jumper origin for ${jumper.index}:`, jumper.origin);
 
     const offsetX = (slot.origin[0] - center2D.x) * this.SCALE_FACTOR;
     // since threejs uses Y as up, we need to flip the Z axis
     const offsetZ = (slot.origin[1] - center2D.y) * this.SCALE_FACTOR;
 
     const offset = new THREE.Vector3(offsetX, 0, offsetZ);
+    jumper.origin = new THREE.Vector3(offsetX, 0, offsetZ);
     // convert to radians and apply rotation around the Y axis (hence the 0, 1, 0 vector)
     console.log(`Calculating slot offset for ${slot.stance}:`, offset);
 

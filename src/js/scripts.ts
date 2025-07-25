@@ -136,7 +136,10 @@ let formations: Formation[] = [];
 let simJumpers: SimJumper[] = [];
 
 try {
-  const formationData1 = await loadJumpFormation("/formations/3way6a.jump");
+  // const formationData1 = await loadJumpFormation("/formations/3way6a.jump");
+  const formationData1 = await loadJumpFormation(
+    "/formations/night_jump_32way.jump"
+  );
   console.log("Loaded formation data:", formationData1);
   const formation1 = new Formation(formationData1);
   formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
