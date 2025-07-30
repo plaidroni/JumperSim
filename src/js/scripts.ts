@@ -5,7 +5,7 @@ import { STLLoader } from "three/addons/loaders/STLLoader.js";
 import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
 // import { setupPanelMinimization } from "./minimized-windows";
-import { setupPanels } from "./panels";
+import { setupPanels } from "./classes/PanelManager";
 import { Plane, Jumper } from "./classes/baseEntities";
 import {
   createDefaultSimJumpers,
