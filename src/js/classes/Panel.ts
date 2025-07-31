@@ -1,4 +1,6 @@
+import { get } from "http";
 import { getCookie, setCookie } from "../utils";
+import { PanelManager } from "./PanelManager";
 
 interface PanelState {
   position: { x: number; y: number };
@@ -9,39 +11,50 @@ interface PanelOptions {
   startMinimized?: boolean;
 }
 
+enum PanelVisibility {
+  ACTIVE = "active",
+  MINIMIZED = "minimized",
+  CLOSED = "closed"
+}
+
+const minimizedBar = document.getElementById("minimized-bar");
+
 export class Panel {
-  private element: HTMLElement;
+  private panelElement: HTMLElement;
   private header: HTMLElement | null;
-  private minimizedBar: HTMLElement | null;
+  private title: string | null | undefined;
+  private tabElement: HTMLElement | null;
   private isDragging: boolean = false;
   private dragOffset: { x: number; y: number } = { x: 0, y: 0 };
-  private options: PanelOptions;
+  private visibility: PanelVisibility;
 
   constructor(element: HTMLElement, options: PanelOptions = {}) {
-    this.element = element;
-    this.header = element.querySelector(".panel-header");
-    this.minimizedBar = document.getElementById("minimized-bar");
-    this.options = options;
-    this.initialize();
-  }
-
-  private initialize(): void {
-    this.restoreState();
+    if (!element) return;
+    
+    this.panelElement = element;
+    this.header = element?.querySelector(".panel-header");
+    this.title = this.header?.querySelector("h2")?.textContent; 
+    
+    // Register with PanelManager
     this.setupDragging();
     this.setupMinimization();
-    
-    // Hide content initially except for playback panel
-    if (this.element.id !== "playback") {
-      const content = this.element.querySelector(".panel-content") as HTMLElement;
-      if (content) {
-        content.style.display = "none";
-      }
+
+    this.initialize(options);
+  }
+
+  private initialize(options: PanelOptions): void {
+    // Handle startup minimization
+    this.restoreState();
+    if (!this.visibility) {
+      this.minimize();
     }
 
-    // Handle startup minimization
-    if (this.options.startMinimized) {
-      const title = this.header?.querySelector("h2")?.textContent || "Untitled";
-      this.minimize(title);
+    // Hide content initially except for playback panel
+    if (this.panelElement.id !== "playback") {
+      const content = this.panelElement.querySelector(".panel-content") as HTMLElement;
+      if (content) {
+        content.style.visibility = "hidden";
+      }
     }
   }
 
@@ -51,18 +64,18 @@ export class Panel {
     this.header.addEventListener("mousedown", (e) => {
       this.isDragging = true;
       this.dragOffset = {
-        x: e.clientX - this.element.offsetLeft,
-        y: e.clientY - this.element.offsetTop
+        x: e.clientX - this.panelElement.offsetLeft,
+        y: e.clientY - this.panelElement.offsetTop
       };
-      this.element.style.zIndex = "9999";
+      this.panelElement.style.zIndex = "9999";
       document.body.style.userSelect = "none";
     });
 
     document.addEventListener("mousemove", (e) => {
       if (this.isDragging) {
-        this.element.style.position = "absolute";
-        this.element.style.left = `${e.clientX - this.dragOffset.x}px`;
-        this.element.style.top = `${e.clientY - this.dragOffset.y}px`;
+        this.panelElement.style.position = "absolute";
+        this.panelElement.style.left = `${e.clientX - this.dragOffset.x}px`;
+        this.panelElement.style.top = `${e.clientY - this.dragOffset.y}px`;
       }
     });
 
@@ -76,92 +89,163 @@ export class Panel {
   }
 
   private setupMinimization(): void {
-    if (!this.header || !this.minimizedBar) return;
+    if (!this.header) return;
 
     const minimizeBtn = this.header.querySelector("button:nth-child(1)");
+    const closeBtn = this.header.querySelector("button:nth-child(2)");
     const title = this.header.querySelector("h2")?.textContent || "Untitled";
 
     if (!minimizeBtn) return;
 
     minimizeBtn.addEventListener("click", () => {
-      this.minimize(title);
+      this.minimize();
     });
-  }
 
-  private minimize(title: string): void {
-    if (!this.minimizedBar) return;
+    closeBtn?.addEventListener("click", () => {
+      this.close();
+    });
 
-    this.element.classList.add("hidden");
-
-    const existingTab = this.minimizedBar.querySelector(
-      `.minimized-tab[data-panel="${this.element.id}"]`
-    );
-    if (existingTab) return;
-
+    // create a tab element for this panel
     const tab = document.createElement("div");
+    const tabTitle = document.createTextNode(`${this.title}`);
+    const tabClose = document.createElement("button", {});
+    tabClose.textContent = '×';
+    tab.append(tabTitle, tabClose);
+    minimizedBar?.append(tab);
+
     tab.className = "minimized-tab";
-    tab.dataset.panel = this.element.id;
-    tab.innerHTML = `
-      ${title}
-      <button class="close-btn">×</button>
-    `;
+    tabClose.className = 'close-btn';
+
+    tab.dataset.panel = this.panelElement.id;
+    tab.style.display = 'none';
 
     tab.addEventListener("click", (e) => {
       if ((e.target as HTMLElement).classList.contains("close-btn")) return;
       this.maximize();
-      tab.remove();
+      tab.style.display = 'none';
     });
 
-    tab.querySelector(".close-btn")?.addEventListener("click", (e) => {
+    tab.querySelector("minimized-tab button")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      tab.remove();
+      tab.style.display = 'none';
     });
 
-    this.minimizedBar.appendChild(tab);
+    this.tabElement = tab;
   }
 
-  private maximize(): void {
-    this.element.classList.remove("hidden");
+  // visibility setters
+  public minimize(): void {
+    if (this.visibility == "closed") return;
+    this.visibility = PanelVisibility.MINIMIZED;
+    this.panelElement.style.visibility = "hidden";
+    // if (this.tabElement) {
+    this.tabElement?.style.removeProperty('display');
+    
+    // TODO
+    window.dispatchEvent(new CustomEvent('panelStateChanged'));
+  }
+
+  public maximize(): void {
+    if (this.visibility == PanelVisibility.ACTIVE) return;
+    this.visibility = PanelVisibility.ACTIVE;
+    this.panelElement.style.visibility = "visible";
+    // TODO
+    window.dispatchEvent(new CustomEvent('panelStateChanged'));
+  }
+
+  public close(): void {
+    if (this.visibility == PanelVisibility.CLOSED) return;
+
+    this.visibility = PanelVisibility.CLOSED;
+    this.panelElement.style.visibility = "hidden";
+    // Remove from minimized bar if it's there
+    
+    this.tabElement?.style.setProperty('display', 'none');
+
+    window.dispatchEvent(new CustomEvent('panelStateChanged'));
+  }
+
+  public show(): void {
+    this.visibility = PanelVisibility.ACTIVE;
+    this.panelElement.style.display = "block";
+    if (this.panelElement.classList.contains("hidden")) {
+      this.minimize();
+    } else {
+      this.maximize();
+    }
+  }
+
+  public isVisible(): boolean {
+    return this.visibility != PanelVisibility.CLOSED;
+  }
+
+  public getTitle(): string {
+    return this.title || "Untitled";
+  }
+
+  public isMinimizedState(): boolean {
+    return this.visibility == PanelVisibility.ACTIVE;
   }
 
   private saveState(): void {
-    const left = parseInt(this.element.style.left || "0", 10);
-    const top = parseInt(this.element.style.top || "0", 10);
-    const width = this.element.offsetWidth;
-    const height = this.element.offsetHeight;
+    const left = parseInt(this.panelElement.style.left || "0", 10);
+    const top = parseInt(this.panelElement.style.top || "0", 10);
+    const width = this.panelElement.offsetWidth;
+    const height = this.panelElement.offsetHeight;
 
-    setCookie(`panel-${this.element.id}-position`, `${left},${top}`);
-    setCookie(`panel-${this.element.id}-size`, `${width},${height}`);
+    setCookie(`panel-${this.panelElement.id}-position`, `${left},${top}`);
+    setCookie(`panel-${this.panelElement.id}-size`, `${width},${height}`);
+    setCookie(`panel-${this.panelElement.id}-vis`, `${this.visibility}`);
+    console.log("Cookies set?");
   }
 
   private restoreState(): void {
-    const pos = getCookie(`panel-${this.element.id}-position`);
-    const size = getCookie(`panel-${this.element.id}-size`);
+    const pos = getCookie(`panel-${this.panelElement.id}-position`);
+    const size = getCookie(`panel-${this.panelElement.id}-size`);
+    const vis: PanelVisibility | string | null = getCookie(`panel-${this.panelElement.id}-vis`);
 
     if (pos) {
       const [left, top] = pos.split(",");
-      this.element.style.position = "absolute";
-      this.element.style.left = `${left}px`;
-      this.element.style.top = `${top}px`;
+      this.panelElement.style.position = "absolute";
+      this.panelElement.style.left = `${left}px`;
+      this.panelElement.style.top = `${top}px`;
     }
 
     if (size) {
       const [width, height] = size.split(",");
-      this.element.style.width = `${width}px`;
-      this.element.style.height = `${height}px`;
+      this.panelElement.style.width = `${width}px`;
+      this.panelElement.style.height = `${height}px`;
+    }
+
+    if (vis) {
+
+      switch (vis) {
+        case PanelVisibility.ACTIVE:
+          this.maximize();
+          break;
+        case PanelVisibility.CLOSED:
+          this.close();
+          break;
+        case PanelVisibility.MINIMIZED:
+          this.minimize();
+          break;
+        default:
+          break;
+      }
     }
   }
 
+  // center a window's position
   public center(): void {
-    const panelWidth = this.element.offsetWidth;
-    const panelHeight = this.element.offsetHeight;
+    const panelWidth = this.panelElement.offsetWidth;
+    const panelHeight = this.panelElement.offsetHeight;
 
     const centerX = (window.innerWidth - panelWidth) / 2;
     const centerY = (window.innerHeight - panelHeight) / 2;
 
-    this.element.style.position = "absolute";
-    this.element.style.left = `${centerX}px`;
-    this.element.style.top = `${centerY}px`;
+    this.panelElement.style.position = "absolute";
+    this.panelElement.style.left = `${centerX}px`;
+    this.panelElement.style.top = `${centerY}px`;
   }
 
   static initialize(defaultOptions: PanelOptions = {}): void {
@@ -179,22 +263,5 @@ export class Panel {
       };
       new Panel(panel, options);
     });
-  }
-
-  static reCenterAllWindows(): void {
-    document.querySelectorAll<HTMLElement>(".panel").forEach(panel => {
-      const panelInstance = new Panel(panel);
-      panelInstance.center();
-    });
-  }
-
-  static minimizeWindows(): void {
-    document.querySelectorAll<HTMLElement>(".panel").forEach(panel => {
-      // TODO: Remove tooltip case
-      if (panel.id === "info-tooltip") return;
-      
-      const panelInstance = new Panel(panel);
-      panelInstance.minimize(panel.querySelector("h2")?.innerText);
-    })
   }
 }

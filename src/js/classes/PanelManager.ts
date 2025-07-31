@@ -8,21 +8,26 @@ interface PanelState {
 }
 
 export class PanelManager {
-  private static panels = new Map<string, Panel>();
+  
+  private panels = new Map<string, Panel>();
 
-  static registerPanel(id: string, panel: Panel): void {
-    this.panels.set(id, panel);
+  constructor(panelList: NodeListOf<HTMLElement>) {
+    panelList?.forEach((panel) => {
+      let panelInstance: Panel = new Panel(panel);
+      this.panels.set(panelInstance.getTitle(), panelInstance);
+    });
+
+    console.log("Panels managed.");
   }
 
-  static unregisterPanel(id: string): void {
-    this.panels.delete(id);
-  }
-
-  static getPanel(id: string): Panel | undefined {
+  /**
+   * Retrieve a panel by it's id from the manager.
+   */
+  public getPanel(id: string): Panel | undefined {
     return this.panels.get(id);
   }
 
-  static getPanelStates(): PanelState[] {
+  getPanelStates(): PanelState[] {
     const states: PanelState[] = [];
     this.panels.forEach((panel, id) => {
       // Skip the tooltip
@@ -36,7 +41,7 @@ export class PanelManager {
     return states;
   }
 
-  static togglePanelVisibility(id: string): void {
+  togglePanelVisibility(id: string): void {
     const panel = this.panels.get(id);
     if (!panel) return;
 
@@ -49,15 +54,23 @@ export class PanelManager {
     }
   }
 
-  static minimizeAllPanels(excludeIds: string[] = []): void {
+  minimizeAllPanels(excludeIds: string[] = []): void {
     this.panels.forEach((panel, id) => {
       if (id === "info-tooltip" || excludeIds.includes(id) || !panel.isVisible()) return;
-      panel.minimize(panel.getTitle());
+      panel.minimize();
     });
   }
 
-  static restoreAllPanels(): void {
-    this.panels.forEach(panel => panel.maximize());
+  reCenterAllPanels() {
+    this.panels.forEach((panel, id) => {
+      panel.center();
+    });
+  }
+  
+  restoreAllPanels(): void {
+    this.panels.forEach(panel => {
+      if (!panel.isVisible()) panel.maximize();
+    });
   }
 }
 
@@ -65,14 +78,5 @@ interface PanelOptions {
   startMinimized?: boolean;
 }
 
-export function setupPanels(options: PanelOptions = {}) {
-  Panel.initialize(options);
-}
 
-export function reCenterAllWindows() {
-  Panel.reCenterAllWindows();
-}
 
-export function minimizeAllWindows() {
-  Panel.minimizeWindows();
-}
