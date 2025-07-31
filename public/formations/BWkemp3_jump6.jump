@@ -1,0 +1,330 @@
+{
+  "docVersion": 2,
+  "whiteBackpacks": false,
+  "people": [
+    {
+      "name": "Cacko"
+    },
+    {
+      "name": "Cap"
+    },
+    {
+      "name": "Furda"
+    },
+    {
+      "name": "Just"
+    },
+    {
+      "name": "Koloszi"
+    },
+    {
+      "name": "Kuzma"
+    },
+    {
+      "name": "LO-Faixova"
+    },
+    {
+      "name": "Novosadek"
+    }
+  ],
+  "planes": [
+    {
+      "id": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+      "name": "Caravan",
+      "slotCount": 8,
+      "floaters": 4,
+      "autoColour": "#E6194B"
+    }
+  ],
+  "jumpers": [
+    {
+      "person": {
+        "name": "LO-Faixova"
+      },
+      "color": "#0061FD",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 2
+      }
+    },
+    {
+      "person": {
+        "name": "Novosadek"
+      },
+      "color": "#0061FD",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 4
+      }
+    },
+    {
+      "person": {
+        "name": "Kuzma"
+      },
+      "color": "#0061FD",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 3
+      }
+    },
+    {
+      "person": {
+        "name": "Just"
+      },
+      "color": "#0061FD",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 7
+      }
+    },
+    {
+      "person": {
+        "name": "Furda"
+      },
+      "color": "#76BB40",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 0
+      }
+    },
+    {
+      "person": {
+        "name": "Cap"
+      },
+      "color": "#76BB40",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 5
+      }
+    },
+    {
+      "person": {
+        "name": "Koloszi"
+      },
+      "color": "#76BB40",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 6
+      }
+    },
+    {
+      "person": {
+        "name": "Cacko"
+      },
+      "color": "#76BB40",
+      "planeSlot": {
+        "planeId": "589CA651-7BC1-47E4-8CBE-D0E7947CEC92",
+        "index": 1
+      }
+    }
+  ],
+  "points": [
+    {
+      "inter": false,
+      "slots": [
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            0.8223684210526314,
+            91.69407894736841
+          ],
+          "angleDeg": 0.0
+        },
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            75.50761166805255,
+            -36.94953168415797
+          ],
+          "angleDeg": 240.0
+        },
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            -74.19717927534205,
+            -43.4749082428422
+          ],
+          "angleDeg": 120.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            2.13280081376316,
+            -212.1402776617765
+          ],
+          "angleDeg": 180.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            68.12513043950969,
+            205.3720498785273
+          ],
+          "angleDeg": 0.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            -121.0638606050932,
+            -164.2308259105311
+          ],
+          "angleDeg": 135.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            123.9862638780017,
+            -165.3662488297709
+          ],
+          "angleDeg": 225.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            -66.61728177546883,
+            202.5958769832679
+          ],
+          "angleDeg": 0.0
+        }
+      ]
+    },
+    {
+      "inter": false,
+      "slots": [
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            0.8223684210526314,
+            91.69407894736841
+          ],
+          "angleDeg": 0.0
+        },
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            75.50761166805255,
+            -36.94953168415797
+          ],
+          "angleDeg": 240.0
+        },
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            -74.19717927534205,
+            -43.4749082428422
+          ],
+          "angleDeg": 120.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            4.098449402828953,
+            -209.5194128763555
+          ],
+          "angleDeg": 0.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            68.12513043950969,
+            223.0628871801194
+          ],
+          "angleDeg": 300.0
+        },
+        {
+          "stance": "bellyWideArms",
+          "origin": [
+            -109.2699690706984,
+            -161.6099611251101
+          ],
+          "angleDeg": 135.0
+        },
+        {
+          "stance": "bellyWideArms",
+          "origin": [
+            116.7788857180938,
+            -164.7110326334156
+          ],
+          "angleDeg": 225.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            -66.61728177546883,
+            222.2523628739259
+          ],
+          "angleDeg": 60.0
+        }
+      ]
+    },
+    {
+      "inter": false,
+      "slots": [
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            0.8223684210526314,
+            91.69407894736841
+          ],
+          "angleDeg": 0.0
+        },
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            66.33458491907885,
+            -41.53604505864482
+          ],
+          "angleDeg": 180.0
+        },
+        {
+          "stance": "bellyNarrowArms",
+          "origin": [
+            -70.92109829356573,
+            -34.3018814938685
+          ],
+          "angleDeg": 180.0
+        },
+        {
+          "stance": "bellyWideArms",
+          "origin": [
+            -1.143280168013163,
+            -153.8260361861579
+          ],
+          "angleDeg": 180.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            69.43556283222021,
+            201.4407527003957
+          ],
+          "angleDeg": 0.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            -140.0651302993958,
+            -149.16085339436
+          ],
+          "angleDeg": 180.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            135.1249392160412,
+            -156.1932220807972
+          ],
+          "angleDeg": 180.0
+        },
+        {
+          "stance": "belly",
+          "origin": [
+            -67.92771416817935,
+            200.6302283942021
+          ],
+          "angleDeg": 0.0
+        }
+      ]
+    }
+  ]
+}
