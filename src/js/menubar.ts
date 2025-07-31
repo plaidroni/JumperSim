@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation(); // Prevent menuItem click from firing
           const panelId = menuItem.id.replace('show-', '');
           if (checkbox.checked) {
-            panels.getPanel(panelId)?.show();
+            panels.getPanel(panelId)?.maximize();
           }
           else {
             panels.getPanel(panelId)?.close();
@@ -71,10 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const panelId = menuItem.id.replace('show-', '');
         const panel = panels.getPanel(panelId);
         if (panel) {
-          // If panel exists, show and maximize it
-          panel.show();
+          // If panel exists, maximize it
           panel.maximize();
-          updateWindowSubmenu(panels);
+          panel.center();
+          panel.saveState();
         }
       });
     });

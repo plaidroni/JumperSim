@@ -45,6 +45,7 @@ export class Panel {
 
   private header: HTMLElement | null;
   private title: string | null | undefined;
+  private id: string;
   private isDragging: boolean = false;
   private dragOffset: { x: number; y: number } = { x: 0, y: 0 };
   private visibility: PanelVisibility;
@@ -53,6 +54,7 @@ export class Panel {
     if (!element) return;
     
     this.panelElement = element;
+    this.id = this.panelElement.id.replace('-panel', '');
     this.header = element?.querySelector(".panel-header");
     this.title = this.header?.querySelector("h2")?.textContent; 
     
@@ -63,6 +65,7 @@ export class Panel {
     this.initialize(options);
   }
 
+  // this method should be deprecated
   private initialize(options: PanelOptions): void {
 
     this.restoreState();
@@ -210,11 +213,15 @@ export class Panel {
     return this.title || "Untitled";
   }
 
+  public getId(): string {
+    return this.id;
+  }
+
   public isMinimizedState(): boolean {
     return this.visibility == PanelVisibility.ACTIVE;
   }
 
-  private saveState(): void {
+  public saveState(): void {
     const left = parseInt(this.panelElement.style.left || "0", 10);
     const top = parseInt(this.panelElement.style.top || "0", 10);
     const width = this.panelElement.offsetWidth;
@@ -226,7 +233,7 @@ export class Panel {
   }
 
   // this may be more efficient to move into PanelManager, and initialize it in the constructor
-  private restoreState(): void {
+  public restoreState(): void {
     const pos = getCookie(`panel-${this.panelElement.id}-position`);
     const size = getCookie(`panel-${this.panelElement.id}-size`);
     const vis: PanelVisibility | string | null = getCookie(`panel-${this.panelElement.id}-vis`);

@@ -14,7 +14,7 @@ export class PanelManager {
   constructor(panelList: NodeListOf<HTMLElement>) {
     panelList?.forEach((panel) => {
       let panelInstance: Panel = new Panel(panel);
-      this.panels.set(panelInstance.getTitle(), panelInstance);
+      this.panels.set(panelInstance.getId(), panelInstance);
     });
   }
 
