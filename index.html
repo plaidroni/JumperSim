@@ -94,88 +94,59 @@
           </div>
         </div>
 
-        <div class="menu-item dropdown">
+        <div class="menu-item dropdown" id="window-submenu">
           <span>Window</span>
           <div class="dropdown-menu">
-            <div class="dropdown-item" id="recenter-windows">
+            <button class="dropdown-item" id="recenter-windows">
               <span>Re-center Windows</span>
-            </div>
-            <div class="dropdown-item" id="minimize-windows">
+            </button>
+            <button class="dropdown-item" id="minimize-windows">
               <span>Minimize Windows</span>
-            </div>
-            <div class="dropdown-item">
+            </button>
+            <button class="dropdown-item" id="restore-windows">
+              <span>Restore Windows</span>
+            </button>
+            <hr>
+            <div class="dropdown-item" id="show-weatherdata">
               <span>Weather</span>
-              <input
-                type="checkbox"
-                id="show-weather"
-              />
+              <input type="checkbox" name="show-weatherdata" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-location">
               <span>Location</span>
-              <input
-                type="checkbox"
-                id="show-location"
-              />
+              <input type="checkbox" name="show-location" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-playback">
               <span>Playback Controls</span>
-              <input
-                type="checkbox"
-                id="show-playback"
-              />
+              <input type="checkbox" name="show-playback" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-formation">
               <span>Formation Settings</span>
-              <input
-                type="checkbox"
-                id="show-formation-settings"
-              />
+              <input type="checkbox" name="show-formation" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-plane">
               <span>Plane Settings</span>
-              <input
-                type="checkbox"
-                id="show-plane-settings"
-              />
+              <input type="checkbox" name="show-plane" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-objects">
               <span>Scene Objects</span>
-              <input
-                type="checkbox"
-                id="show-scene-objects"
-              />
+              <input type="checkbox" name="show-objects" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-sim">
               <span>Jump Settings</span>
-              <input 
-                type="checkbox" 
-                name="show-jump-settings" 
-                id="show-jump-settings"
-                />
+              <input type="checkbox" name="show-sim" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-jumprun">
               <span>Jump-Run Settings</span>
-              <input
-                type="checkbox"
-                id="show-jumprun-settings"
-              />
+              <input type="checkbox" name="show-jumprun" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-speed">
               <span>Speed Settings</span>
-              <input
-                type="checkbox"
-                id="show-speed-settings"
-              />
+              <input type="checkbox" name="show-speed" checked/>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="show-following">
               <span>Following</span>
-              <input 
-                type="checkbox" 
-                name="show-following" 
-                id="show-following"
-              />
+              <input type="checkbox" name="show-following" checked/>
             </div>
-            
           </div>
         </div>
         <div class="menu-item dropdown">
@@ -464,7 +435,6 @@
     <script src="./src/js/timeScrubber.ts" type="module"></script>
     <script src="./src/js/scripts.ts" type="module" defer></script>
     <script src="./src/apidata/openMateo.ts" type="module"></script>
-    <script src="./src/js/panels.ts" type="module"></script>
     <script src="./src/js/locationSelect.ts" type="module"></script>
     <script src="./src/js/menubar.ts" type="module"></script>
   </body>

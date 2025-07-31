@@ -45,6 +45,24 @@
   z-index: 1000;
 }
 
+.dropdown-menu hr {
+  border: none;
+  background-color: #444;
+  text-align: center;
+  height: 2px;
+  overflow: visible;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  margin-inline-start: 2px;
+  margin-inline-end: 2px;
+}
+
+button.dropdown-item {
+  background-color: inherit;
+  border-color: inherit;
+  border: none;
+}
+
 .dropdown:hover .dropdown-menu {
   display: flex;
 }

@@ -4,8 +4,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
 import { clampVectorAboveYZero } from "./utils";
 import { GlobalWindVars } from "./globalVars";
-// import { setupPanelMinimization } from "./minimized-windows";
-import { setupPanels } from "./panels";
 import { Plane, Jumper } from "./classes/baseEntities";
 import {
   createDefaultSimJumpers,
@@ -160,14 +158,12 @@ try {
 }
 
 // === LOOKING AT SCENE OBJECT ===
-
-const panelBody = document.querySelector("#objects-panel .panel-body");
-
 let followTarget: THREE.Object3D | null = null;
 let isUserControllingCamera = false;
 
+// load active objects into the panel
+const panelBody = document.querySelector("#objects-panel .panel-body");
 panelBody.innerHTML = "";
-
 const planeEntry = document.createElement("div");
 planeEntry.className = "object-entry";
 planeEntry.innerHTML = `
@@ -208,6 +204,7 @@ document.querySelectorAll(".focus-button").forEach((btn) =>
   })
 );
 
+// set up camera controls
 controls.addEventListener("start", () => {
   // cancel if the user starts panning
   isUserControllingCamera = true;
@@ -444,6 +441,5 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-setupPanels({ startMinimized: true }); // Start with all non-playback panels minimized
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
