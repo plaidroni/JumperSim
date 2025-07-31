@@ -16,8 +16,6 @@ export class PanelManager {
       let panelInstance: Panel = new Panel(panel);
       this.panels.set(panelInstance.getTitle(), panelInstance);
     });
-
-    console.log("Panels managed.");
   }
 
   /**

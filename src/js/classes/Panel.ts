@@ -19,11 +19,32 @@ enum PanelVisibility {
 
 const minimizedBar = document.getElementById("minimized-bar");
 
+/**
+ * To whom it may concern,
+ * 
+ * I wrote this after procrastinating it for like a week. It's not good. 
+ * 
+ * But it works? Who can complain, Sevan maybe. 
+ * 
+ * Anyway,
+ * the DOM Node API may have been *more* useful for saving / removing the panels and tabs.
+ * Future me, 
+ * you're doing great. 
+ * 
+ * -Alex
+ */
+
+/**
+ * Functionality to interact with data panels and handle minimizing, closing, and opening
+ * the subwindows, along with saving/reading state.
+ */
 export class Panel {
+  
   private panelElement: HTMLElement;
+  private tabElement: HTMLElement | null;
+
   private header: HTMLElement | null;
   private title: string | null | undefined;
-  private tabElement: HTMLElement | null;
   private isDragging: boolean = false;
   private dragOffset: { x: number; y: number } = { x: 0, y: 0 };
   private visibility: PanelVisibility;
@@ -43,19 +64,12 @@ export class Panel {
   }
 
   private initialize(options: PanelOptions): void {
-    // Handle startup minimization
+
     this.restoreState();
     if (!this.visibility) {
       this.minimize();
     }
 
-    // Hide content initially except for playback panel
-    if (this.panelElement.id !== "playback") {
-      const content = this.panelElement.querySelector(".panel-content") as HTMLElement;
-      if (content) {
-        content.style.visibility = "hidden";
-      }
-    }
   }
 
   private setupDragging(): void {
@@ -123,11 +137,13 @@ export class Panel {
       if ((e.target as HTMLElement).classList.contains("close-btn")) return;
       this.maximize();
       tab.style.display = 'none';
+      this.saveState();
     });
 
     tab.querySelector("minimized-tab button")?.addEventListener("click", (e) => {
       e.stopPropagation();
       tab.style.display = 'none';
+      this.saveState();
     });
 
     this.tabElement = tab;
@@ -138,9 +154,11 @@ export class Panel {
     if (this.visibility == "closed") return;
     this.visibility = PanelVisibility.MINIMIZED;
     this.panelElement.style.visibility = "hidden";
-    // if (this.tabElement) {
     this.tabElement?.style.removeProperty('display');
-    
+
+    // for all of these, probably better to auto-save on panel state change event or on timeout loop
+    this.saveState();
+
     // TODO
     window.dispatchEvent(new CustomEvent('panelStateChanged'));
   }
@@ -149,18 +167,19 @@ export class Panel {
     if (this.visibility == PanelVisibility.ACTIVE) return;
     this.visibility = PanelVisibility.ACTIVE;
     this.panelElement.style.visibility = "visible";
-    // TODO
+    this.saveState();
+
     window.dispatchEvent(new CustomEvent('panelStateChanged'));
+
   }
 
   public close(): void {
     if (this.visibility == PanelVisibility.CLOSED) return;
 
     this.visibility = PanelVisibility.CLOSED;
-    this.panelElement.style.visibility = "hidden";
-    // Remove from minimized bar if it's there
-    
+    this.panelElement.style.visibility = "hidden";    
     this.tabElement?.style.setProperty('display', 'none');
+    this.saveState();
 
     window.dispatchEvent(new CustomEvent('panelStateChanged'));
   }
@@ -175,10 +194,18 @@ export class Panel {
     }
   }
 
+  /**
+   * 
+   * @returns True if this panel is active or minimized, false if this is closed.
+   */
   public isVisible(): boolean {
     return this.visibility != PanelVisibility.CLOSED;
   }
 
+  /**
+   * Get the panel's title.
+   * @returns The window title, or "Untitled" if this is somehow unnamed
+   */
   public getTitle(): string {
     return this.title || "Untitled";
   }
@@ -196,9 +223,9 @@ export class Panel {
     setCookie(`panel-${this.panelElement.id}-position`, `${left},${top}`);
     setCookie(`panel-${this.panelElement.id}-size`, `${width},${height}`);
     setCookie(`panel-${this.panelElement.id}-vis`, `${this.visibility}`);
-    console.log("Cookies set?");
   }
 
+  // this may be more efficient to move into PanelManager, and initialize it in the constructor
   private restoreState(): void {
     const pos = getCookie(`panel-${this.panelElement.id}-position`);
     const size = getCookie(`panel-${this.panelElement.id}-size`);
@@ -246,22 +273,5 @@ export class Panel {
     this.panelElement.style.position = "absolute";
     this.panelElement.style.left = `${centerX}px`;
     this.panelElement.style.top = `${centerY}px`;
-  }
-
-  static initialize(defaultOptions: PanelOptions = {}): void {
-    document.querySelectorAll<HTMLElement>(".panel").forEach(panel => {
-    
-      if (panel.id === "info-tooltip") {
-        return;
-      }
-
-      // Allow for panel-specific options based on ID or class
-      const options = {
-        ...defaultOptions,
-        // You can add panel-specific options here based on panel.id or panel.classList
-        startMinimized: defaultOptions.startMinimized || panel.id !== "playback-panel" // Example: keep playback panel visible
-      };
-      new Panel(panel, options);
-    });
   }
 }
