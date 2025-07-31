@@ -183,7 +183,6 @@ simJumpers.forEach((jumper, i) => {
 });
 
 document.querySelectorAll(".focus-button").forEach((btn) =>
-  // can't this get set up in an onclick?
   btn.addEventListener("click", (e) => {
     const button = e.currentTarget as HTMLButtonElement;
     const type = button.dataset.type;
