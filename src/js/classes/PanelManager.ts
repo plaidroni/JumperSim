@@ -1,9 +1,8 @@
-import { Panel } from "./Panel";
+import { Panel, PanelVisibility } from "./Panel";
 
 interface PanelState {
   id: string;
   title: string;
-  isMinimized: boolean;
   isVisible: boolean;
 }
 
@@ -25,31 +24,16 @@ export class PanelManager {
     return this.panels.get(id);
   }
 
-  getPanelStates(): PanelState[] {
+  public getPanelStates(): PanelState[] {
     const states: PanelState[] = [];
     this.panels.forEach((panel, id) => {
       // Skip the tooltip
       if (id === "info-tooltip") return;
-
       const title = panel.getTitle();
-      const isMinimized = panel.isMinimizedState();
       const isVisible = panel.isVisible();
-      states.push({ id, title, isMinimized, isVisible });
+      states.push({ id, title, isVisible });
     });
     return states;
-  }
-
-  togglePanelVisibility(id: string): void {
-    const panel = this.panels.get(id);
-    if (!panel) return;
-
-    if (panel.isVisible()) {
-      console.log(`${panel.getTitle()} closed.`);
-      panel.close();
-    } else {
-      console.log(`${panel.getTitle()} shown.`);
-      panel.show();
-    }
   }
 
   minimizeAllPanels(excludeIds: string[] = []): void {

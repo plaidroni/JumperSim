@@ -11,7 +11,7 @@ interface PanelOptions {
   startMinimized?: boolean;
 }
 
-enum PanelVisibility {
+export enum PanelVisibility {
   ACTIVE = "active",
   MINIMIZED = "minimized",
   CLOSED = "closed"
@@ -20,17 +20,7 @@ enum PanelVisibility {
 const minimizedBar = document.getElementById("minimized-bar");
 
 /**
- * To whom it may concern,
- * 
- * I wrote this after procrastinating it for like a week. It's not good. 
- * 
- * But it works? Who can complain, Sevan maybe. 
- * 
- * Anyway,
  * the DOM Node API may have been *more* useful for saving / removing the panels and tabs.
- * Future me, 
- * you're doing great. 
- * 
  * -Alex
  */
 
@@ -65,10 +55,12 @@ export class Panel {
     this.initialize(options);
   }
 
-  // this method should be deprecated
+  // this method should be deprecated and moved into the constructor
   private initialize(options: PanelOptions): void {
 
     this.restoreState();
+
+    // if visibility wasn't set, i.e. no cookie, just minimize it
     if (!this.visibility) {
       this.minimize();
     }
@@ -153,8 +145,12 @@ export class Panel {
   }
 
   // visibility setters
+  /**
+   * Hide the panel, show the tab.
+   * @returns 
+   */
   public minimize(): void {
-    if (this.visibility == "closed") return;
+    if (this.visibility == PanelVisibility.MINIMIZED) return;
     this.visibility = PanelVisibility.MINIMIZED;
     this.panelElement.style.visibility = "hidden";
     this.tabElement?.style.removeProperty('display');
@@ -166,16 +162,25 @@ export class Panel {
     window.dispatchEvent(new CustomEvent('panelStateChanged'));
   }
 
+  /**
+   * Show the panel, hide the tab.
+   * @returns 
+   */
   public maximize(): void {
     if (this.visibility == PanelVisibility.ACTIVE) return;
     this.visibility = PanelVisibility.ACTIVE;
     this.panelElement.style.visibility = "visible";
+    this.tabElement?.style.setProperty('display', 'none');
     this.saveState();
 
     window.dispatchEvent(new CustomEvent('panelStateChanged'));
 
   }
 
+  /**
+   * Hide the panel and its tab on the page.
+   * @returns 
+   */
   public close(): void {
     if (this.visibility == PanelVisibility.CLOSED) return;
 
@@ -187,18 +192,7 @@ export class Panel {
     window.dispatchEvent(new CustomEvent('panelStateChanged'));
   }
 
-  public show(): void {
-    this.visibility = PanelVisibility.ACTIVE;
-    this.panelElement.style.display = "block";
-    if (this.panelElement.classList.contains("hidden")) {
-      this.minimize();
-    } else {
-      this.maximize();
-    }
-  }
-
   /**
-   * 
    * @returns True if this panel is active or minimized, false if this is closed.
    */
   public isVisible(): boolean {
@@ -206,19 +200,21 @@ export class Panel {
   }
 
   /**
-   * Get the panel's title.
    * @returns The window title, or "Untitled" if this is somehow unnamed
    */
   public getTitle(): string {
     return this.title || "Untitled";
   }
 
+  /**
+   * @returns The ID of the panel element.
+   */
   public getId(): string {
     return this.id;
   }
 
   public isMinimizedState(): boolean {
-    return this.visibility == PanelVisibility.ACTIVE;
+    return this.visibility == PanelVisibility.MINIMIZED;
   }
 
   public saveState(): void {
@@ -269,7 +265,9 @@ export class Panel {
     }
   }
 
-  // center a window's position
+  /**
+   * Center a panels's position in the window. 
+   */
   public center(): void {
     const panelWidth = this.panelElement.offsetWidth;
     const panelHeight = this.panelElement.offsetHeight;
