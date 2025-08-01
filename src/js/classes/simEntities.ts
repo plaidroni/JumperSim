@@ -44,6 +44,7 @@ export class SimJumper extends Jumper {
   isInFormation: boolean = false;
   hasLanded: boolean;
   hasJumped: boolean;
+  angle: THREE.Quaternion = new THREE.Quaternion();
 
   constructor(index, plane: SimPlane, jumpInterval, deployDelay, canopySize) {
     super(index, plane, jumpInterval, deployDelay, canopySize);

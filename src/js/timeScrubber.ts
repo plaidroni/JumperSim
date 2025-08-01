@@ -27,7 +27,7 @@ const playbackBody = document.getElementById("playback-body");
 
 (<any>window).play = function () {
   (<any>window).isPlaying = true;
-  (<any>window).playPauseButton.textContent = "⏸️";
+  (<any>window).playPauseButton.textContent = "⏸";
   (<any>window).playbackInterval = setInterval(() => {
     if ((<any>window).currentTime < (<any>window).maxTime) {
       (<any>window).updateScrubber((<any>window).currentTime + 0.1);
@@ -39,7 +39,7 @@ const playbackBody = document.getElementById("playback-body");
 
 (<any>window).pause = function () {
   (<any>window).isPlaying = false;
-  (<any>window).playPauseButton.textContent = "▶️";
+  (<any>window).playPauseButton.textContent = "⏵";
   clearInterval((<any>window).playbackInterval);
 };
 

@@ -85,7 +85,7 @@ export class Formation {
         firstPoint.slots,
         jumper
       );
-      jumper.angle;
+      jumper.angle = this.calculateAngleOffset(slot.angleDeg);
       jumper.isInFormation = true;
       this.jumpers.push(jumper);
     }
