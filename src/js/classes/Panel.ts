@@ -223,33 +223,46 @@ export class Panel {
     const width = this.panelElement.offsetWidth;
     const height = this.panelElement.offsetHeight;
 
-    setCookie(`panel-${this.panelElement.id}-position`, `${left},${top}`);
-    setCookie(`panel-${this.panelElement.id}-size`, `${width},${height}`);
-    setCookie(`panel-${this.panelElement.id}-vis`, `${this.visibility}`);
+    // setCookie(`panel-${this.panelElement.id}-position`, `${left},${top}`);
+    // setCookie(`panel-${this.panelElement.id}-size`, `${width},${height}`);
+    // setCookie(`panel-${this.panelElement.id}-vis`, `${this.visibility}`);
+
+    let toSave = {
+      'pos': `${left},${top}`,
+      'size': `${width},${height}`,
+      'vis': `${this.visibility}`
+    }
+
+    localStorage.setItem(this.panelElement.id, JSON.stringify(toSave));
   }
 
   // this may be more efficient to move into PanelManager, and initialize it in the constructor
   public restoreState(): void {
-    const pos = getCookie(`panel-${this.panelElement.id}-position`);
-    const size = getCookie(`panel-${this.panelElement.id}-size`);
-    const vis: PanelVisibility | string | null = getCookie(`panel-${this.panelElement.id}-vis`);
+    // const pos = getCookie(`panel-${this.panelElement.id}-position`);
+    // const size = getCookie(`panel-${this.panelElement.id}-size`);
+    // const vis: PanelVisibility | string | null = getCookie(`panel-${this.panelElement.id}-vis`);
 
-    if (pos) {
-      const [left, top] = pos.split(",");
+    let stored = localStorage.getItem(this.panelElement.id);
+    let toRead: JSON | null = JSON.parse(stored ? stored : '{}');
+
+    if (!toRead) return;
+
+    if (toRead['pos']) {
+      const [left, top] = toRead['pos'].split(",");
       this.panelElement.style.position = "absolute";
       this.panelElement.style.left = `${left}px`;
       this.panelElement.style.top = `${top}px`;
     }
 
-    if (size) {
-      const [width, height] = size.split(",");
+    if (toRead['size']) {
+      const [width, height] = toRead['size'].split(",");
       this.panelElement.style.width = `${width}px`;
       this.panelElement.style.height = `${height}px`;
     }
 
-    if (vis) {
+    if (toRead['vis']) {
 
-      switch (vis) {
+      switch (toRead['vis']) {
         case PanelVisibility.ACTIVE:
           this.maximize();
           break;
