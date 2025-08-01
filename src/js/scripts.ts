@@ -19,6 +19,7 @@ import {
 } from "./ui/trajectoryLine";
 import { loadJumpFormation } from "./exampleData/formations";
 import { Formation } from "./classes/formations";
+import { initializePanelManager } from "./menubar";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -443,3 +444,4 @@ window.addEventListener("resize", () => {
 
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
+initializePanelManager();

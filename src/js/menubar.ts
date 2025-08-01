@@ -25,7 +25,7 @@ function updateWindowSubmenu(panels: PanelManager): void {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+export function initializePanelManager() {
   let panels: PanelManager = new PanelManager(document.querySelectorAll(".panel"));
 
   // Set up window menu actions
@@ -86,5 +86,5 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('panelStateChanged', () => {
     updateWindowSubmenu(panels);
   });
-});
+}
 
