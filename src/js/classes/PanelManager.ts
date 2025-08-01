@@ -11,6 +11,7 @@ export class PanelManager {
   private panels = new Map<string, Panel>();
 
   constructor(panelList: NodeListOf<HTMLElement>) {
+    console.log("Initializing Panels");
     panelList?.forEach((panel) => {
       let panelInstance: Panel = new Panel(panel);
       this.panels.set(panelInstance.getId(), panelInstance);
