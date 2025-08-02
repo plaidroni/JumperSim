@@ -120,10 +120,10 @@
               <span>Playback Controls</span>
               <input type="checkbox" name="show-playback" checked/>
             </div>
-            <div class="dropdown-item" id="show-formation">
+            <!-- <div class="dropdown-item" id="show-formation">
               <span>Formation Settings</span>
               <input type="checkbox" name="show-formation" checked/>
-            </div>
+            </div> -->
             <div class="dropdown-item" id="show-plane">
               <span>Plane Settings</span>
               <input type="checkbox" name="show-plane" checked/>
@@ -226,21 +226,16 @@
         </div>
       </div>
       <div class="panel-body">
-<label>
           Jump Name:
           <input
-            type="number"
-            id="pullAltitude"
-            min="500"
-            max="6000"
-            step="100"
-            value="3500"
+            type="text"
+            id="jumpname"
+            placeholder="Enter jump name"
+            value="Untitled JumpSim"
           />
         </label>
         
-        <div class="panel-controls">
-          <button id="align-jumprun">Align Jumprun</button>
-        </div>
+        
         <label>
           Jump Height:
           <input
@@ -252,6 +247,9 @@
             value="12500"
           />
         </label>
+        <div class="panel-controls">
+          <button id="align-jumprun">Align Jumprun</button>
+        </div>
       </div>
     </div>
 
@@ -442,7 +440,7 @@
         </div>
     </div>
 
-    <div class="panel" id="formation-panel">
+    <!-- <div class="panel" id="formation-panel">
       <div class="panel-header">
         <h2>Formation Settings</h2>
         <div class="panel-controls">
@@ -451,7 +449,7 @@
         </div>
       </div>
       <div class="panel-body"></div>
-    </div>
+    </div> -->
 
     <script src="./src/js/globalVars.ts" type="module" defer></script>
     <script src="./src/js/devConsole.ts" type="module"></script>

@@ -82,6 +82,8 @@ export class Panel {
         this.panelElement.style.position = "absolute";
         this.panelElement.style.left = `${e.clientX - this.dragOffset.x}px`;
         this.panelElement.style.top = `${e.clientY - this.dragOffset.y}px`;
+        const newTop = Math.max(e.clientY - this.dragOffset.y, 30);
+        this.panelElement.style.top = `${newTop}px`;
       }
     });
 
