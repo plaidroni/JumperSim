@@ -20,6 +20,9 @@ import {
 import { loadJumpFormation } from "./exampleData/formations";
 import { Formation } from "./classes/formations";
 import { initializePanelManager } from "./menubar";
+// Notification system for displaying alerts and feedback to users
+// Usage: notificationManager.success/error/warning/info(message, options)
+import { notificationManager } from "./classes/NotificationManager";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -153,9 +156,31 @@ try {
   formations = simPlane.formations;
   // Gather all jumpers from all formations
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
+
+  // Success notification with action button
+  notificationManager.success(`Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`, {
+    duration: 5000,
+    actions: [
+      {
+        label: "View Objects",
+        callback: () => {
+          // Show objects panel - find and maximize it
+          const objectsPanel = document.querySelector('#objects-panel') as HTMLElement;
+          if (objectsPanel) {
+            objectsPanel.style.visibility = 'visible';
+          }
+        }
+      }
+    ]
+  });
 } catch (e) {
   // fallback: no formation, use default jumpers
   simJumpers = createDefaultSimJumpers(21, simPlane);
+  
+  // Warning notification for fallback scenario
+  notificationManager.warning("Formation loading failed - using default jumpers", {
+    duration: 6000
+  });
 }
 
 // === LOOKING AT SCENE OBJECT ===
@@ -277,6 +302,19 @@ export const systemsOK = waitAllSystems();
 
 // === JUMPER LOGIC ===
 systemsOK.then(() => {
+  // Success notification when simulation fully loads
+  notificationManager.success("Simulation loaded successfully!", {
+    actions: [
+      {
+        label: "View Objects",
+        callback: () => {
+          // Focus on objects panel - simple example
+          console.log("Opening objects panel");
+        }
+      }
+    ]
+  });
+
   simJumpers.forEach((jumper) => {
     jumper.precalculate(300);
     scene.add(jumper.getMesh());
@@ -445,3 +483,6 @@ window.addEventListener("resize", () => {
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
 initializePanelManager();
+
+// Global access to notification system for use across the application
+(window as any).notificationManager = notificationManager;
