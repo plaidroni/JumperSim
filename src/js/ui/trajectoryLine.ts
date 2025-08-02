@@ -1,4 +1,4 @@
-import { SimJumper } from "../classes/simEntities";
+import { SimJumper } from "../classes/SimEntities";
 import * as THREE from "three";
 export function createDynamicTrajectoryLine(jumper: SimJumper): THREE.Line {
   const sampleCount = jumper.track.samples.length;

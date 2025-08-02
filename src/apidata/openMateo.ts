@@ -1,5 +1,5 @@
 import { fetchWeatherApi } from "openmeteo";
-import { signalWeatherReady } from "../js/scripts";
+import { signalWeatherReady } from "../js/Scripts";
 
 const url = "https://api.open-meteo.com/v1/forecast";
 
@@ -240,28 +240,34 @@ async function fetchWeatherData() {
 
     // Show success notification when weather data is loaded
     if ((window as any).notificationManager) {
-      (window as any).notificationManager.success("Weather data loaded successfully!", {
-        duration: 4000
-      });
+      (window as any).notificationManager.success(
+        "Weather data loaded successfully!",
+        {
+          duration: 4000,
+        }
+      );
     }
   } catch (error) {
     console.error("Weather fetch failed", error);
     // Show error notification
     if ((window as any).notificationManager) {
-      (window as any).notificationManager.error("Weather data unavailable - using defaults", {
-        duration: 8000,
-        actions: [
-          {
-            label: "Retry",
-            callback: () => {
-              // Trigger weather fetch retry
-              console.log("Retrying weather fetch...");
-              fetchWeatherData();
+      (window as any).notificationManager.error(
+        "Weather data unavailable - using defaults",
+        {
+          duration: 8000,
+          actions: [
+            {
+              label: "Retry",
+              callback: () => {
+                // Trigger weather fetch retry
+                console.log("Retrying weather fetch...");
+                fetchWeatherData();
+              },
+              primary: true,
             },
-            primary: true
-          }
-        ]
-      });
+          ],
+        }
+      );
     }
   } finally {
     // loader.style.display = "none";

@@ -1,4 +1,4 @@
-import { createDefaultSimJumpers, SimJumper, SimPlane } from "./simEntities";
+import { createDefaultSimJumpers, SimJumper, SimPlane } from "./SimEntities";
 import * as THREE from "three";
 
 /**refer to .jump files for metrics */

@@ -1,8 +1,8 @@
-import { declareParams, fetchWeatherData } from "../apidata/openMateo";
-import { getCookie, setCookie } from "./utils";
+import { declareParams, fetchWeatherData } from "../apidata/OpenMateo";
+import { getCookie, setCookie } from "./Utils";
 import { loadEnv } from "vite";
 import * as THREE from "three";
-import { signalMeshReady } from "./scripts";
+import { signalMeshReady } from "./Scripts";
 
 export async function loadDropzones(scene: THREE.Scene) {
   const response = await fetch("/json/dropzones.json");
@@ -29,7 +29,7 @@ export async function loadDropzones(scene: THREE.Scene) {
   const savedIndex = getCookie("selectedDropzoneIndex");
   // if no cookie is found, then load Skydive Perris
   if (!savedIndex) {
-    select.value = "2"; 
+    select.value = "2";
     triggerSelection(dropzones, 2);
   }
   if (savedIndex && dropzones[savedIndex]) {

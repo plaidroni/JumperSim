@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { SimPlane } from "./classes/simEntities";
+import { SimPlane } from "./classes/SimEntities";
 
 let currentPlane = null;
 let planeMesh: THREE.Mesh = null;
@@ -127,7 +127,7 @@ function getCurrentPlane() {
 export function initializePlaneManager(scene, simPlane) {
   const planeSelect = document.getElementById("plane-select");
   if (planeSelect) {
-    planeSelect.value =  "twin-otter";
+    planeSelect.value = "twin-otter";
     planeSelect.addEventListener("change", function (event) {
       handlePlaneSelection(event.target.value, scene, simPlane);
     });

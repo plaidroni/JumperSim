@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { SimPlane } from "../classes/simEntities";
-import { Formation } from "./formations";
+import { SimPlane } from "./SimEntities";
+import { Formation } from "./Formations";
 
 export class Plane {
   initialPosition: THREE.Vector3;

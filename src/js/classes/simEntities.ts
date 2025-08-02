@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { Plane, Jumper } from "./baseEntities";
-import { KinematicTrack } from "../kinematics";
-import { convertWeatherSnapshotToWindLayers } from "../utils";
-import { clamp } from "./../../../node_modules/@types/three/src/Three.TSL.d";
-import { Formation } from "./formations"; // add this import
+import { Plane, Jumper } from "./BaseEntities";
+import { KinematicTrack } from "../Kinematics";
+import { convertWeatherSnapshotToWindLayers } from "../Utils";
+import { clamp } from "three/src/Three.TSL.js";
+import { Formation } from "./Formations"; // add this import
 
 const v_grav = new THREE.Vector3(0, -9.81, 0);
 const drag_air = 0.2;

@@ -2,24 +2,24 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
-import { clampVectorAboveYZero } from "./utils";
-import { GlobalWindVars } from "./globalVars";
-import { Plane, Jumper } from "./classes/baseEntities";
+import { clampVectorAboveYZero } from "./Utils";
+import { GlobalWindVars } from "./GlobalVars";
+import { Plane, Jumper } from "./classes/BaseEntities";
 import {
   createDefaultSimJumpers,
   SimJumper,
   SimPlane,
-} from "./classes/simEntities";
-import { loadDropzones } from "./locationSelect";
-import { handlePlaneSelection, initializePlaneManager } from "./planeSelect";
+} from "./classes/SimEntities";
+import { loadDropzones } from "./LocationSelect";
+import { handlePlaneSelection, initializePlaneManager } from "./PlaneSelect";
 import {
   createDynamicTrajectoryLine,
   updateTrajectoryLines,
   visualizeJumpers,
-} from "./ui/trajectoryLine";
-import { loadJumpFormation } from "./exampleData/formations";
-import { Formation } from "./classes/formations";
-import { initializePanelManager } from "./menubar";
+} from "./ui/TrajectoryLine";
+import { loadJumpFormation } from "./exampleData/Formations";
+import { Formation } from "./classes/Formations";
+import { initializePanelManager } from "./Menubar";
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
@@ -157,29 +157,37 @@ try {
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
 
   // Success notification with action button
-  notificationManager.success(`Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`, {
-    duration: 5000,
-    actions: [
-      {
-        label: "View Objects",
-        callback: () => {
-          // Show objects panel - find and maximize it
-          const objectsPanel = document.querySelector('#objects-panel') as HTMLElement;
-          if (objectsPanel) {
-            objectsPanel.style.visibility = 'visible';
-          }
-        }
-      }
-    ]
-  });
+  notificationManager.success(
+    `Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`,
+    {
+      duration: 5000,
+      actions: [
+        {
+          label: "View Objects",
+          callback: () => {
+            // Show objects panel - find and maximize it
+            const objectsPanel = document.querySelector(
+              "#objects-panel"
+            ) as HTMLElement;
+            if (objectsPanel) {
+              objectsPanel.style.visibility = "visible";
+            }
+          },
+        },
+      ],
+    }
+  );
 } catch (e) {
   // fallback: no formation, use default jumpers
   simJumpers = createDefaultSimJumpers(21, simPlane);
-  
+
   // Warning notification for fallback scenario
-  notificationManager.warning("Formation loading failed - using default jumpers", {
-    duration: 6000
-  });
+  notificationManager.warning(
+    "Formation loading failed - using default jumpers",
+    {
+      duration: 6000,
+    }
+  );
 }
 
 // === LOOKING AT SCENE OBJECT ===
@@ -309,9 +317,9 @@ systemsOK.then(() => {
         callback: () => {
           // Focus on objects panel - simple example
           console.log("Opening objects panel");
-        }
-      }
-    ]
+        },
+      },
+    ],
   });
 
   simJumpers.forEach((jumper) => {
