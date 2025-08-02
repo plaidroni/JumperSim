@@ -20,6 +20,8 @@ import {
 import { loadJumpFormation } from "./exampleData/formations";
 import { Formation } from "./classes/formations";
 import { initializePanelManager } from "./menubar";
+// Notification system for displaying alerts and feedback to users
+// Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
 
 // === THREE SETUP ===
@@ -155,7 +157,7 @@ try {
   // Gather all jumpers from all formations
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
 
-  // Show success notification for formation loading
+  // Success notification with action button
   notificationManager.success(`Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`, {
     duration: 5000,
     actions: [
@@ -175,7 +177,7 @@ try {
   // fallback: no formation, use default jumpers
   simJumpers = createDefaultSimJumpers(21, simPlane);
   
-  // Show warning notification for fallback
+  // Warning notification for fallback scenario
   notificationManager.warning("Formation loading failed - using default jumpers", {
     duration: 6000
   });
@@ -300,7 +302,7 @@ export const systemsOK = waitAllSystems();
 
 // === JUMPER LOGIC ===
 systemsOK.then(() => {
-  // Show a notification when the simulation is ready
+  // Success notification when simulation fully loads
   notificationManager.success("Simulation loaded successfully!", {
     actions: [
       {
@@ -482,5 +484,5 @@ loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
 initializePanelManager();
 
-// Make notification manager globally available
+// Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;
