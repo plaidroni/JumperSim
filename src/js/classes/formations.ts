@@ -58,7 +58,7 @@ export class Formation {
   public endTime: number = 60; // when formation flying ends
   public title: string = "";
   public isActive: boolean = false;
-  public SCALE_FACTOR: number = 0.1;
+  public SCALE_FACTOR: number = 0.065;
 
   constructor(data: FormationData) {
     this.points = data.points;
@@ -74,7 +74,7 @@ export class Formation {
     }
     for (let i = 0; i < jumperConfigs.length; i++) {
       const jumperConfig = jumperConfigs[i];
-      console.log("jumperconfig:", jumperConfig);
+      // console.log("jumperconfig:", jumperConfig);
       const slot = firstPoint.slots[i];
       if (!slot) continue;
       const jumper = new SimJumper(i, plane, 0, 7, 190);
@@ -86,6 +86,7 @@ export class Formation {
         jumper
       );
       jumper.angle = this.calculateAngleOffset(slot.angleDeg);
+      console.log(`Jumper ${i} angle offset:`, slot.angleDeg, "for slot:", i);
       jumper.isInFormation = true;
       this.jumpers.push(jumper);
     }
@@ -93,6 +94,8 @@ export class Formation {
 
   private calculateAngleOffset(angleDeg: number): THREE.Quaternion {
     const radians = (angleDeg * Math.PI) / 180;
+    console.log(`Calculated angle offset for ${angleDeg} degrees:`, radians);
+    // converting from radians to quaternion
     return new THREE.Quaternion().setFromAxisAngle(
       new THREE.Vector3(0, 1, 0),
       radians

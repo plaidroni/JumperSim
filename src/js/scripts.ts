@@ -139,9 +139,7 @@ let simJumpers: SimJumper[] = [];
 
 try {
   // const formationData1 = await loadJumpFormation("/formations/3way6a.jump");
-  const formationData1 = await loadJumpFormation(
-    "/formations/night_jump_32way.jump"
-  );
+  const formationData1 = await loadJumpFormation("/formations/jff2.jump");
   console.log("Loaded formation data:", formationData1);
   const formation1 = new Formation(formationData1);
   formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
@@ -331,7 +329,7 @@ systemsOK.then(() => {
   isUserControllingCamera = false;
 
   stlLoader.load(
-    "fabs/skydiver.stl",
+    "fabs/skydiver_fix.stl",
     (geometry) => {
       simJumpers.forEach((jumper) => {
         const color = new THREE.Color(
@@ -354,31 +352,23 @@ systemsOK.then(() => {
         geometry.boundingBox.getCenter(center);
         mesh.geometry.translate(-center.x, -center.y, -center.z);
         const forward = new THREE.Vector3(1, 0, 0);
-        const fixQuat = new THREE.Quaternion().setFromAxisAngle(
-          forward,
-          -Math.PI / 2
-        );
+        // const fixQuat = new THREE.Quaternion().setFromAxisAngle(
+        //   forward,
+        //   -Math.PI / 2
+        // );
         jumper.setMesh(mesh);
 
-        mesh.userData.fixQuat = fixQuat.clone();
+        // mesh.userData.fixQuat = fixQuat.clone();
         // set mesh rotation upright
 
         if (jumper.isInFormation && jumper.formationOffset.lengthSq() > 0) {
           mesh.position.copy(jumper.formationOffset);
           const targetDir = jumper.formationOffset.clone().normalize().negate();
           // console.log("formation offset:", jumper.formationOffset);
-          if (targetDir.lengthSq() > 0) {
-            // The mesh's "forward" after fixQuat is (0, 0, 1)
-            const meshForward = new THREE.Vector3(0, 0, 1);
-
-            // Combine fixQuat and formationQuat
-            // mesh.quaternion.copy(formationQuat).multiply(fixQuat);
-            mesh.quaternion.multiply(fixQuat);
-          } else {
-            mesh.quaternion.copy(fixQuat);
-          }
+          console.log("targetDir:", jumper.angle);
+          mesh.quaternion.copy(jumper.angle);
         } else {
-          mesh.quaternion.copy(fixQuat);
+          // mesh.quaternion.copy(fixQuat);
         }
         scene.add(jumper.getMesh());
       });
@@ -424,11 +414,11 @@ systemsOK.then(() => {
           sample.angle.y,
           sample.angle.z
         );
-        jumper.getMesh().quaternion.setFromEuler(euler);
-        if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
+        // jumper.getMesh().quaternion.setFromEuler(euler);
+        // if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
       } else if (sample.angle instanceof THREE.Quaternion) {
-        jumper.getMesh().quaternion.copy(sample.angle);
-        if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
+        // jumper.getMesh().quaternion.copy(sample.angle);
+        // if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
       }
       jumper.getMesh().userData = {
         label: `Jumper #${jumper.index}`,
