@@ -3,17 +3,12 @@ export class KinematicSample {
   time: any;
   position: any;
   velocity: any;
-  direction: THREE.Vector3;
-  constructor(
-    time,
-    position,
-    velocity,
-    direction = new THREE.Vector3(0, 0, 0)
-  ) {
+  angle: THREE.Vector3;
+  constructor(time, position, velocity, angle = new THREE.Vector3(0, 0, 0)) {
     this.time = time;
     this.position = position.clone();
     this.velocity = velocity.clone();
-    this.direction = direction.clone();
+    this.angle = angle.clone();
   }
 }
 
@@ -24,15 +19,15 @@ export class KinematicTrack {
     this.samples = [];
   }
 
-  addSample(time, position, velocity, direction) {
-    this.samples.push(new KinematicSample(time, position, velocity, direction));
+  addSample(time, position, velocity, angle) {
+    this.samples.push(new KinematicSample(time, position, velocity, angle));
   }
 
   editSample(
     time: number,
     position?: THREE.Vector3,
     velocity?: THREE.Vector3,
-    direction?: THREE.Vector3
+    angle?: THREE.Vector3
   ) {
     if (time === undefined || time < 0 || time >= this.samples.length) {
       console.error("Invalid or missing sample index");
@@ -42,7 +37,7 @@ export class KinematicTrack {
     const sample = this.samples[time];
     if (position !== undefined) sample.position = position;
     if (velocity !== undefined) sample.velocity = velocity;
-    if (direction !== undefined) sample.direction = direction;
+    if (angle !== undefined) sample.angle = angle;
   }
 
   getInterpolatedSample(time) {

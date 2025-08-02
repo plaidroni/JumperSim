@@ -41,7 +41,6 @@ export class SimJumper extends Jumper {
   track: KinematicTrack;
   formationOffset: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   origin: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
-  isInFormation: boolean = false;
   hasLanded: boolean;
   hasJumped: boolean;
   angle: THREE.Quaternion = new THREE.Quaternion();
@@ -76,7 +75,8 @@ export class SimJumper extends Jumper {
 
     function windVectorAt(altitude: number): THREE.Vector3 {
       let lower = windLayers[0];
-      let upper = windLayers[windLayers.length - 1];
+      // we take 2 wind layers down because we pull 18k and need winds at 14k
+      let upper = windLayers[windLayers.length - 2];
 
       for (let i = 0; i < windLayers.length - 1; i++) {
         if (
@@ -138,6 +138,7 @@ export class SimJumper extends Jumper {
           .multiplyScalar(-dragMag);
         const gravity = new THREE.Vector3(0, -mass * g, 0);
         const netForce = gravity.clone().add(drag);
+        // console.log("jumper angle:", this.angle);
 
         const acceleration = netForce.clone().divideScalar(mass);
         this.velocity.add(acceleration.multiplyScalar(step));
@@ -155,7 +156,8 @@ export class SimJumper extends Jumper {
       this.track.addSample(
         simTime,
         currentPosition.clone(),
-        this.velocity.clone()
+        this.velocity.clone(),
+        this.angle.clone()
       );
     }
   }

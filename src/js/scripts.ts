@@ -146,7 +146,6 @@ try {
   const formation1 = new Formation(formationData1);
   formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
   simPlane.addFormation(formation1);
-  simJumpers = createDefaultSimJumpers(18, simPlane);
 
   // const formationData2 = await loadJumpFormation("/formations/another.jump");
   // const formation2 = new Formation(formationData2);
@@ -352,22 +351,21 @@ systemsOK.then(() => {
           -Math.PI / 2
         );
         jumper.setMesh(mesh);
+
+        mesh.userData.fixQuat = fixQuat.clone();
         // set mesh rotation upright
 
         if (jumper.isInFormation && jumper.formationOffset.lengthSq() > 0) {
           mesh.position.copy(jumper.formationOffset);
           const targetDir = jumper.formationOffset.clone().normalize().negate();
-          console.log("formation offset:", jumper.formationOffset);
+          // console.log("formation offset:", jumper.formationOffset);
           if (targetDir.lengthSq() > 0) {
             // The mesh's "forward" after fixQuat is (0, 0, 1)
             const meshForward = new THREE.Vector3(0, 0, 1);
-            const formationQuat = new THREE.Quaternion().setFromUnitVectors(
-              meshForward,
-              jumper.formationOffset.clone().normalize()
-            );
 
             // Combine fixQuat and formationQuat
-            mesh.quaternion.copy(formationQuat).multiply(fixQuat);
+            // mesh.quaternion.copy(formationQuat).multiply(fixQuat);
+            mesh.quaternion.multiply(fixQuat);
           } else {
             mesh.quaternion.copy(fixQuat);
           }
@@ -408,7 +406,22 @@ systemsOK.then(() => {
     simJumpers.forEach((jumper) => {
       const sample = jumper.track.getInterpolatedSample(time);
       jumper.getMesh().position.copy(sample.position);
+
       const posFeet = sample.position.clone().multiplyScalar(3.28084);
+      // edit quaternion of mesh to match angle
+      const fixQuat = jumper.getMesh().userData.fixQuat;
+      if (sample.angle instanceof THREE.Vector3) {
+        const euler = new THREE.Euler(
+          sample.angle.x,
+          sample.angle.y,
+          sample.angle.z
+        );
+        jumper.getMesh().quaternion.setFromEuler(euler);
+        if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
+      } else if (sample.angle instanceof THREE.Quaternion) {
+        jumper.getMesh().quaternion.copy(sample.angle);
+        if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
+      }
       jumper.getMesh().userData = {
         label: `Jumper #${jumper.index}`,
         time: sample.time.toFixed(2),
@@ -420,11 +433,9 @@ systemsOK.then(() => {
         )}, ${sample.velocity.y.toFixed(1)}, ${sample.velocity.z.toFixed(
           1
         )}) m/s`,
-        rotation: `(${jumper.direction.x.toFixed(
+        rotation: `(${jumper.angle.x.toFixed(1)}, ${jumper.angle.y.toFixed(
           1
-        )}, ${jumper.direction.y.toFixed(1)}, ${jumper.direction.z.toFixed(
-          1
-        )}) deg`,
+        )}, ${jumper.angle.z.toFixed(1)}) deg`,
       };
     });
   }

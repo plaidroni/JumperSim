@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { SimPlane } from "../classes/simEntities";
+import { Formation } from "./formations";
 
 export class Plane {
   initialPosition: THREE.Vector3;
@@ -55,9 +56,12 @@ export class Jumper {
   position: THREE.Vector3;
   currentVelocity: THREE.Vector3;
   velocity: THREE.Vector3;
+  isInFormation: boolean = false;
+  formation: Formation;
   name: String;
   height: number;
   area: number;
+  targetPosition: THREE.Vector3;
 
   constructor(
     index: number,
@@ -74,6 +78,12 @@ export class Jumper {
     this.plane = plane;
     this.initialVelocity = plane.vector;
     this.position = new THREE.Vector3();
+    /**
+     * this is used for finding the target position that the jumper wants to be in.
+     * It is not used for the actual position of the jumper, but rather for the precalculate function to find the minimum distance to the target.
+     * For example, the jumper may want to be in a formation and they will apply forward thrust (tracking) to reach that position.
+     */
+    this.targetPosition = new THREE.Vector3();
 
     this.mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.2, 8, 8),

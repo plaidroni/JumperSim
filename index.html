@@ -217,24 +217,46 @@
       </div>
     </div>
 
-    <div class="panel" id="jumprun-panel">
+    <div class="panel" id="jump-settings-panel">
       <div class="panel-header">
-        <h2>Jump-Run Settings</h2>
+        <h2>Jump Settings</h2>
         <div class="panel-controls">
           <button>–</button>
           <button>×</button>
         </div>
       </div>
       <div class="panel-body">
-
+<label>
+          Jump Name:
+          <input
+            type="number"
+            id="pullAltitude"
+            min="500"
+            max="6000"
+            step="100"
+            value="3500"
+          />
+        </label>
+        
         <div class="panel-controls">
           <button id="align-jumprun">Align Jumprun</button>
         </div>
-        
+        <label>
+          Jump Height:
+          <input
+            type="number"
+            id="pullAltitude"
+            min="3000"
+            max="18500"
+            step="100"
+            value="12500"
+          />
+        </label>
       </div>
     </div>
 
-    <div class="panel" id="sim-panel">
+    <!-- deprecate this in favor of new jump-settings-panel -->
+    <!-- <div class="panel" id="sim-panel">
       <div class="panel-header">
         <h2>Jump Settings</h2>
         <div class="panel-controls">
@@ -266,7 +288,7 @@
           />
         </label>
       </div>
-    </div>
+    </div> -->
 
     <div class="panel" id="weatherdata-panel">
       <div class="panel-header">
