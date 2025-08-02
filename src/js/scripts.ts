@@ -20,6 +20,7 @@ import {
 import { loadJumpFormation } from "./exampleData/formations";
 import { Formation } from "./classes/formations";
 import { initializePanelManager } from "./menubar";
+import { notificationManager } from "./classes/NotificationManager";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -153,9 +154,31 @@ try {
   formations = simPlane.formations;
   // Gather all jumpers from all formations
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
+
+  // Show success notification for formation loading
+  notificationManager.success(`Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`, {
+    duration: 5000,
+    actions: [
+      {
+        label: "View Objects",
+        callback: () => {
+          // Show objects panel - find and maximize it
+          const objectsPanel = document.querySelector('#objects-panel') as HTMLElement;
+          if (objectsPanel) {
+            objectsPanel.style.visibility = 'visible';
+          }
+        }
+      }
+    ]
+  });
 } catch (e) {
   // fallback: no formation, use default jumpers
   simJumpers = createDefaultSimJumpers(21, simPlane);
+  
+  // Show warning notification for fallback
+  notificationManager.warning("Formation loading failed - using default jumpers", {
+    duration: 6000
+  });
 }
 
 // === LOOKING AT SCENE OBJECT ===
@@ -277,6 +300,19 @@ export const systemsOK = waitAllSystems();
 
 // === JUMPER LOGIC ===
 systemsOK.then(() => {
+  // Show a notification when the simulation is ready
+  notificationManager.success("Simulation loaded successfully!", {
+    actions: [
+      {
+        label: "View Objects",
+        callback: () => {
+          // Focus on objects panel - simple example
+          console.log("Opening objects panel");
+        }
+      }
+    ]
+  });
+
   simJumpers.forEach((jumper) => {
     jumper.precalculate(300);
     scene.add(jumper.getMesh());
@@ -445,3 +481,6 @@ window.addEventListener("resize", () => {
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
 initializePanelManager();
+
+// Make notification manager globally available
+(window as any).notificationManager = notificationManager;

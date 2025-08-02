@@ -237,8 +237,32 @@ async function fetchWeatherData() {
         weatherData.daily.weatherCode[i]
       );
     }
+
+    // Show success notification when weather data is loaded
+    if ((window as any).notificationManager) {
+      (window as any).notificationManager.success("Weather data loaded successfully!", {
+        duration: 4000
+      });
+    }
   } catch (error) {
     console.error("Weather fetch failed", error);
+    // Show error notification
+    if ((window as any).notificationManager) {
+      (window as any).notificationManager.error("Weather data unavailable - using defaults", {
+        duration: 8000,
+        actions: [
+          {
+            label: "Retry",
+            callback: () => {
+              // Trigger weather fetch retry
+              console.log("Retrying weather fetch...");
+              fetchWeatherData();
+            },
+            primary: true
+          }
+        ]
+      });
+    }
   } finally {
     // loader.style.display = "none";
     // fetchButton.style.display = "inline-block";
