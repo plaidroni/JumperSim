@@ -2,7 +2,7 @@
 
 JumperSim is a 3D skydiving physics simulator built with Three.js and TypeScript, designed for visualizing and analyzing jumper dynamics in both freefall and canopy flight. Featuring real-time weather data, layered wind modeling, and a full timeline playback system, JumperSim is built as a safety training and planning tool for skydivers, instructors, and dropzone operators.
 
-<img width="2560" height="1313" alt="jumpersim" src="https://github.com/user-attachments/assets/ea099efa-3778-4fbd-93d6-a3982caebf26" />
+![A screenshot of JumperSim](https://github.com/user-attachments/assets/ea099efa-3778-4fbd-93d6-a3982caebf26)
 
 ## Features
 
@@ -36,28 +36,21 @@ Supports predictive modeling for potential canopy collisions in variable conditi
 
 ## Libraries & Addons used
 
-Three.JS
-
-OrbitControls
-
-Vite
+- Three.JS
+- OrbitControls
+- Vite
 
 ## APIs used
 
-OpenMateo(for wind vectors)
-
-Mapbox(satellite view)
+- [OpenMeteo](https://open-meteo.com/) (for wind vectors)
+- [Mapbox](https://www.mapbox.com/) (Satellite view)
 
 ## Installation
 
-(DISCLAIMER: Your own Mapbox public API must be declared as VITE_MAPBOX="..." in root dir.)
+**(DISCLAIMER: Your own Mapbox public API must be declared as `VITE_MAPBOX="..."` in root dir.)**
 
 To install and start local server:
 
-git clone https://github.com/plaidroni/JumperSim.git
-
-~npx parcel ./src/index.html~
-
-npm i
-
-npm run start
+- `git clone https://github.com/plaidroni/JumperSim.git`
+- `npm i`
+- `npm run start`
