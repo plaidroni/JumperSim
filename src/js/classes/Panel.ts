@@ -219,7 +219,7 @@ export class Panel {
 
   public saveState(): void {
     const left = parseInt(this.panelElement.style.left || "20", 10);
-    const top = parseInt(this.panelElement.style.top || "30", 10);  
+    const top = parseInt(this.panelElement.style.top || "30", 10);
     // by default, give some room at the top so the panel doesn't get stuck under the menu
     const width = this.panelElement.offsetWidth;
     const height = this.panelElement.offsetHeight;
@@ -235,7 +235,6 @@ export class Panel {
 
   // this may be more efficient to move into PanelManager, and initialize it in the constructor
   public restoreState(): void {
-
     let stored = localStorage.getItem(this.panelElement.id);
     let toRead: JSON | null = JSON.parse(stored ? stored : "{}");
 

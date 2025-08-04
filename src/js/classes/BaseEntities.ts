@@ -46,11 +46,16 @@ export class Plane {
     this.direction.copy(newDirection.normalize());
     this.vector.copy(this.direction).multiplyScalar(this.speed);
     if (this.mesh) {
-      this.mesh.rotation.z = Math.atan2(this.direction.y, this.direction.x);
+      const yaw = Math.atan2(this.direction.x, this.direction.z);
+      this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     }
   }
 }
 
+/**
+ * base class to store all logic & data for a jumper. different from SimJumper,
+ * as this does none of the displaying nor does it hold a mesh
+ */
 export class Jumper {
   index: number;
   jumpTime: number;
