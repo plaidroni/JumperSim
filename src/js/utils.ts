@@ -5,6 +5,9 @@ export function clampVectorAboveYZero(vector) {
   return vector;
 }
 
+/**
+ * Helper function to set a cookie in the browser.
+ */
 export function setCookie(name: string, value: string, days = 7) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(
@@ -12,6 +15,11 @@ export function setCookie(name: string, value: string, days = 7) {
   )}; expires=${expires}; path=/`;
 }
 
+/**
+ * Helper function to retrieve a cookie in the browser.
+ * @param name
+ * @returns Value of the cookie, or null if not found.
+ */
 export function getCookie(name: string): string | null {
   return document.cookie.split("; ").find((row) => row.startsWith(name + "="))
     ? decodeURIComponent(
@@ -23,6 +31,14 @@ export function getCookie(name: string): string | null {
     : null;
 }
 
+/**
+ * Calculate the offset based on the latitude and longitude.
+ * @param lat - Latitude coordinate
+ * @param lon - Longitude coordinate
+ * @param centerLat 
+ * @param centerLon 
+ * @returns A three.js vector of the offset
+ */
 export function latLonToOffset(lat, lon, centerLat, centerLon) {
   const earthRadius = 6371000; // meters
   const dLat = (lat - centerLat) * (Math.PI / 180);
@@ -46,6 +62,11 @@ const pressureToAltitude: Record<string, number> = {
   "700hPa": 3100,
 };
 
+/**
+ * Extract the info from an open-meteo weather snapshot and format it as wind layers.
+ * @param snapshot 
+ * @returns An array of wind layers, sorted by altitude highest to lowest.
+ */
 export function convertWeatherSnapshotToWindLayers(snapshot: WeatherSnapshot) {
   const windLayers: Array<any> = [];
 
