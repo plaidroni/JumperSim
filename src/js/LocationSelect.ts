@@ -3,6 +3,7 @@ import { getCookie, setCookie } from "./Utils";
 import { loadEnv } from "vite";
 import * as THREE from "three";
 import { signalMeshReady } from "./Scripts";
+import { HeightAxis } from "./ui/HeightAxis";
 
 export async function loadDropzones(scene: THREE.Scene) {
   const response = await fetch("/json/dropzones.json");
@@ -79,6 +80,16 @@ export async function loadDropzones(scene: THREE.Scene) {
     const gridHelper = new THREE.GridHelper(planeSize, 16);
     (window as any).gridHelper = gridHelper;
     scene.add(gridHelper);
+
+    // Create and add the height axis
+    const heightAxis = new HeightAxis({
+      maxHeight: 5500, // ~18000 ft in meters
+      minHeight: 0,
+      majorInterval: 500 // ~1640 ft in meters
+    });
+    (window as any).heightAxis = heightAxis; // Store for later use
+  
+    scene.add(heightAxis.getObject());
 
     try {
       const response = await fetch(mapUrl);
