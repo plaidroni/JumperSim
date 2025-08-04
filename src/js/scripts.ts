@@ -408,6 +408,20 @@ systemsOK.then(() => {
     ],
   });
 
+  if (alignPoints.length === 0) {
+    notificationManager.warning("Jumprun is not aligned", {
+      duration: 0,
+      actions: [
+        {
+          label: "Align Jumprun",
+          callback: () => {
+            handleStartAlignJumprun();
+          },
+        },
+      ],
+    });
+  }
+
   simJumpers.forEach((jumper) => {
     jumper.precalculate(300);
     scene.add(jumper.getMesh());
