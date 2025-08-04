@@ -16,7 +16,7 @@ import {
   createDynamicTrajectoryLine,
   updateTrajectoryLines,
   visualizeJumpers,
-} from "./ui/TrajectoryLine";
+} from "./ui/TrajectoryLines";
 import { loadJumpFormation } from "./exampleData/Formations";
 import { Formation } from "./classes/Formations";
 import { initializePanelManager } from "./Menubar";
