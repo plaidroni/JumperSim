@@ -41,6 +41,14 @@ export class Plane {
   getMesh(): THREE.Object3D | null {
     return this.mesh;
   }
+
+  changeDirection(newDirection: THREE.Vector3) {
+    this.direction.copy(newDirection.normalize());
+    this.vector.copy(this.direction).multiplyScalar(this.speed);
+    if (this.mesh) {
+      this.mesh.rotation.z = Math.atan2(this.direction.y, this.direction.x);
+    }
+  }
 }
 
 export class Jumper {

@@ -94,6 +94,7 @@ export async function loadDropzones(scene: THREE.Scene) {
       const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const mapPlane = new THREE.Mesh(geometry, material);
+      (window as any).mapPlane = mapPlane;
       mapPlane.rotation.x = -Math.PI / 2;
 
       scene.add(mapPlane);
