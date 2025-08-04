@@ -77,6 +77,7 @@ export async function loadDropzones(scene: THREE.Scene) {
     const planeSize = 4618;
 
     const gridHelper = new THREE.GridHelper(planeSize, 16);
+    (window as any).gridHelper = gridHelper;
     scene.add(gridHelper);
 
     try {
@@ -92,14 +93,26 @@ export async function loadDropzones(scene: THREE.Scene) {
       });
 
       const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
-      const material = new THREE.MeshBasicMaterial({ map: texture });
+      let material = new THREE.MeshBasicMaterial({ map: texture });
+
       const mapPlane = new THREE.Mesh(geometry, material);
+
       (window as any).mapPlane = mapPlane;
       mapPlane.rotation.x = -Math.PI / 2;
 
       scene.add(mapPlane);
       signalMeshReady();
     } catch (err) {
+      const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+
+      const material = new THREE.MeshBasicMaterial({
+        wireframe: true,
+      });
+
+      const mapPlane = new THREE.Mesh(geometry, material);
+      (window as any).mapPlane = mapPlane;
+      mapPlane.rotation.x = -Math.PI / 2;
+      scene.add(mapPlane);
       console.error("Map texture load failed. Did you check the API Key?", err);
       signalMeshReady();
     }

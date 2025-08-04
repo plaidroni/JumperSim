@@ -23,6 +23,8 @@ import { initializePanelManager } from "./Menubar";
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
+import { alignPlaneToJumprun } from "./utils/AlignJumprun";
+import { askForRefresh } from "./core/data/SimulationVariables";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -60,8 +62,14 @@ let clickedThisFrame = false;
 // const gridHelper = new THREE.GridHelper(1609, 16); // 16 subdivisions = 100m spacing
 // scene.add(gridHelper);
 
+// === EVENT LISTENERS ===
+
+let isAligningJumprun: Boolean = false;
+let alignPoints: THREE.Vector3[] = [];
+let alignArrow: THREE.ArrowHelper | null = null;
+
 window.addEventListener("mousedown", () => {
-  if (controls && controls.state === 0) {
+  if (controls) {
     clickedThisFrame = true;
 
     // if this causes issues or lag put into animate frame instead
@@ -81,6 +89,79 @@ function onMouseMove(event) {
 }
 
 document.addEventListener("mousemove", onMouseMove);
+
+function collectTwoAlignPoints(
+  mapPlane: THREE.Object3D
+): Promise<[THREE.Vector3, THREE.Vector3]> {
+  console.log("Listening for clicks");
+  return new Promise((resolve) => {
+    let points: THREE.Vector3[] = [];
+
+    function onClick(event: MouseEvent) {
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(mapPlane, true);
+      if (intersects.length > 0) {
+        points.push(intersects[0].point.clone());
+        if (points.length === 2) {
+          renderer.domElement.removeEventListener("click", onClick);
+          resolve([points[0], points[1]]);
+          console.log("Collected points:", points);
+        }
+      }
+    }
+
+    renderer.domElement.addEventListener("click", onClick);
+  });
+}
+
+async function handleStartAlignJumprun() {
+  // the two points where we will find the angle between
+  // init
+  console.log("Starting jumprun alignment...");
+  alignPoints = [];
+
+  if (alignArrow) {
+    scene.remove(alignArrow);
+    alignArrow = null;
+  }
+
+  isAligningJumprun = true;
+
+  const mapPlane = (window as any).mapPlane
+    ? (window as any).mapPlane
+    : (window as any).gridHelper;
+
+  notificationManager.info(
+    "Click two points on the map to set jumprun direction."
+  );
+  const [p1, p2] = await collectTwoAlignPoints(mapPlane);
+  alignPoints = [p1, p2];
+  drawAlignArrow();
+  isAligningJumprun = false;
+  alignPlaneToJumprun(simPlane, p1, p2);
+  askForRefresh(() => {
+    simPlane.precalculate(300);
+    simJumpers.forEach((j) => j.precalculate(300));
+  });
+}
+
+function drawAlignArrow() {
+  if (alignArrow) {
+    scene.remove(alignArrow);
+    alignArrow = null;
+  }
+
+  const [p1, p2] = alignPoints;
+  const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+  const length = p1.distanceTo(p2);
+  alignArrow = new THREE.ArrowHelper(dir, p1, length, 0xff0000, length * 0.1);
+
+  scene.add(alignArrow);
+}
+
+document
+  .getElementById("start-align-jumprun")
+  ?.addEventListener("click", handleStartAlignJumprun);
 
 function checkHoverIntersect(objects: THREE.Object3D[]) {
   if (!objects || objects.length === 0 || !camera || !raycaster) return;
@@ -235,6 +316,11 @@ document.querySelectorAll(".focus-button").forEach((btn) =>
   })
 );
 
+/**
+controls.touches = {
+	ONE: THREE.TOUCH.ROTATE,
+	TWO: THREE.TOUCH.DOLLY_PAN
+} */
 // set up camera controls
 controls.addEventListener("start", () => {
   // cancel if the user starts panning
@@ -244,6 +330,8 @@ controls.addEventListener("start", () => {
     .querySelectorAll(".focus-button.following")
     .forEach((b) => b.classList.remove("following"));
 });
+
+// use control.touches to disable following if user is panning (not rotating)
 controls.addEventListener("end", () => {
   if (controls.state !== 3) {
     isUserControllingCamera = false;

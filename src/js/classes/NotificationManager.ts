@@ -5,8 +5,9 @@ export interface NotificationAction {
 }
 
 export interface NotificationOptions {
-  type?: 'info' | 'success' | 'warning' | 'error';
+  type?: "info" | "success" | "warning" | "error";
   duration?: number; // in milliseconds, 0 for no auto-dismiss
+  autoDismiss?: boolean;
   actions?: NotificationAction[];
   dismissible?: boolean;
 }
@@ -37,26 +38,26 @@ export class NotificationManager {
   }
 
   private createContainer(): void {
-    this.container = document.createElement('div');
-    this.container.id = 'notification-container';
-    this.container.className = 'notification-container';
+    this.container = document.createElement("div");
+    this.container.id = "notification-container";
+    this.container.className = "notification-container";
     document.body.appendChild(this.container);
   }
 
   public show(message: string, options: NotificationOptions = {}): string {
     const id = `notification-${this.nextId++}`;
     const defaultOptions: NotificationOptions = {
-      type: 'info',
-      duration: 10000, // 10 seconds default
+      type: "info",
+      duration: 10000,
       dismissible: true,
-      ...options
+      ...options,
     };
 
     const notification: Notification = {
       id,
       message,
       options: defaultOptions,
-      element: this.createElement(id, message, defaultOptions)
+      element: this.createElement(id, message, defaultOptions),
     };
 
     this.notifications.set(id, notification);
@@ -64,7 +65,7 @@ export class NotificationManager {
 
     // Trigger animation
     requestAnimationFrame(() => {
-      notification.element.classList.add('notification-enter');
+      notification.element.classList.add("notification-enter");
     });
 
     // Set auto-dismiss timer
@@ -87,8 +88,8 @@ export class NotificationManager {
     }
 
     // Animate out
-    notification.element.classList.add('notification-exit');
-    
+    notification.element.classList.add("notification-exit");
+
     // Remove after animation
     setTimeout(() => {
       if (notification.element.parentNode) {
@@ -104,32 +105,36 @@ export class NotificationManager {
     });
   }
 
-  private createElement(id: string, message: string, options: NotificationOptions): HTMLElement {
-    const element = document.createElement('div');
+  private createElement(
+    id: string,
+    message: string,
+    options: NotificationOptions
+  ): HTMLElement {
+    const element = document.createElement("div");
     element.className = `notification notification-${options.type}`;
-    element.setAttribute('data-notification-id', id);
+    element.setAttribute("data-notification-id", id);
 
-    // Icon based on type
     const icon = this.getIcon(options.type!);
-    
-    // Create content
-    const content = document.createElement('div');
-    content.className = 'notification-content';
-    
-    const messageEl = document.createElement('div');
-    messageEl.className = 'notification-message';
+
+    const content = document.createElement("div");
+    content.className = "notification-content";
+
+    const messageEl = document.createElement("div");
+    messageEl.className = "notification-message";
     messageEl.textContent = message;
-    
+
     content.appendChild(messageEl);
 
     // Add actions if provided
     if (options.actions && options.actions.length > 0) {
-      const actionsEl = document.createElement('div');
-      actionsEl.className = 'notification-actions';
-      
-      options.actions.forEach(action => {
-        const button = document.createElement('button');
-        button.className = `notification-action ${action.primary ? 'primary' : 'secondary'}`;
+      const actionsEl = document.createElement("div");
+      actionsEl.className = "notification-actions";
+
+      options.actions.forEach((action) => {
+        const button = document.createElement("button");
+        button.className = `notification-action ${
+          action.primary ? "primary" : "secondary"
+        }`;
         button.textContent = action.label;
         button.onclick = () => {
           action.callback();
@@ -137,49 +142,61 @@ export class NotificationManager {
         };
         actionsEl.appendChild(button);
       });
-      
+
       content.appendChild(actionsEl);
     }
 
     // Add dismiss button if dismissible
     if (options.dismissible) {
-      const dismissBtn = document.createElement('button');
-      dismissBtn.className = 'notification-dismiss';
-      dismissBtn.innerHTML = '×';
+      const dismissBtn = document.createElement("button");
+      dismissBtn.className = "notification-dismiss";
+      dismissBtn.innerHTML = "×";
       dismissBtn.onclick = () => this.dismiss(id);
       element.appendChild(dismissBtn);
     }
 
     element.appendChild(content);
-    
+
     return element;
   }
 
   private getIcon(type: string): string {
     const icons = {
-      info: 'ℹ',
-      success: '✓',
-      warning: '⚠',
-      error: '✕'
+      info: "ℹ",
+      success: "✓",
+      warning: "⚠",
+      error: "✕",
     };
     return icons[type] || icons.info;
   }
 
   // Convenience methods
-  public info(message: string, options?: Omit<NotificationOptions, 'type'>): string {
-    return this.show(message, { ...options, type: 'info' });
+  public info(
+    message: string,
+    options?: Omit<NotificationOptions, "type">
+  ): string {
+    return this.show(message, { ...options, type: "info" });
   }
 
-  public success(message: string, options?: Omit<NotificationOptions, 'type'>): string {
-    return this.show(message, { ...options, type: 'success' });
+  public success(
+    message: string,
+    options?: Omit<NotificationOptions, "type">
+  ): string {
+    return this.show(message, { ...options, type: "success" });
   }
 
-  public warning(message: string, options?: Omit<NotificationOptions, 'type'>): string {
-    return this.show(message, { ...options, type: 'warning' });
+  public warning(
+    message: string,
+    options?: Omit<NotificationOptions, "type">
+  ): string {
+    return this.show(message, { ...options, type: "warning" });
   }
 
-  public error(message: string, options?: Omit<NotificationOptions, 'type'>): string {
-    return this.show(message, { ...options, type: 'error' });
+  public error(
+    message: string,
+    options?: Omit<NotificationOptions, "type">
+  ): string {
+    return this.show(message, { ...options, type: "error" });
   }
 }
 
