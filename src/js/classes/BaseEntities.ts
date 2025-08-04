@@ -46,7 +46,8 @@ export class Plane {
     this.direction.copy(newDirection.normalize());
     this.vector.copy(this.direction).multiplyScalar(this.speed);
     if (this.mesh) {
-      this.mesh.rotation.z = Math.atan2(this.direction.x, this.direction.z);
+      const yaw = Math.atan2(this.direction.x, this.direction.z);
+      this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     }
   }
 }
