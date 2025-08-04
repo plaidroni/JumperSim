@@ -1,7 +1,9 @@
 import { fetchWeatherApi } from "openmeteo";
-import { signalWeatherReady } from "../js/Scripts";
+import { handleForeignRecalculation, signalWeatherReady } from "../js/Scripts";
+import { notificationManager } from "../js/classes/NotificationManager";
 
 const url = "https://api.open-meteo.com/v1/forecast";
+let firstLoad = true;
 
 const dropzoneDropdown = document.getElementById(
   "dropzone-select"
@@ -239,14 +241,25 @@ async function fetchWeatherData() {
     }
 
     // Show success notification when weather data is loaded
-    if ((window as any).notificationManager) {
-      (window as any).notificationManager.success(
-        "Weather data loaded successfully!",
-        {
-          duration: 4000,
-        }
-      );
+    notificationManager.success("Weather data loaded successfully!", {
+      duration: 4000,
+    });
+    console.log("Asking for recalculation due to env var change");
+    if (!firstLoad) {
+      notificationManager.warning("Simulation Variables Changed", {
+        duration: 0,
+
+        actions: [
+          {
+            label: "Recalculate",
+            callback: () => {
+              handleForeignRecalculation();
+            },
+          },
+        ],
+      });
     }
+    firstLoad = false;
   } catch (error) {
     console.error("Weather fetch failed", error);
     // Show error notification
@@ -272,15 +285,11 @@ async function fetchWeatherData() {
   } finally {
     // loader.style.display = "none";
     // fetchButton.style.display = "inline-block";
+
     populateWeatherPanel((<any>window).weatherSnapshotLog[0]);
     signalWeatherReady();
   }
 }
-
-dropzoneDropdown?.addEventListener("change", async () => {
-  declareParams();
-  fetchWeatherData();
-});
 
 function populateWeatherPanel(snapshot: WeatherSnapshot) {
   const panelBody = document.querySelector("#weatherdata-panel .panel-body");

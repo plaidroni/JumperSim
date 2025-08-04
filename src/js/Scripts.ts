@@ -224,6 +224,7 @@ try {
   console.log("Loaded formation data:", formationData1);
   const formation1 = new Formation(formationData1);
   formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
+
   simPlane.addFormation(formation1);
 
   // const formationData2 = await loadJumpFormation("/formations/another.jump");
@@ -258,7 +259,6 @@ try {
   );
 } catch (e) {
   // fallback: no formation, use default jumpers
-  simJumpers = createDefaultSimJumpers(21, simPlane);
 
   // Warning notification for fallback scenario
   notificationManager.warning(
@@ -359,6 +359,12 @@ function updateCameraFollow() {
     );
     controls.update();
   }
+}
+
+// This function can be used to handle recalculations from external sources
+export function handleForeignRecalculation() {
+  simPlane.precalculate(300);
+  simJumpers.forEach((jumper) => jumper.precalculate(300));
 }
 
 // === READY CHECKS ===
