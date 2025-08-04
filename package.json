@@ -28,6 +28,8 @@
     "mapbox-gl": "^3.13.0",
     "node": "^22.16.0",
     "openmeteo": "^1.2.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "three": "^0.176.0"
   },
   "devDependencies": {
