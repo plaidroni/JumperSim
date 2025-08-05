@@ -2,8 +2,9 @@ import { declareParams, fetchWeatherData } from "../apidata/OpenMateo";
 import { getCookie, setCookie } from "./Utils";
 import { loadEnv } from "vite";
 import * as THREE from "three";
-import { signalMeshReady } from "./Scripts";
+import { handleForeignRecalculation, signalMeshReady } from "./Scripts";
 import { HeightAxis } from "./ui/HeightAxis";
+import { finalization } from "process";
 
 export async function loadDropzones(scene: THREE.Scene) {
   const response = await fetch("/json/dropzones.json");
@@ -61,6 +62,16 @@ export async function loadDropzones(scene: THREE.Scene) {
     (window as any).selectedDropzone = dz;
     console.log("Selected DZ:", dz);
 
+    // check for default jumprun
+    console.log("dz.defaultJumprun:", dz.defaultJumprun);
+    if (dz.defaultJumprun && dz.defaultJumprun.length === 2) {
+      console.log("Default jumprun found for", dz.name);
+      (window as any).defaultJumprunPoints = dz.defaultJumprun.map(
+        (pt: { x: number; y: number; z: number }) =>
+          new THREE.Vector3(pt.x, pt.y, pt.z)
+      );
+    }
+
     detailsDiv.innerHTML = `
       <strong>${dz.name}</strong><br>
       Country: ${dz.country}<br>
@@ -85,10 +96,10 @@ export async function loadDropzones(scene: THREE.Scene) {
     const heightAxis = new HeightAxis({
       maxHeight: 5500, // ~18000 ft in meters
       minHeight: 0,
-      majorInterval: 500 // ~1640 ft in meters
+      majorInterval: 500, // ~1640 ft in meters
     });
     (window as any).heightAxis = heightAxis; // Store for later use
-  
+
     scene.add(heightAxis.getObject());
 
     try {

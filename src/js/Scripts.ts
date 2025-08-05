@@ -176,6 +176,9 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
     if (intersects.length > 0) {
       const obj = intersects[0].object;
       const data = obj.userData;
+      // we check if the object we're following is a plane, if so we put the user into edit mode
+      if (obj instanceof THREE.Plane) {
+      }
 
       if (data?.label) {
         let html = `<strong>${data.label}</strong><br>`;
@@ -191,6 +194,9 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
         const center = box.getCenter(new THREE.Vector3());
         cameraOffset = new THREE.Vector3().subVectors(camera.position, center);
         clickedThisFrame = false;
+        // notificationManager.info("Now following: " + data.label, {
+        //   duration: 3000,
+        // });
       }
 
       return;
@@ -401,19 +407,22 @@ export const systemsOK = waitAllSystems();
 
 // === JUMPER LOGIC ===
 systemsOK.then(() => {
-  // Success notification when simulation fully loads
   notificationManager.success("Simulation loaded successfully!", {
     actions: [
       {
         label: "View Objects",
         callback: () => {
-          // Focus on objects panel - simple example
           console.log("Opening objects panel");
         },
       },
     ],
   });
 
+  const defaultPoints = (window as any).defaultJumprunPoints;
+  if (defaultPoints && defaultPoints.length === 2) {
+    console.log("defaultPoints:", defaultPoints);
+    alignPlaneToJumprun(simPlane, defaultPoints[0], defaultPoints[1]);
+  }
   if (alignPoints.length === 0) {
     notificationManager.warning("Jumprun is not aligned", {
       duration: 0,
