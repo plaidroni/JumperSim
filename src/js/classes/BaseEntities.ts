@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import { SimPlane } from "./SimEntities";
 import { Formation } from "./Formations";
+import { v4 as uuidv4 } from "uuid";
 
 export class Plane {
+  id = uuidv4();
   initialPosition: THREE.Vector3;
   position: THREE.Vector3;
   direction: THREE.Vector3;
@@ -57,6 +59,7 @@ export class Plane {
  * as this does none of the displaying nor does it hold a mesh
  */
 export class Jumper {
+  id = uuidv4();
   index: number;
   jumpTime: number;
   deployDelay: number;
