@@ -183,280 +183,281 @@
 
     <div id="minimized-bar"></div>
 
-    <!-- compass -->
-    <div id="compassContainer" style="position: absolute; margin: 3rem">
-      <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
-
-    </div>
-
-    <div class="panel" id="location-panel">
-      <div class="panel-header">
-        <h2>Location</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
+    <div id="active-panel-container">
+      <div id="compass-container" style="position: absolute; margin: 3rem">
+        <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
       </div>
-      <div class="panel-body">
-        <!-- <label for="dropzone-select">Choose a dropzone:</label> -->
-        <div class="panel-controls">
-          <div id="fetch-container">
-            <div id="dropzone-details">
 
-            </div>
-            <!-- <button id="fetchWeather">Fetch Weather</button> -->
-            <label>Model: Open-Mateo.com</label>
-            <div
-              id="fetchWeather-loader"
-              class="dot-carousel"
-              style="display: none"
-            ></div>
+      <div class="panel" id="location-panel">
+        <div class="panel-header">
+          <h2>Location</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
           </div>
         </div>
-        
-      </div>
-    </div>
+        <div class="panel-body">
+          <!-- <label for="dropzone-select">Choose a dropzone:</label> -->
+          <div class="panel-controls">
+            <div id="fetch-container">
+              <div id="dropzone-details">
 
-    <div class="panel" id="jump-settings-panel">
-      <div class="panel-header">
-        <h2>Jump Settings</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-          Jump Name:
-          <input
-            type="text"
-            id="jumpname"
-            placeholder="Enter jump name"
-            value="Untitled JumpSim"
-          />
-        </label>
-        
-        
-        <label>
-          Jump Height:
-          <input
-            type="number"
-            id="pullAltitude"
-            min="3000"
-            max="18500"
-            step="100"
-            value="12500"
-          />
-        </label>
-        <div class="panel-controls">
-          <button id="start-align-jumprun">Align Jumprun</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- deprecate this in favor of new jump-settings-panel -->
-    <!-- <div class="panel" id="sim-panel">
-      <div class="panel-header">
-        <h2>Jump Settings</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label>
-          Separation (s):
-          <input
-            type="number"
-            id="separation"
-            min="0"
-            max="10"
-            step="0.1"
-            value="2"
-          />
-        </label>
-        <label>
-          Pull Altitude (ft):
-          <input
-            type="number"
-            id="pullAltitude"
-            min="500"
-            max="6000"
-            step="100"
-            value="3500"
-          />
-        </label>
-      </div>
-    </div> -->
-
-    <div class="panel" id="weatherdata-panel">
-      <div class="panel-header">
-        <h2>Weather</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        
-      </div>
-    </div>
-
-    <div class="panel" id="objects-panel">
-      <div class="panel-header">
-        <h2>Scene Objects</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label
-          >TODO: add current active jumpers and planes where you can view stats
-          and look at objects</label
-        >
-      </div>
-    </div>
-
-    <div class="panel" id="following-panel">
-      <div class="panel-header">
-        <h2>Following</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label id="following-label"
-          >You're not following anything.
-          <span id="hidden-message"></span> Check out the Scene Objects tab!</span>
-        </label>
-        <label id="following-id"></label>
-        <div class="panel-controls">
-          <button>Stop following</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel" id="speed-panel">
-      <div class="panel-header">
-        <h2>Speed Settings</h2>
-        <div class="panel-controls">
-          <button>-</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label>
-          Plane Speed (knots):
-          <input
-            type="number"
-            id="planeSpeed"
-            min="50"
-            max="150"
-            step="1"
-            value="90"
-          />
-        </label>
-        <label>
-          Belly Jumper Speed (ft/s):
-          <input
-            type="number"
-            id="bellySpeed"
-            min="90"
-            max="150"
-            step="1"
-            value="130"
-          />
-        </label>
-        <label>
-          Freefly Jumper Speed (ft/s):
-          <input
-            type="number"
-            id="freeflySpeed"
-            min="100"
-            max="200"
-            step="1"
-            value="160"
-          />
-        </label>
-      </div>
-    </div>
-
-    <div class="panel" id="info-tooltip"></div>
-
-    <div class="panel" id="playback-panel">
-      <div class="panel-header">
-        <h2>Playback Controls</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="panel-controls">
-          <button id="start">⏮</button>
-          <button id="rewind">⏴</button>
-          <button id="playPause">▶</button>
-          <button id="forward">⏵</button>
-          <button id="end">⏭</button>
-        </div>
-
-        <input
-          type="range"
-          id="scrubber"
-          min="0"
-          max="250"
-          value="0"
-          step="0.1"
-          style="flex: 1"
-        />
-        <span
-          id="timeLabel"
-          style="min-width: 60px; text-align: right; color: #fff"
-          >0.0s</span
-        >
-      </div>
-    </div>
-
-    <div class="panel" id="plane-panel">
-        <div class="panel-header">
-            <h2>Plane Settings</h2>
-            <div class="panel-controls">
-                <button>-</button>
-                <button>×</button>
+              </div>
+              <!-- <button id="fetchWeather">Fetch Weather</button> -->
+              <label>Model: Open-Mateo.com</label>
+              <div
+                id="fetchWeather-loader"
+                class="dot-carousel"
+                style="display: none"
+              ></div>
             </div>
+          </div>
+          
+        </div>
+      </div>
+
+      <div class="panel" id="jump-settings-panel">
+        <div class="panel-header">
+          <h2>Jump Settings</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
         </div>
         <div class="panel-body">
-            <div class="mainselection">
-                <select class="weather-select-menu" id="plane-select">
-                    <option value="">-- Select a plane --</option>
-                    <option value="cessna-172">Cessna-172</option>
-                    <option value="skyvan">Skyvan</option>
-                    <option value="dc-9">DC-9</option>
-                    <option value="twin-otter">Twin Otter</option>
-                </select>
-            </div>
-            <div  id="plane-status">No plane selected</div>
-        </div>
-    </div>
-
-    <!-- <div class="panel" id="formation-panel">
-      <div class="panel-header">
-        <h2>Formation Settings</h2>
-        <div class="panel-controls">
-          <button>-</button>
-          <button>×</button>
+            Jump Name:
+            <input
+              type="text"
+              id="jumpname"
+              placeholder="Enter jump name"
+              value="Untitled JumpSim"
+            />
+          </label>
+          
+          
+          <label>
+            Jump Height:
+            <input
+              type="number"
+              id="pullAltitude"
+              min="3000"
+              max="18500"
+              step="100"
+              value="12500"
+            />
+          </label>
+          <div class="panel-controls">
+            <button id="start-align-jumprun">Align Jumprun</button>
+            <span id="jumprun-status"></span>
+          </div>
         </div>
       </div>
-      <div class="panel-body"></div>
-    </div> -->
 
+      <!-- deprecate this in favor of new jump-settings-panel -->
+      <!-- <div class="panel" id="sim-panel">
+        <div class="panel-header">
+          <h2>Jump Settings</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label>
+            Separation (s):
+            <input
+              type="number"
+              id="separation"
+              min="0"
+              max="10"
+              step="0.1"
+              value="2"
+            />
+          </label>
+          <label>
+            Pull Altitude (ft):
+            <input
+              type="number"
+              id="pullAltitude"
+              min="500"
+              max="6000"
+              step="100"
+              value="3500"
+            />
+          </label>
+        </div>
+      </div> -->
+
+      <div class="panel" id="weatherdata-panel">
+        <div class="panel-header">
+          <h2>Weather</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          
+        </div>
+      </div>
+
+      <div class="panel" id="objects-panel">
+        <div class="panel-header">
+          <h2>Scene Objects</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label
+            >TODO: add current active jumpers and planes where you can view stats
+            and look at objects</label
+          >
+        </div>
+      </div>
+
+      <div class="panel" id="following-panel">
+        <div class="panel-header">
+          <h2>Following</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label id="following-label"
+            >You're not following anything.
+            <span id="hidden-message"></span> Check out the Scene Objects tab!</span>
+          </label>
+          <label id="following-id"></label>
+          <div class="panel-controls">
+            <button>Stop following</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="speed-panel">
+        <div class="panel-header">
+          <h2>Speed Settings</h2>
+          <div class="panel-controls">
+            <button>-</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <label>
+            Plane Speed (knots):
+            <input
+              type="number"
+              id="planeSpeed"
+              min="50"
+              max="150"
+              step="1"
+              value="90"
+            />
+          </label>
+          <label>
+            Belly Jumper Speed (ft/s):
+            <input
+              type="number"
+              id="bellySpeed"
+              min="90"
+              max="150"
+              step="1"
+              value="130"
+            />
+          </label>
+          <label>
+            Freefly Jumper Speed (ft/s):
+            <input
+              type="number"
+              id="freeflySpeed"
+              min="100"
+              max="200"
+              step="1"
+              value="160"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div class="panel" id="info-tooltip"></div>
+
+      <div class="panel" id="playback-panel">
+        <div class="panel-header">
+          <h2>Playback Controls</h2>
+          <div class="panel-controls">
+            <button>–</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="panel-controls">
+            <button id="start">⏮</button>
+            <button id="rewind">⏴</button>
+            <button id="playPause">▶</button>
+            <button id="forward">⏵</button>
+            <button id="end">⏭</button>
+          </div>
+
+          <input
+            type="range"
+            id="scrubber"
+            min="0"
+            max="250"
+            value="0"
+            step="0.1"
+            style="flex: 1"
+          />
+          <span
+            id="timeLabel"
+            style="min-width: 60px; text-align: right; color: #fff"
+            >0.0s</span
+          >
+        </div>
+      </div>
+
+      <div class="panel" id="plane-panel">
+          <div class="panel-header">
+              <h2>Plane Settings</h2>
+              <div class="panel-controls">
+                  <button>-</button>
+                  <button>×</button>
+              </div>
+          </div>
+          <div class="panel-body">
+              <div class="mainselection">
+                  <select class="weather-select-menu" id="plane-select">
+                      <option value="">-- Select a plane --</option>
+                      <option value="cessna-172">Cessna-172</option>
+                      <option value="skyvan">Skyvan</option>
+                      <option value="dc-9">DC-9</option>
+                      <option value="twin-otter">Twin Otter</option>
+                  </select>
+              </div>
+              <div  id="plane-status">No plane selected</div>
+          </div>
+      </div>
+
+      <!-- <div class="panel" id="formation-panel">
+        <div class="panel-header">
+          <h2>Formation Settings</h2>
+          <div class="panel-controls">
+            <button>-</button>
+            <button>×</button>
+          </div>
+        </div>
+        <div class="panel-body"></div>
+      </div> -->
+
+    </div>
+    
     <script src="./src/js/GlobalVars.ts" type="module" defer></script>
     <script src="./src/js/DevConsole.ts" type="module"></script>
     <script src="./src/js/TimeScrubber.ts" type="module"></script>
     <script src="./src/js/Scripts.ts" type="module" defer></script>
     <script src="./src/apidata/OpenMateo.ts" type="module"></script>
     <script src="./src/js/LocationSelect.ts" type="module"></script>
-    <script src="./src/js/Menubar.ts" type="module"></script>
   </body>
 </html>

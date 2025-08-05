@@ -19,7 +19,7 @@ import {
 } from "./ui/TrajectoryLines";
 import { loadJumpFormation } from "./exampleData/Formations";
 import { Formation } from "./classes/Formations";
-import { initializePanelManager } from "./Menubar";
+import { initializePanelManager } from "./ui/Menubar";
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";

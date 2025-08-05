@@ -1,4 +1,4 @@
-import { PanelManager } from "./classes/PanelManager";
+import { PanelManager } from "../classes/PanelManager";
 
 function handleClick(name: string): void {
   console.log(`Clicked: ${name}`);
