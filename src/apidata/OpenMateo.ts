@@ -1,6 +1,8 @@
 import { fetchWeatherApi } from "openmeteo";
 import { handleForeignRecalculation, signalWeatherReady } from "../js/Scripts";
 import { notificationManager } from "../js/classes/NotificationManager";
+import * as THREE from "three";
+import { alignPlaneToJumprun } from "../js/utils/AlignJumprun";
 
 const url = "https://api.open-meteo.com/v1/forecast";
 let firstLoad = true;
