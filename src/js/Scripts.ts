@@ -17,9 +17,11 @@ import {
   updateTrajectoryLines,
   visualizeJumpers,
 } from "./ui/TrajectoryLines";
+
 import { loadJumpFormation } from "./exampleData/Formations";
 import { Formation } from "./classes/Formations";
-import { initializePanelManager } from "./ui/Menubar";
+import { initializeMenu } from "./ui/Menubar";
+
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
@@ -598,8 +600,8 @@ window.addEventListener("resize", () => {
 });
 
 loadDropzones(scene).catch(console.error);
-initializePlaneManager(scene, simPlane);
-initializePanelManager();
+initializeMenu(); // defer menu scripts to Menubar loader :)
+initializePlaneManager(scene, simPlane); // except this one bc it needs the scene, unless?
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;

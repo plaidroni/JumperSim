@@ -1,14 +1,45 @@
 import { PanelManager } from "../classes/PanelManager";
+import { HeightAxis } from "./HeightAxis";
 
+/**
+ * This is the drawback of not using React.
+ */
+export function initializeMenu() {
+
+  // TODO: File
+
+  // TODO: Edit
+
+  // TODO: Formations
+
+  // TODO: Weather 
+
+  // View
+  setupViewMenu();
+
+  // window
+  setupPanelManager();
+
+  // TODO: Help (menu)
+
+  // contributors is a black swan
+  // dropzone menu is handled in scripts
+
+}
+
+// worthless
 function handleClick(name: string): void {
   console.log(`Clicked: ${name}`);
 }
 
+// garbage
 function handleToggle(checkbox: HTMLInputElement, label: string): void {
   console.log(`${label} is now ${checkbox.checked ? "enabled" : "disabled"}`);
 }
 
-
+/**
+ * Typically called under the event, tells the submenu to update based on state
+ */
 function updateWindowSubmenu(panels: PanelManager): void {
   // Get all panel states
   const panelStates = panels.getPanelStates();
@@ -25,7 +56,7 @@ function updateWindowSubmenu(panels: PanelManager): void {
   });
 }
 
-export function initializePanelManager() {
+function setupPanelManager() {
   let panels: PanelManager = new PanelManager(document.querySelectorAll(".panel"));
 
   // Set up window menu actions
@@ -88,3 +119,51 @@ export function initializePanelManager() {
   });
 }
 
+function setupViewMenu() {
+  document.getElementById('height-axis-toggle')?.addEventListener('click', () => {
+    let axis = (window as any).heightAxis;
+    axis.toggleVisible();
+  });
+}
+
+// custom class to consolidate checkbox buttons
+class MenuCheckbox extends HTMLElement {
+
+  // this element ultimately serves as a way to see if something is enabled or not in a menu
+  static observedAttributes = ["checked"];
+  public label: HTMLSpanElement;
+  public checkbox: HTMLInputElement;
+
+  constructor() {
+    super();
+  }
+
+  connectedCallback() {
+    const shadow = this.attachShadow({ mode: "open" });
+
+    // create the item, add a label and the checkbox, add event listeners?
+    const container = document.createElement("div");
+    container.setAttribute("class", "dropdown-item");
+     
+
+    const label = document.createElement("span");
+    label.textContent = this.textContent;
+    container.appendChild(label);
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = this.hasAttribute("checked");
+    container.appendChild(checkbox);
+
+    shadow.appendChild(container);
+
+    // todo: attach styling
+  }
+
+  // fires on removing/adding checked / observedAttributes
+  attributeChangedCallback(name, oldValue, newValue) {
+
+  }
+}
+
+customElements.define("menu-checkbox", MenuCheckbox);

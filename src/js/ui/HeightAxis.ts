@@ -97,7 +97,7 @@ export class HeightAxis {
         return this.object;
     }
 
-    public setVisible(visible: boolean) {
-        this.object.visible = visible;
+    public toggleVisible() {
+        this.object.visible = !this.object.visible;
     }
 }

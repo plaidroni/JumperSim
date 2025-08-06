@@ -81,15 +81,19 @@
             </div>
           </div>
         </div>
+
         <div class="menu-item dropdown">
           <span>View</span>
           <div class="dropdown-menu">
-             <div class="dropdown-item">
+            <div class="dropdown-item">
               <span>Enable Trajectory Lines</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'trajectory-lines')"
-              />
+                onclick="handleToggle(this, 'trajectory-lines')"/>
+            </div>
+            <div class="dropdown-item" id="height-axis-toggle">
+              <span>Show Height Axis</span>
+              <input type="checkbox" name="show-height-axis" id="show-height-axis">
             </div>
             
           </div>
