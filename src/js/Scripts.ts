@@ -62,6 +62,10 @@ let clickedThisFrame = false;
 // const gridHelper = new THREE.GridHelper(1609, 16); // 16 subdivisions = 100m spacing
 // scene.add(gridHelper);
 
+// === LOOKING AT SCENE OBJECT ===
+let followTarget: THREE.Object3D | null = null;
+let isUserControllingCamera = false;
+
 // === EVENT LISTENERS ===
 
 let isAligningJumprun: Boolean = false;
@@ -175,10 +179,10 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
 
     if (intersects.length > 0) {
       const obj = intersects[0].object;
+      const id = obj.id;
       const data = obj.userData;
+
       // we check if the object we're following is a plane, if so we put the user into edit mode
-      if (obj instanceof THREE.Plane) {
-      }
 
       if (data?.label) {
         let html = `<strong>${data.label}</strong><br>`;
@@ -189,14 +193,15 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
       }
 
       if (clickedThisFrame) {
+        console.log(followTarget, obj);
+
+        // First click: start following the plane
         followTarget = obj;
         const box = new THREE.Box3().setFromObject(obj);
         const center = box.getCenter(new THREE.Vector3());
         cameraOffset = new THREE.Vector3().subVectors(camera.position, center);
+
         clickedThisFrame = false;
-        // notificationManager.info("Now following: " + data.label, {
-        //   duration: 3000,
-        // });
       }
 
       return;
@@ -216,7 +221,6 @@ const simPlane = new SimPlane(
   90,
   new THREE.Vector3(90, 0, 0)
 );
-let planeMesh = new THREE.Mesh();
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
 simPlane.precalculate(300);
@@ -275,10 +279,6 @@ try {
   );
 }
 
-// === LOOKING AT SCENE OBJECT ===
-let followTarget: THREE.Object3D | null = null;
-let isUserControllingCamera = false;
-
 // load active objects into the panel
 const panelBody = document.querySelector("#objects-panel .panel-body");
 panelBody.innerHTML = "";
@@ -310,7 +310,7 @@ document.querySelectorAll(".focus-button").forEach((btn) =>
       type === "plane" ? simPlane.getMesh() : simJumpers[index].getMesh();
     // follow behavior
     if (followTarget === objectToFollow) {
-      followTarget = null;
+      // followTarget = null;
       button.classList.remove("following");
     } else {
       followTarget = objectToFollow;
@@ -329,8 +329,8 @@ controls.touches = {
 } */
 // set up camera controls
 controls.addEventListener("start", () => {
-  // cancel if the user starts panning
-  isUserControllingCamera = true;
+  // deprecate, as soon as the user clicks it is "panning"
+  isUserControllingCamera = false;
   followTarget = null;
   document
     .querySelectorAll(".focus-button.following")
@@ -339,9 +339,7 @@ controls.addEventListener("start", () => {
 
 // use control.touches to disable following if user is panning (not rotating)
 controls.addEventListener("end", () => {
-  if (controls.state !== 3) {
-    isUserControllingCamera = false;
-  }
+  isUserControllingCamera = false;
 });
 
 let cameraOffset = new THREE.Vector3(10, 10, 10);
@@ -516,6 +514,7 @@ systemsOK.then(() => {
     const mesh = simPlane.getMesh();
     if (mesh) {
       mesh.position.copy(planeSample.position);
+      // mesh.rotation.setFromVector3(planeSample.angle);
       mesh.quaternion.copy(mesh.quaternion ?? new THREE.Quaternion());
     }
     simJumpers.forEach((jumper) => {
@@ -591,7 +590,6 @@ systemsOK.then(() => {
     ]);
     updateCameraFollow();
   });
-  camera.lookAt(planeMesh);
 });
 /**
  *potentially uncomment later, need to downsize 3mf file or get new stl from amanda
