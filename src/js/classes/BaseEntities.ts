@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import { SimPlane } from "./SimEntities";
 import { Formation } from "./Formations";
+import { v4 as uuidv4 } from "uuid";
 
 export class Plane {
+  id = uuidv4();
   initialPosition: THREE.Vector3;
   position: THREE.Vector3;
   direction: THREE.Vector3;
@@ -41,9 +43,23 @@ export class Plane {
   getMesh(): THREE.Object3D | null {
     return this.mesh;
   }
+
+  changeDirection(newDirection: THREE.Vector3) {
+    this.direction.copy(newDirection.normalize());
+    this.vector.copy(this.direction).multiplyScalar(this.speed);
+    if (this.mesh) {
+      const yaw = Math.atan2(this.direction.x, this.direction.z);
+      this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    }
+  }
 }
 
+/**
+ * base class to store all logic & data for a jumper. different from SimJumper,
+ * as this does none of the displaying nor does it hold a mesh
+ */
 export class Jumper {
+  id = uuidv4();
   index: number;
   jumpTime: number;
   deployDelay: number;

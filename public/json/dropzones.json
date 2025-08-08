@@ -15,7 +15,19 @@
     "name": "Skydive Perris",
     "country": "United States",
     "latitude": 33.7646,
-    "longitude": -117.219
+    "longitude": -117.219,
+    "defaultJumprun": [
+      {
+        "x": -386.1571322562168,
+        "y": 3.741587131708926e-13,
+        "z": -1685.0610412138562
+      },
+      {
+        "x": 387.0618396371085,
+        "y": -3.5026213523208996e-13,
+        "z": 1577.4404217132346
+      }
+    ]
   },
   {
     "name": "Skydive Chicago",

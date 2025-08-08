@@ -59,11 +59,11 @@
             <div class="dropdown-item submenu">
               <span>Import Formation ></span>
               <div class="dropdown-menu right">
-                <div class="dropdown-item" onclick="handleClick('From FBX')">
-                  <span>From FBX</span>
+                <div class="dropdown-item" onclick="handl+eClick('From FBX')">
+                  <span>From .jump</span>
                 </div>
-                <div class="dropdown-item" onclick="handleClick('From GLTF')">
-                  <span>From GLTF</span>
+                <div class="dropdown-item" onclick="handleClick('From FBX')">
+                  <span>From SkydiveDesigner.app</span>
                 </div>
               </div>
             </div>
@@ -248,7 +248,7 @@
           />
         </label>
         <div class="panel-controls">
-          <button id="align-jumprun">Align Jumprun</button>
+          <button id="start-align-jumprun">Align Jumprun</button>
         </div>
       </div>
     </div>
@@ -437,6 +437,10 @@
                 </select>
             </div>
             <div  id="plane-status">No plane selected</div>
+
+            <div class="panel-controls">
+              <button id="edit-plane-load">Edit Plane Load</button>
+            </div>
         </div>
     </div>
 
@@ -451,12 +455,12 @@
       <div class="panel-body"></div>
     </div> -->
 
-    <script src="./src/js/globalVars.ts" type="module" defer></script>
-    <script src="./src/js/devConsole.ts" type="module"></script>
-    <script src="./src/js/timeScrubber.ts" type="module"></script>
-    <script src="./src/js/scripts.ts" type="module" defer></script>
-    <script src="./src/apidata/openMateo.ts" type="module"></script>
-    <script src="./src/js/locationSelect.ts" type="module"></script>
-    <script src="./src/js/menubar.ts" type="module"></script>
+    <script src="./src/js/GlobalVars.ts" type="module" defer></script>
+    <script src="./src/js/DevConsole.ts" type="module"></script>
+    <script src="./src/js/TimeScrubber.ts" type="module"></script>
+    <script src="./src/js/Scripts.ts" type="module" defer></script>
+    <script src="./src/apidata/OpenMateo.ts" type="module"></script>
+    <script src="./src/js/LocationSelect.ts" type="module"></script>
+    <script src="./src/js/Menubar.ts" type="module"></script>
   </body>
 </html>

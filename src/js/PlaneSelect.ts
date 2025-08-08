@@ -12,14 +12,14 @@ const planeConfigs = {
     scale: [8, 8, 8],
     color: 0x00ff00,
     name: "Cessna-172",
-    rotation: [0, 90, 0],
+    rotation: [0, 0, 0],
   },
   skyvan: {
     file: "fabs/skyvan_fix.glb",
     scale: [8, 8, 8],
     color: 0x0066ff,
     name: "Skyvan",
-    rotation: [0, 90, 0],
+    rotation: [0, 0, 0],
   },
   "dc-9": {
     file: "fabs/dc9.gltf",
@@ -33,7 +33,7 @@ const planeConfigs = {
     scale: [8, 8, 8],
     color: 0xff0066,
     name: "Twin Otter",
-    rotation: [0, 90, 0],
+    rotation: [0, 0, 0],
   },
 };
 // selectedPlane is string of plane

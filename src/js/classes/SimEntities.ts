@@ -27,12 +27,15 @@ export class SimPlane extends Plane {
   precalculate(duration, step = 0.1) {
     console.log("Calculating Plane Vector");
 
+    const originalPosition = this.position.clone();
+
     this.track.samples = [];
     for (let t = 0; t <= duration; t += step) {
       super.update(t);
-      this.track.addSample(t, this.position, this.vector);
+      this.track.addSample(t, this.position, this.vector, this.direction);
     }
-
+    this.position.copy(originalPosition);
+    if (this.mesh) this.mesh.position.copy(originalPosition);
     console.log("Calculating Formation Vectors");
   }
 }
