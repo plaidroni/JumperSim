@@ -127,10 +127,12 @@ function setupViewMenu() {
 }
 
 // custom class to consolidate checkbox buttons
+// can this even work?
 class MenuCheckbox extends HTMLElement {
 
   // this element ultimately serves as a way to see if something is enabled or not in a menu
   static observedAttributes = ["checked"];
+  public container: HTMLDivElement;
   public label: HTMLSpanElement;
   public checkbox: HTMLInputElement;
 
@@ -142,27 +144,28 @@ class MenuCheckbox extends HTMLElement {
     const shadow = this.attachShadow({ mode: "open" });
 
     // create the item, add a label and the checkbox, add event listeners?
-    const container = document.createElement("div");
-    container.setAttribute("class", "dropdown-item");
-     
+    this.container = document.createElement("div");
+    this.container.setAttribute("class", "dropdown-item");
 
-    const label = document.createElement("span");
-    label.textContent = this.textContent;
-    container.appendChild(label);
+    this.label = document.createElement("span");
+    this.label.textContent = this.textContent;
+    this.container.appendChild(this.label);
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = this.hasAttribute("checked");
-    container.appendChild(checkbox);
+    this.checkbox = document.createElement("input");
+    this.checkbox.type = "checkbox";
+    this.checkbox.checked = this.hasAttribute("checked");
+    this.container.appendChild(this.checkbox);
 
-    shadow.appendChild(container);
+    shadow.appendChild(this.container);
 
     // todo: attach styling
   }
 
   // fires on removing/adding checked / observedAttributes
   attributeChangedCallback(name, oldValue, newValue) {
-
+    if (name === "checked") {
+      this.checkbox.checked = newValue;
+    }
   }
 }
 
