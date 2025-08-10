@@ -25,6 +25,7 @@ import { initializePanelManager } from "./Menubar";
 import { notificationManager } from "./classes/NotificationManager";
 import { alignPlaneToJumprun } from "./utils/AlignJumprun";
 import { askForRefresh } from "./core/data/SimulationVariables";
+import { StartEditPlane } from "./ui/PlaneEdit";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -65,7 +66,7 @@ let clickedThisFrame = false;
 // === LOOKING AT SCENE OBJECT ===
 let followTarget: THREE.Object3D | null = null;
 let isUserControllingCamera = false;
-
+let isEditingPlane = false;
 // === EVENT LISTENERS ===
 
 let isAligningJumprun: Boolean = false;
@@ -168,8 +169,14 @@ document
   ?.addEventListener("click", handleStartAlignJumprun);
 
 function checkHoverIntersect(objects: THREE.Object3D[]) {
-  if (!objects || objects.length === 0 || !camera || !raycaster) return;
-
+  if (
+    !objects ||
+    objects.length === 0 ||
+    !camera ||
+    !raycaster ||
+    isEditingPlane
+  )
+    return;
   raycaster.setFromCamera(mouse, camera);
   const validObjects = objects.filter((obj) => obj != null);
   if (validObjects.length === 0) return;
@@ -195,7 +202,6 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
       if (clickedThisFrame) {
         console.log(followTarget, obj);
 
-        // First click: start following the plane
         followTarget = obj;
         const box = new THREE.Box3().setFromObject(obj);
         const center = box.getCenter(new THREE.Vector3());
@@ -278,6 +284,24 @@ try {
     }
   );
 }
+
+// TODO: move into menubar with refactor
+function startPlaneEdit() {
+  followTarget = null;
+  StartEditPlane(
+    simPlane.getMesh(),
+    camera,
+    controls,
+    300,
+    700,
+    () => {
+      isEditingPlane = true;
+    },
+    isEditingPlane
+  );
+}
+
+(window as any).startPlaneEdit = startPlaneEdit;
 
 // load active objects into the panel
 const panelBody = document.querySelector("#objects-panel .panel-body");

@@ -59,12 +59,12 @@
             <div class="dropdown-item submenu">
               <span>Import Formation ></span>
               <div class="dropdown-menu right">
-                <div class="dropdown-item" onclick="handl+eClick('From FBX')">
+                <div class="dropdown-item" onclick="handleFileSelect()">
                   <span>From .jump</span>
                 </div>
-                <div class="dropdown-item" onclick="handleClick('From FBX')">
+                <!-- <div class="dropdown-item" onclick="handleFileSelect()">
                   <span>From SkydiveDesigner.app</span>
-                </div>
+                </div> -->
               </div>
             </div>
           </div>
@@ -439,7 +439,7 @@
             <div  id="plane-status">No plane selected</div>
 
             <div class="panel-controls">
-              <button id="edit-plane-load">Edit Plane Load</button>
+              <button id="edit-plane-load" onclick="startPlaneEdit()">Edit Plane Load</button>
             </div>
         </div>
     </div>

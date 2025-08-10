@@ -9,7 +9,18 @@ function handleToggle(checkbox: HTMLInputElement, label: string): void {
 }
 
 // function to handle file selection
-function handleFileSelect(): void {}
+function handleFileSelect(): void {
+  let input = document.createElement("input");
+  input.type = "file";
+  input.onchange = (_) => {
+    let files = Array.from(input.files);
+    console.log(files);
+  };
+  input.click();
+}
+
+// function to handle opening Skydive Designer link
+function handleOpenSkydiveDesignerLink(): void {}
 
 function updateWindowSubmenu(panels: PanelManager): void {
   // Get all panel states
@@ -94,3 +105,6 @@ export function initializePanelManager() {
     updateWindowSubmenu(panels);
   });
 }
+
+// expose the handleFileSelect function globally
+(window as any).handleFileSelect = handleFileSelect;
