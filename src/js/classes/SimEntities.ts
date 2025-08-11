@@ -32,7 +32,13 @@ export class SimPlane extends Plane {
     this.track.samples = [];
     for (let t = 0; t <= duration; t += step) {
       super.update(t);
-      this.track.addSample(t, this.position, this.vector, this.direction);
+      // derive yaw quaternion from direction vector (+Z forward)
+      const yaw = Math.atan2(this.direction.x, this.direction.z);
+      const quat = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        yaw
+      );
+      this.track.addSample(t, this.position, this.vector, quat);
     }
     this.position.copy(originalPosition);
     if (this.mesh) this.mesh.position.copy(originalPosition);
@@ -116,16 +122,22 @@ export class SimJumper extends Jumper {
     const planeSampleAtJump = this.plane.track.getInterpolatedSample(
       this.jumpTime
     );
-    let currentPosition = planeSampleAtJump.position.clone().add(this.origin);
-    this.velocity = planeSampleAtJump.velocity.clone();
+    let currentPosition = planeSampleAtJump
+      ? planeSampleAtJump.position.clone().add(this.origin)
+      : this.plane.position.clone().add(this.origin);
+    this.velocity = planeSampleAtJump
+      ? planeSampleAtJump.velocity.clone()
+      : this.plane.vector.clone();
 
     for (let t = 0; t <= duration; t += step) {
       const simTime = t;
 
       if (simTime < this.jumpTime) {
         const sample = this.plane.track.getInterpolatedSample(simTime);
-        currentPosition = sample.position.clone();
-        this.velocity = sample.velocity.clone();
+        if (sample) {
+          currentPosition = sample.position.clone();
+          this.velocity = sample.velocity.clone();
+        }
       } else {
         this.hasJumped = true;
         timeSinceJump = simTime - this.jumpTime;
