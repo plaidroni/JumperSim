@@ -149,7 +149,7 @@ async function handleStartAlignJumprun() {
   askForRefresh(() => {
     simPlane.precalculate(300);
     simJumpers.forEach((j) => j.precalculate(300));
-  });
+  }, true);
 }
 
 function drawAlignArrow() {
@@ -231,7 +231,6 @@ const simPlane = new SimPlane(
 );
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
-simPlane.precalculate(300);
 
 let formations: Formation[] = [];
 let simJumpers: SimJumper[] = [];
@@ -402,6 +401,7 @@ export function handleForeignRecalculation() {
 
 let meshReadyResolve: () => void;
 let weatherReadyResolve: () => void;
+let defaultPointsReadyResolve: () => void;
 
 export const meshReady = new Promise<void>((resolve) => {
   meshReadyResolve = resolve;
@@ -446,6 +446,8 @@ systemsOK.then(() => {
   const defaultPoints = (window as any).defaultJumprunPoints;
   if (defaultPoints && defaultPoints.length === 2) {
     console.log("defaultPoints:", defaultPoints);
+    alignPoints = [defaultPoints[0], defaultPoints[1]];
+    drawAlignArrow();
     alignPlaneToJumprun(simPlane, defaultPoints[0], defaultPoints[1]);
   }
   if (alignPoints.length === 0) {
@@ -461,6 +463,9 @@ systemsOK.then(() => {
       ],
     });
   }
+
+  // start initial precalculation for jumpers
+  simPlane.precalculate(300);
 
   simJumpers.forEach((jumper) => {
     jumper.precalculate(300);
