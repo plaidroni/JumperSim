@@ -26,6 +26,7 @@ import { notificationManager } from "./classes/NotificationManager";
 import { alignPlaneToJumprun } from "./utils/AlignJumprun";
 import { askForRefresh } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
+import { createWindParticles, updateWindParticles } from "./classes/WindParticles";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -37,6 +38,8 @@ const camera = new THREE.PerspectiveCamera(
   100000
 );
 const controls = new OrbitControls(camera, renderer.domElement);
+let windParticles: THREE.Points | null = null;
+
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -363,7 +366,7 @@ controls.addEventListener("start", () => {
 
 // use control.touches to disable following if user is panning (not rotating)
 controls.addEventListener("end", () => {
-  isUserControllingCamera = false;
+    isUserControllingCamera = false;
 });
 
 let cameraOffset = new THREE.Vector3(10, 10, 10);
@@ -520,6 +523,14 @@ systemsOK.then(() => {
     }
   );
 
+  if ((window as any).currentWeatherData) {
+    console.log("Initializing wind particles with weather data");
+    windParticles = createWindParticles(scene, (window as any).currentWeatherData);
+  } else {
+    console.warn("No weather data available for wind particles");
+  }
+
+
   let simulationTime = 0;
   let lastFrameTime = performance.now();
   let lastSimTime = -1;
@@ -596,6 +607,11 @@ systemsOK.then(() => {
       updateFromPrecalc(simulationTime);
       lastSimTime = simulationTime;
     }
+    // Update wind particles only when playing
+    if (windParticles) {
+      updateWindParticles(windParticles, simulationTime, (window as any).isPlaying);
+    }
+
     controls.update();
 
     updateTrajectoryLines(lines, simulationTime);
