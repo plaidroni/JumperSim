@@ -96,7 +96,7 @@ export async function loadDropzones(scene: THREE.Scene) {
     const heightAxis = new HeightAxis({
       maxHeight: 5500, // ~18000 ft in meters
       minHeight: 0,
-      majorInterval: 500, // ~1640 ft in meters
+      majorInterval: 304.8, // ~1640 ft in meters
     });
     (window as any).heightAxis = heightAxis; // Store for later use
 

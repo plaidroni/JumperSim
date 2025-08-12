@@ -77,8 +77,9 @@ export class Formation {
       // console.log("jumperconfig:", jumperConfig);
       const slot = firstPoint.slots[i];
       if (!slot) continue;
-      const jumper = new SimJumper(i, plane, 0, 7, 190);
-      jumper.mesh.material.color.set(jumperConfig.color);
+  const jumper = new SimJumper(i, plane, 0, 7, 190);
+  const mat = jumper.mesh.material as THREE.MeshBasicMaterial;
+  if (mat && (mat as any).color) mat.color.set(jumperConfig.color);
       // set jumper quaternion based on slot angle from .jump file and point
       jumper.formationOffset = this.calculateSlotOffset(
         slot,
@@ -106,7 +107,7 @@ export class Formation {
   private calculateSlotOffset(
     slot: any,
     allSlots: any[],
-    jumper: SimJumper
+    jumper?: SimJumper
   ): THREE.Vector3 {
     console.log("Calculating slot offsets for:", allSlots);
     // find the center of all slots in 2d
@@ -135,8 +136,8 @@ export class Formation {
     // since threejs uses Y as up, we need to flip the Z axis
     const offsetZ = (slot.origin[1] - center2D.y) * this.SCALE_FACTOR;
 
-    const offset = new THREE.Vector3(offsetX, 0, offsetZ);
-    jumper.origin = new THREE.Vector3(offsetX, 0, offsetZ);
+  const offset = new THREE.Vector3(offsetX, 0, offsetZ);
+  if (jumper) jumper.origin = new THREE.Vector3(offsetX, 0, offsetZ);
     // convert to radians and apply rotation around the Y axis (hence the 0, 1, 0 vector)
     console.log(`Calculating slot offset for ${slot.stance}:`, offset);
 
@@ -168,16 +169,25 @@ export class Formation {
     const targetPoint = this.points[pointIndex];
     this.currentPointIndex = pointIndex;
 
-    // update each jumper's formation offset for the new point
+    // update each jumper's formation offset and facing for the new point
     targetPoint.slots.forEach((slot, jumperIndex) => {
       const jumper = this.jumpers[jumperIndex];
       if (jumper) {
-        const newOffset = this.calculateSlotOffset(slot, targetPoint.slots);
+        const newOffset = this.calculateSlotOffset(
+          slot,
+          targetPoint.slots,
+          jumper
+        );
 
         if (transitionTime > 0) {
           jumper.formationOffset.lerp(newOffset, 0.1);
         } else {
           jumper.formationOffset.copy(newOffset);
+        }
+
+        // also update the intended facing based on the point's slot angle
+        if (typeof slot.angleDeg === "number") {
+          jumper.angle = this.calculateAngleOffset(slot.angleDeg);
         }
       }
     });

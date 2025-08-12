@@ -25,6 +25,7 @@ import { initializePanelManager } from "./Menubar";
 import { notificationManager } from "./classes/NotificationManager";
 import { alignPlaneToJumprun } from "./utils/AlignJumprun";
 import { askForRefresh } from "./core/data/SimulationVariables";
+import { StartEditPlane } from "./ui/PlaneEdit";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -65,7 +66,7 @@ let clickedThisFrame = false;
 // === LOOKING AT SCENE OBJECT ===
 let followTarget: THREE.Object3D | null = null;
 let isUserControllingCamera = false;
-
+let isEditingPlane = false;
 // === EVENT LISTENERS ===
 
 let isAligningJumprun: Boolean = false;
@@ -88,8 +89,10 @@ function onMouseMove(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-  tooltip.style.left = `${event.clientX + 10}px`;
-  tooltip.style.top = `${event.clientY + 10}px`;
+  if (tooltip) {
+    (tooltip as HTMLElement).style.left = `${event.clientX + 10}px`;
+    (tooltip as HTMLElement).style.top = `${event.clientY + 10}px`;
+  }
 }
 
 document.addEventListener("mousemove", onMouseMove);
@@ -146,7 +149,7 @@ async function handleStartAlignJumprun() {
   askForRefresh(() => {
     simPlane.precalculate(300);
     simJumpers.forEach((j) => j.precalculate(300));
-  });
+  }, true);
 }
 
 function drawAlignArrow() {
@@ -167,9 +170,15 @@ document
   .getElementById("start-align-jumprun")
   ?.addEventListener("click", handleStartAlignJumprun);
 
-function checkHoverIntersect(objects: THREE.Object3D[]) {
-  if (!objects || objects.length === 0 || !camera || !raycaster) return;
-
+function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
+  if (
+    !objects ||
+    objects.length === 0 ||
+    !camera ||
+    !raycaster ||
+    isEditingPlane
+  )
+    return;
   raycaster.setFromCamera(mouse, camera);
   const validObjects = objects.filter((obj) => obj != null);
   if (validObjects.length === 0) return;
@@ -184,18 +193,17 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
 
       // we check if the object we're following is a plane, if so we put the user into edit mode
 
-      if (data?.label) {
+      if (data?.label && tooltip) {
         let html = `<strong>${data.label}</strong><br>`;
         for (const key in data)
           if (key !== "label") html += `${key}: ${data[key]}<br>`;
-        tooltip.innerHTML = html;
-        tooltip.style.display = "block";
+        (tooltip as HTMLElement).innerHTML = html;
+        (tooltip as HTMLElement).style.display = "block";
       }
 
       if (clickedThisFrame) {
         console.log(followTarget, obj);
 
-        // First click: start following the plane
         followTarget = obj;
         const box = new THREE.Box3().setFromObject(obj);
         const center = box.getCenter(new THREE.Vector3());
@@ -207,10 +215,10 @@ function checkHoverIntersect(objects: THREE.Object3D[]) {
       return;
     }
 
-    tooltip.style.display = "none";
+    if (tooltip) (tooltip as HTMLElement).style.display = "none";
   } catch (err) {
     console.warn("Raycast error:", err);
-    tooltip.style.display = "none";
+    if (tooltip) (tooltip as HTMLElement).style.display = "none";
   }
 }
 
@@ -223,7 +231,6 @@ const simPlane = new SimPlane(
 );
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
-simPlane.precalculate(300);
 
 let formations: Formation[] = [];
 let simJumpers: SimJumper[] = [];
@@ -279,16 +286,35 @@ try {
   );
 }
 
+// TODO: move into menubar with refactor
+function startPlaneEdit() {
+  followTarget = null;
+  StartEditPlane(
+    simPlane.getMesh()!,
+    camera,
+    controls,
+    300,
+    700,
+    () => {
+      isEditingPlane = true;
+      return {} as any;
+    },
+    isEditingPlane
+  );
+}
+
+(window as any).startPlaneEdit = startPlaneEdit;
+
 // load active objects into the panel
 const panelBody = document.querySelector("#objects-panel .panel-body");
-panelBody.innerHTML = "";
+if (panelBody) (panelBody as HTMLElement).innerHTML = "";
 const planeEntry = document.createElement("div");
 planeEntry.className = "object-entry";
 planeEntry.innerHTML = `
   <span>Plane</span>
   <button class="focus-button" data-type="plane">👀</button>
 `;
-panelBody.appendChild(planeEntry);
+if (panelBody) (panelBody as HTMLElement).appendChild(planeEntry);
 
 simJumpers.forEach((jumper, i) => {
   const jumperEntry = document.createElement("div");
@@ -297,7 +323,7 @@ simJumpers.forEach((jumper, i) => {
     <span>Jumper ${i}</span>
     <button class="focus-button" data-type="jumper" data-index="${i}">👀</button>
   `;
-  panelBody.appendChild(jumperEntry);
+  if (panelBody) (panelBody as HTMLElement).appendChild(jumperEntry);
 });
 
 document.querySelectorAll(".focus-button").forEach((btn) =>
@@ -375,6 +401,7 @@ export function handleForeignRecalculation() {
 
 let meshReadyResolve: () => void;
 let weatherReadyResolve: () => void;
+let defaultPointsReadyResolve: () => void;
 
 export const meshReady = new Promise<void>((resolve) => {
   meshReadyResolve = resolve;
@@ -419,6 +446,8 @@ systemsOK.then(() => {
   const defaultPoints = (window as any).defaultJumprunPoints;
   if (defaultPoints && defaultPoints.length === 2) {
     console.log("defaultPoints:", defaultPoints);
+    alignPoints = [defaultPoints[0], defaultPoints[1]];
+    drawAlignArrow();
     alignPlaneToJumprun(simPlane, defaultPoints[0], defaultPoints[1]);
   }
   if (alignPoints.length === 0) {
@@ -434,6 +463,9 @@ systemsOK.then(() => {
       ],
     });
   }
+
+  // start initial precalculation for jumpers
+  simPlane.precalculate(300);
 
   simJumpers.forEach((jumper) => {
     jumper.precalculate(300);
@@ -464,7 +496,9 @@ systemsOK.then(() => {
 
         geometry.computeBoundingBox();
         const center = new THREE.Vector3();
-        geometry.boundingBox.getCenter(center);
+        if (geometry.boundingBox) {
+          geometry.boundingBox.getCenter(center);
+        }
         mesh.geometry.translate(-center.x, -center.y, -center.z);
         const forward = new THREE.Vector3(1, 0, 0);
         // const fixQuat = new THREE.Quaternion().setFromAxisAngle(
@@ -512,29 +546,25 @@ systemsOK.then(() => {
     //   planeSample.position.toArray()
     // );
     const mesh = simPlane.getMesh();
-    if (mesh) {
+    if (mesh && planeSample) {
       mesh.position.copy(planeSample.position);
-      // mesh.rotation.setFromVector3(planeSample.angle);
-      mesh.quaternion.copy(mesh.quaternion ?? new THREE.Quaternion());
+      if (planeSample.angle instanceof THREE.Quaternion) {
+        mesh.quaternion.copy(planeSample.angle);
+      }
     }
     simJumpers.forEach((jumper) => {
       const sample = jumper.track.getInterpolatedSample(time);
+      if (!sample) return;
       jumper.getMesh().position.copy(sample.position);
 
       const posFeet = sample.position.clone().multiplyScalar(3.28084);
       // edit quaternion of mesh to match angle
-      const fixQuat = jumper.getMesh().userData.fixQuat;
-      if (sample.angle instanceof THREE.Vector3) {
-        const euler = new THREE.Euler(
-          sample.angle.x,
-          sample.angle.y,
-          sample.angle.z
-        );
-        // jumper.getMesh().quaternion.setFromEuler(euler);
-        // if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
-      } else if (sample.angle instanceof THREE.Quaternion) {
-        // jumper.getMesh().quaternion.copy(sample.angle);
-        // if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
+      const fixQuat = jumper.getMesh().userData.fixQuat as
+        | THREE.Quaternion
+        | undefined;
+      if (sample.angle instanceof THREE.Quaternion) {
+        jumper.getMesh().quaternion.copy(sample.angle);
+        if (fixQuat) jumper.getMesh().quaternion.multiply(fixQuat);
       }
       jumper.getMesh().userData = {
         label: `Jumper #${jumper.index}`,
@@ -581,13 +611,15 @@ systemsOK.then(() => {
     camera.getWorldDirection(dir);
     sph.setFromVector3(dir);
     // thx guy on stack overflow <3
-    compass.style.transform = `rotate(${
-      THREE.MathUtils.radToDeg(sph.theta) - 180
-    }deg)`;
+    if (compass) {
+      (compass as HTMLElement).style.transform = `rotate(${
+        THREE.MathUtils.radToDeg(sph.theta) - 180
+      }deg)`;
+    }
     checkHoverIntersect([
       simPlane.getMesh(),
       ...simJumpers.map((j) => j.getMesh()),
-    ]);
+    ] as Array<THREE.Object3D | null>);
     updateCameraFollow();
   });
 });

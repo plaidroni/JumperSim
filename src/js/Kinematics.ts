@@ -3,8 +3,13 @@ export class KinematicSample {
   time: any;
   position: any;
   velocity: any;
-  angle: THREE.Vector3;
-  constructor(time, position, velocity, angle = new THREE.Vector3(0, 0, 0)) {
+  angle: THREE.Quaternion;
+  constructor(
+    time,
+    position,
+    velocity,
+    angle: THREE.Quaternion = new THREE.Quaternion()
+  ) {
     this.time = time;
     this.position = position.clone();
     this.velocity = velocity.clone();
@@ -19,7 +24,7 @@ export class KinematicTrack {
     this.samples = [];
   }
 
-  addSample(time, position, velocity, angle) {
+  addSample(time, position, velocity, angle: THREE.Quaternion) {
     this.samples.push(new KinematicSample(time, position, velocity, angle));
   }
 
@@ -27,7 +32,7 @@ export class KinematicTrack {
     time: number,
     position?: THREE.Vector3,
     velocity?: THREE.Vector3,
-    angle?: THREE.Vector3
+    angle?: THREE.Quaternion
   ) {
     if (time === undefined || time < 0 || time >= this.samples.length) {
       console.error("Invalid or missing sample index");
@@ -67,10 +72,14 @@ export class KinematicTrack {
       t
     );
 
+    // Slerp the quaternion angle/orientation
+    const interpolatedAngle = new THREE.Quaternion().copy(a.angle).slerp(b.angle, t);
+
     return new KinematicSample(
       time,
       interpolatedPosition,
-      interpolatedVelocity
+      interpolatedVelocity,
+      interpolatedAngle
     );
   }
 }
