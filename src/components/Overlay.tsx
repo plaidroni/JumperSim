@@ -1,7 +1,19 @@
 import '../css/minimized-windows.css'
 import '../css/devconsole.css'
-import Panel from './Panel';
+
 import { useState } from 'react';
+
+// import all panels
+import Following from './panels/Following'
+import Playback from './panels/Playback'
+import Location from './panels/Location';
+import JumpSettings from './panels/JumpSettings'
+import Objects from './panels/Objects'
+import PlaneSettings from './panels/PlaneSettings'
+import SpeedSettings from './panels/SpeedSettings';
+import Weather from './panels/Weather'
+
+// const panels = import.meta.glob() // dynamic import sounds fun, but I will make sure tab visibility works fine
 
 enum PanelVis {
     ACTIVE,
@@ -22,11 +34,21 @@ export default function Overlay() {
 
     return (
         <>
-            
+            <Playback />
+            <Following />
+            <Location />
+            <Weather></Weather>
+            <Objects></Objects>
+
+            <PlaneSettings></PlaneSettings>
+            <SpeedSettings></SpeedSettings>
+            <JumpSettings></JumpSettings>
         </>
     )
     
 }
+
+
 
 function saveOverlayInfo() {
 
