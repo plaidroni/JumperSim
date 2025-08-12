@@ -26,6 +26,7 @@ import { notificationManager } from "./classes/NotificationManager";
 import { alignPlaneToJumprun } from "./utils/AlignJumprun";
 import { askForRefresh } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
+import { initializeOverlay } from './overlaySetup';
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -642,3 +643,6 @@ initializePanelManager();
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;
+
+// Initialize React overlay
+initializeOverlay();
