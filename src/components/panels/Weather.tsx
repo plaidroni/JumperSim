@@ -51,10 +51,13 @@ function Weather(props: WeatherProps) {
             title="Weather"
             close={props.close}
             minimize={props.minimize}>
-            {props.snapshot && cells.map((cell, index) => (
-                <div className="weather-datapoint-cell" key={index}>{cell}</div>
-            ))}
-            <p>Weather data is currently unavailable.</p>
+            {props.snapshot ? 
+                cells.map((cell, index) => (
+                    <div className="weather-datapoint-cell" key={index}>{cell}</div>
+                )) 
+            : 
+                <p>Weather data is currently unavailable.</p>
+            }
         </Panel>
     );
 }
