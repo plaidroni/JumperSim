@@ -89,8 +89,8 @@ export class SimJumper extends Jumper {
     const g = 9.81;
     const rho = 1.225;
     const Cd = 1.0;
-    const A = 0.7;
-    const mass = 80;
+    const A = this.surfaceArea;
+    const mass = this.weight + this.extraWeight;
 
     const knotsToMs = (knots: number) => knots * 0.514444;
 

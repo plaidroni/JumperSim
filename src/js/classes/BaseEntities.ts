@@ -119,9 +119,13 @@ export class Jumper {
   constructor(
     index: number,
     plane: Plane,
-    jumpInterval = 15,
-    deployDelay = 7,
-    canopySize = 190
+    jumpInterval: number | undefined = 15,
+    deployDelay: number | undefined = 7,
+    canopySize: number | undefined = 190,
+    flyingStyle: FlyingStyle | undefined = "belly",
+    weight: number | undefined = 80,
+    extraWeight: number | undefined = 0,
+    suitType: SuitType | undefined = "normal"
   ) {
     this.index = index;
     this.jumpTime = index * jumpInterval;
@@ -131,7 +135,12 @@ export class Jumper {
     this.plane = plane;
     this.initialVelocity = plane.vector;
     this.position = new THREE.Vector3();
+    this.flyingStyle = flyingStyle;
+    this.weight = weight;
+    this.extraWeight = extraWeight;
+    this.suitType = suitType;
 
+    // uses the flying style to figure out the surface area through hardcoded values (for now)
     this.calculateSurfaceArea();
 
     /**
@@ -225,7 +234,7 @@ export class Jumper {
         this.surfaceArea = 0.5;
         break;
       case "tracking":
-        this.surfaceArea = 0.6;
+        this.surfaceArea = 0.45;
         break;
       case "belly":
         this.surfaceArea = 0.8;
