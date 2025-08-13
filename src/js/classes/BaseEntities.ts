@@ -10,7 +10,7 @@ export class Plane {
   direction: THREE.Vector3;
   vector: THREE.Vector3;
   speed: number;
-  jumpersLeft: number;
+  jumpers: Jumper[];
   mesh: THREE.Object3D | null = null;
 
   constructor(
@@ -51,6 +51,29 @@ export class Plane {
       const yaw = Math.atan2(this.direction.x, this.direction.z);
       this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     }
+  }
+  toLoadPanelSummary(jumpers: Jumper[] = []) {
+    const order = [...jumpers]
+      .sort((a, b) => a.index - b.index)
+      .map((j) => j.id);
+    return {
+      id: this.id,
+      position: { x: this.position.x, y: this.position.y, z: this.position.z },
+      initialPosition: {
+        x: this.initialPosition.x,
+        y: this.initialPosition.y,
+        z: this.initialPosition.z,
+      },
+      direction: {
+        x: this.direction.x,
+        y: this.direction.y,
+        z: this.direction.z,
+      },
+      // headingDeg: this.getHeadingDeg(),
+      // speedKnots: this.getSpeedKnots(),
+      jumpersCount: jumpers.length,
+      jumpersOrder: order,
+    };
   }
 }
 
@@ -149,5 +172,25 @@ export class Jumper {
   setMesh(mesh: THREE.Object3D) {
     this.mesh = mesh;
     this.mesh.position.copy(this.position);
+  }
+
+  toEditableSummary() {
+    return {
+      id: this.id,
+      planeId: (this.plane as any)?.id,
+      index: this.index, // use as load order? (maybe another var)
+      name: this.name ?? null,
+      jumpTime: this.jumpTime,
+      deployDelay: this.deployDelay,
+      canopySize: this.canopySize,
+      isInFormation: this.isInFormation,
+      formationId: (this.formation as any)?.id,
+      formationName: (this.formation as any)?.name,
+      targetPosition: {
+        x: this.targetPosition.x,
+        y: this.targetPosition.y,
+        z: this.targetPosition.z,
+      },
+    };
   }
 }

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="./src/css/menu.css" />
     <link rel="stylesheet" href="./src/css/minimized-windows.css" />
     <link rel="stylesheet" href="./src/css/notification.css" />
+    <link rel="stylesheet" href="./src/css/planeloadui.css" />
   </head>
   <body>
     <div id="mapbox-offscreen" style="width:512px;height:512px;position:absolute;left:-9999px;"></div>
@@ -436,10 +437,19 @@
                     <option value="twin-otter">Twin Otter</option>
                 </select>
             </div>
-            <div  id="plane-status">No plane selected</div>
+            <div id="plane-status">No plane selected</div>
 
             <div class="panel-controls">
               <button id="edit-plane-load" onclick="startPlaneEdit()">Edit Plane Load</button>
+            </div>
+            <div class="plane-load-editor">
+              <!-- Dynamic content will be rendered here by PlaneSettings.js -->
+            </div>
+            <div id="plane-summary">
+              <h3>Plane Summary</h3>
+              <p>Load Size: <span id="load-size">0</span></p>
+              <p>Speed: <span id="plane-speed">0</span> knots</p>
+              <p>Direction: <span id="plane-direction">N/A</span></p>
             </div>
         </div>
     </div>
@@ -462,5 +472,6 @@
     <script src="./src/apidata/OpenMateo.ts" type="module"></script>
     <script src="./src/js/LocationSelect.ts" type="module"></script>
     <script src="./src/js/Menubar.ts" type="module"></script>
+    <script src="./src/js/ui/PlaneSettings.ts" type="module"></script>
   </body>
 </html>
