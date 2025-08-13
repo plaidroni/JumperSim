@@ -254,6 +254,7 @@ try {
   formations = simPlane.formations;
   // Gather all jumpers from all formations
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
+  simJumpers.push(...createDefaultSimJumpers(10, simPlane));
 
   // Success notification with action button
   notificationManager.success(

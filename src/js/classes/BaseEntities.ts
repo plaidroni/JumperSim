@@ -3,6 +3,15 @@ import { SimPlane } from "./SimEntities";
 import { Formation } from "./Formations";
 import { v4 as uuidv4 } from "uuid";
 
+type SuitType = "baggy" | "skintight" | "normal";
+type FlyingStyle =
+  | "freefly"
+  | "headdown"
+  | "sitfly"
+  | "tracking"
+  | "belly"
+  | "wingsuit";
+
 export class Plane {
   id = uuidv4();
   initialPosition: THREE.Vector3;
@@ -12,6 +21,11 @@ export class Plane {
   speed: number;
   jumpers: Jumper[];
   mesh: THREE.Object3D | null = null;
+  surfaceArea: number; // m^2
+  weight: number;
+  extraWeight: number;
+  suitType: SuitType;
+  flyingStyle: FlyingStyle;
 
   constructor(
     position: THREE.Vector3,
@@ -24,6 +38,7 @@ export class Plane {
     // this.speed = speedKnots * 0.51444 * (window as any).simScale;
     this.speed = speedKnots * 0.51444;
     this.vector = this.direction.clone().multiplyScalar(this.speed);
+    this.calculateSurfaceArea();
   }
 
   update(simulationTime: number) {
@@ -33,6 +48,30 @@ export class Plane {
         .add(this.vector.clone().multiplyScalar(simulationTime))
     );
     if (this.mesh) this.mesh.position.copy(this.position);
+  }
+  // depending on the flying style, change the surface area
+  // MEASURED IN m^2
+  calculateSurfaceArea() {
+    switch (this.flyingStyle) {
+      case "freefly":
+        this.surfaceArea = 0.8;
+        break;
+      case "headdown":
+        this.surfaceArea = 0.35;
+        break;
+      case "sitfly":
+        this.surfaceArea = 0.5;
+        break;
+      case "tracking":
+        this.surfaceArea = 0.6;
+        break;
+      case "belly":
+        this.surfaceArea = 0.8;
+        break;
+      case "wingsuit":
+        this.surfaceArea = 2;
+        break;
+    }
   }
 
   setMesh(mesh: THREE.Object3D) {
