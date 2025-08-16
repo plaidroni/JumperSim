@@ -32,7 +32,7 @@ export class SimPlane extends Plane {
     this.track.samples = [];
     for (let t = 0; t <= duration; t += step) {
       super.update(t);
-      // derive yaw quaternion from direction vector (+Z forward)
+      // derive yaw quaternion from direction vector (assumes +Z forward)
       const yaw = Math.atan2(this.direction.x, this.direction.z);
       const quat = new THREE.Quaternion().setFromAxisAngle(
         new THREE.Vector3(0, 1, 0),
@@ -43,6 +43,26 @@ export class SimPlane extends Plane {
     this.position.copy(originalPosition);
     if (this.mesh) this.mesh.position.copy(originalPosition);
     console.log("Calculating Formation Vectors");
+  }
+
+  getFormationsSummary() {
+    return this.formations.map((f: any) => ({
+      id: f?.id,
+      name: f?.name,
+      size: f?.members ? f.members.length : undefined,
+      // add other fields if your Formation type exposes them (e.g., anchor, slots)
+    }));
+  }
+
+  buildLoadPanelData(jumpers: SimJumper[]) {
+    const jumpersSorted = [...jumpers].sort((a, b) => a.index - b.index);
+    const jumperSummaries = jumpersSorted.map((j) => j.toEditableSummary());
+    return {
+      plane: this.toLoadPanelSummary(jumpersSorted),
+      formations: this.getFormationsSummary(),
+      jumpers: jumperSummaries,
+      loadOrder: jumperSummaries.map((j) => j.id),
+    };
   }
 }
 
@@ -69,8 +89,8 @@ export class SimJumper extends Jumper {
     const g = 9.81;
     const rho = 1.225;
     const Cd = 1.0;
-    const A = 0.7;
-    const mass = 80;
+    const A = this.surfaceArea;
+    const mass = this.weight + this.extraWeight;
 
     const knotsToMs = (knots: number) => knots * 0.514444;
 

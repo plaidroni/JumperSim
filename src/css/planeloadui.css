@@ -1,0 +1,68 @@
+body {
+  background: #1e1e1e;
+  color: white;
+  font-family: sans-serif;
+}
+
+.plane {
+  display: inline-block;
+  border: 1px solid #555;
+  padding: 10px;
+}
+
+.row {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.seat {
+  width: 30px;
+  height: 30px;
+  background: #ccc;
+  margin: 2px;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+}
+
+.seat.selected {
+  outline: 3px solid yellow;
+}
+
+.formation1 {
+  background: #b06ab3;
+}
+.formation2 {
+  background: gold;
+}
+.formation3 {
+  background: #5669d8;
+}
+
+.floor {
+  width: 70px;
+  background: #3a2a3a;
+  margin: 2px;
+}
+
+.door {
+  width: 30px;
+  height: 64px;
+  background: #ccc;
+  margin: 2px;
+}
+
+.seat:hover::after {
+  content: attr(data-name) "\A"attr(data-role);
+  white-space: pre;
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: black;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 10;
+}

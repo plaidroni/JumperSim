@@ -3,6 +3,15 @@ import { SimPlane } from "./SimEntities";
 import { Formation } from "./Formations";
 import { v4 as uuidv4 } from "uuid";
 
+type SuitType = "baggy" | "skintight" | "normal";
+type FlyingStyle =
+  | "freefly"
+  | "headdown"
+  | "sitfly"
+  | "tracking"
+  | "belly"
+  | "wingsuit";
+
 export class Plane {
   id = uuidv4();
   initialPosition: THREE.Vector3;
@@ -10,7 +19,7 @@ export class Plane {
   direction: THREE.Vector3;
   vector: THREE.Vector3;
   speed: number;
-  jumpersLeft: number;
+  jumpers: Jumper[];
   mesh: THREE.Object3D | null = null;
 
   constructor(
@@ -52,6 +61,29 @@ export class Plane {
       this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     }
   }
+  toLoadPanelSummary(jumpers: Jumper[] = []) {
+    const order = [...jumpers]
+      .sort((a, b) => a.index - b.index)
+      .map((j) => j.id);
+    return {
+      id: this.id,
+      position: { x: this.position.x, y: this.position.y, z: this.position.z },
+      initialPosition: {
+        x: this.initialPosition.x,
+        y: this.initialPosition.y,
+        z: this.initialPosition.z,
+      },
+      direction: {
+        x: this.direction.x,
+        y: this.direction.y,
+        z: this.direction.z,
+      },
+      // headingDeg: this.getHeadingDeg(),
+      // speedKnots: this.getSpeedKnots(),
+      jumpersCount: jumpers.length,
+      jumpersOrder: order,
+    };
+  }
 }
 
 /**
@@ -76,15 +108,24 @@ export class Jumper {
   formation: Formation;
   name: String;
   height: number;
-  area: number;
   targetPosition: THREE.Vector3;
+
+  surfaceArea: number; // m^2
+  weight: number;
+  extraWeight: number;
+  suitType: SuitType;
+  flyingStyle: FlyingStyle;
 
   constructor(
     index: number,
     plane: Plane,
-    jumpInterval = 15,
-    deployDelay = 7,
-    canopySize = 190
+    jumpInterval: number | undefined = 15,
+    deployDelay: number | undefined = 7,
+    canopySize: number | undefined = 190,
+    flyingStyle: FlyingStyle | undefined = "belly",
+    weight: number | undefined = 80,
+    extraWeight: number | undefined = 0,
+    suitType: SuitType | undefined = "normal"
   ) {
     this.index = index;
     this.jumpTime = index * jumpInterval;
@@ -94,6 +135,14 @@ export class Jumper {
     this.plane = plane;
     this.initialVelocity = plane.vector;
     this.position = new THREE.Vector3();
+    this.flyingStyle = flyingStyle;
+    this.weight = weight;
+    this.extraWeight = extraWeight;
+    this.suitType = suitType;
+
+    // uses the flying style to figure out the surface area through hardcoded values (for now)
+    this.calculateSurfaceArea();
+
     /**
      * this is used for finding the target position that the jumper wants to be in.
      * It is not used for the actual position of the jumper, but rather for the precalculate function to find the minimum distance to the target.
@@ -149,5 +198,50 @@ export class Jumper {
   setMesh(mesh: THREE.Object3D) {
     this.mesh = mesh;
     this.mesh.position.copy(this.position);
+  }
+
+  toEditableSummary() {
+    return {
+      id: this.id,
+      planeId: (this.plane as any)?.id,
+      index: this.index, // use as load order? (maybe another var)
+      name: this.name ?? null,
+      jumpTime: this.jumpTime,
+      deployDelay: this.deployDelay,
+      canopySize: this.canopySize,
+      isInFormation: this.isInFormation,
+      formationId: (this.formation as any)?.id,
+      formationName: (this.formation as any)?.name,
+      targetPosition: {
+        x: this.targetPosition.x,
+        y: this.targetPosition.y,
+        z: this.targetPosition.z,
+      },
+    };
+  }
+
+  // depending on the flying style, change the surface area
+  // MEASURED IN m^2
+  calculateSurfaceArea() {
+    switch (this.flyingStyle) {
+      case "freefly":
+        this.surfaceArea = 0.8;
+        break;
+      case "headdown":
+        this.surfaceArea = 0.35;
+        break;
+      case "sitfly":
+        this.surfaceArea = 0.5;
+        break;
+      case "tracking":
+        this.surfaceArea = 0.45;
+        break;
+      case "belly":
+        this.surfaceArea = 0.8;
+        break;
+      case "wingsuit":
+        this.surfaceArea = 2;
+        break;
+    }
   }
 }

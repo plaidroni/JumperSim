@@ -59,6 +59,7 @@ export class Formation {
   public title: string = "";
   public isActive: boolean = false;
   public SCALE_FACTOR: number = 0.065;
+  public breakoffAltitude: number | undefined = 1500; // 4500 feet in meters (we can maybe make this variable for each formation)
 
   constructor(data: FormationData) {
     this.points = data.points;
@@ -77,9 +78,9 @@ export class Formation {
       // console.log("jumperconfig:", jumperConfig);
       const slot = firstPoint.slots[i];
       if (!slot) continue;
-  const jumper = new SimJumper(i, plane, 0, 7, 190);
-  const mat = jumper.mesh.material as THREE.MeshBasicMaterial;
-  if (mat && (mat as any).color) mat.color.set(jumperConfig.color);
+      const jumper = new SimJumper(i, plane, 0, 7, 190);
+      const mat = jumper.mesh.material as THREE.MeshBasicMaterial;
+      if (mat && (mat as any).color) mat.color.set(jumperConfig.color);
       // set jumper quaternion based on slot angle from .jump file and point
       jumper.formationOffset = this.calculateSlotOffset(
         slot,
@@ -136,8 +137,8 @@ export class Formation {
     // since threejs uses Y as up, we need to flip the Z axis
     const offsetZ = (slot.origin[1] - center2D.y) * this.SCALE_FACTOR;
 
-  const offset = new THREE.Vector3(offsetX, 0, offsetZ);
-  if (jumper) jumper.origin = new THREE.Vector3(offsetX, 0, offsetZ);
+    const offset = new THREE.Vector3(offsetX, 0, offsetZ);
+    if (jumper) jumper.origin = new THREE.Vector3(offsetX, 0, offsetZ);
     // convert to radians and apply rotation around the Y axis (hence the 0, 1, 0 vector)
     console.log(`Calculating slot offset for ${slot.stance}:`, offset);
 

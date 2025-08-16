@@ -26,7 +26,7 @@ import { notificationManager } from "./classes/NotificationManager";
 import { alignPlaneToJumprun } from "./utils/AlignJumprun";
 import { askForRefresh } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
-import { initializeOverlay } from './overlaySetup';
+import { renderPlaneLoad } from "./ui/PlaneSettings";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -206,6 +206,7 @@ function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
         console.log(followTarget, obj);
 
         followTarget = obj;
+        renderPlaneLoad(simPlane);
         const box = new THREE.Box3().setFromObject(obj);
         const center = box.getCenter(new THREE.Vector3());
         cameraOffset = new THREE.Vector3().subVectors(camera.position, center);
@@ -242,7 +243,7 @@ try {
   console.log("Loaded formation data:", formationData1);
   const formation1 = new Formation(formationData1);
   formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
-
+  simJumpers = createDefaultSimJumpers(simPlane, 10);
   simPlane.addFormation(formation1);
 
   // const formationData2 = await loadJumpFormation("/formations/another.jump");
@@ -253,6 +254,7 @@ try {
   formations = simPlane.formations;
   // Gather all jumpers from all formations
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
+  simJumpers.push(...createDefaultSimJumpers(10, simPlane));
 
   // Success notification with action button
   notificationManager.success(
@@ -277,7 +279,7 @@ try {
   );
 } catch (e) {
   // fallback: no formation, use default jumpers
-
+  simJumpers = createDefaultSimJumpers(simPlane, 10);
   // Warning notification for fallback scenario
   notificationManager.warning(
     "Formation loading failed - using default jumpers",
