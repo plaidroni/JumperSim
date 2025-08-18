@@ -1,10 +1,8 @@
-import { createRoot} from '@react-three/fiber';
+import { createRoot } from 'react-dom/client';
 import { StrictMode } from 'react';
 import App from "./App";
+import './css/styles.css'
 
-createRoot(document.getElementById("app")!)
-    .render(
-        <StrictMode>
-            <App/>
-        </StrictMode>
+createRoot(document.getElementById("root")!).render(
+        <App/>
     );
