@@ -11,7 +11,7 @@ import Jumpzone from './components/entities/Jumpzone'
 // extend third-party three addons, see https://r3f.docs.pmnd.rs/api/typescript#extend-usage
 import { OrbitControls } from "@react-three/drei";
 
-export const scale = createContext(1);
+// export const scale = createContext(1);
 
 // Scene component that uses simulation time
 function Scene() {
@@ -30,18 +30,25 @@ function App() {
   // state
   const [plane, currentPlane] = useState(null);
   const [jumpers, setJumpers] = useState<Jumper[]>([]);
+  const [dropzone, setDropzone] = useState(null); // this can be it's own type
 
-  const Camera = new THREE.Camera
+  const mapRotation = -Math.PI / 2;
   return (
-      <Canvas camera={{ position: [0, 108, 30] }}>
+      <Canvas camera={{ position: [0, 108, 30], far: 10000 }}>
+        {/* lighting and controls */}
         <ambientLight intensity={0.3} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
-        <mesh>
-          <boxGeometry args={[2, 2, 2]} />
-          <meshPhongMaterial />
-        </mesh>
         <OrbitControls />
+
+        {/* Scene objects */}
+        <gridHelper args={[4618, 16]} />
         <axesHelper args={[5]} />
+
+        {/* basic map, TODO: move to component file */}
+        <mesh rotation={[-Math.PI / 2, 0,0]}>
+          <planeGeometry args={[4618, 4618]} />
+          <meshBasicMaterial wireframe></meshBasicMaterial>
+        </mesh>
       </Canvas>  
   );
 }
