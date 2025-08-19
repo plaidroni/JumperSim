@@ -1,8 +1,6 @@
 import { createContext, StrictMode, useContext, useState } from "react";
-import Overlay from "./components/Overlay";
 import { Canvas, ThreeElement, extend, useFrame } from "@react-three/fiber";
 import { Jumper } from "./js/classes/BaseEntities";
-import { SimulationTimeProvider } from "./context/SimulationTimeContext";
 import { useErrorBoundary } from 'use-error-boundary';
 import * as THREE from 'three';
 
@@ -11,18 +9,8 @@ import Jumpzone from './components/entities/Jumpzone'
 // extend third-party three addons, see https://r3f.docs.pmnd.rs/api/typescript#extend-usage
 import { OrbitControls } from "@react-three/drei";
 
+// this needs to get moved to another file
 // export const scale = createContext(1);
-
-// Scene component that uses simulation time
-function Scene() {
-  const [scene] = useState(() => new THREE.Scene());
-  
-  return (
-    <>
-      
-    </>
-  );
-}
 
 function App() {
   const { ErrorBoundary, didCatch, error } = useErrorBoundary();
