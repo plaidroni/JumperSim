@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import Jumpzone from './components/entities/Jumpzone'
 
 // extend third-party three addons, see https://r3f.docs.pmnd.rs/api/typescript#extend-usage
-import { OrbitControls } from "@react-three/drei";
+import { PerspectiveCamera, OrbitControls, GizmoHelper, GizmoViewport } from "@react-three/drei";
 
 // this needs to get moved to another file
 // export const scale = createContext(1);
@@ -20,17 +20,28 @@ function App() {
   const [jumpers, setJumpers] = useState<Jumper[]>([]);
   const [dropzone, setDropzone] = useState(null); // this can be it's own type
 
+  
+  const [debug, setDebug] = useState(true);
+
   const mapRotation = -Math.PI / 2;
   return (
-      <Canvas camera={{ position: [0, 108, 30], far: 10000 }}>
+    <ErrorBoundary>
+      <Canvas camera={{ fov: 50, position: [0, 108, 30], far: 10000 }}>
         {/* lighting and controls */}
         <ambientLight intensity={0.3} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
-        <OrbitControls />
+        
+        <PerspectiveCamera />
+        <OrbitControls makeDefault/>
+        
+        {debug && 
+        <GizmoHelper
+          alignment="bottom-right">
+          <GizmoViewport />
+        </GizmoHelper>}        
 
         {/* Scene objects */}
         <gridHelper args={[4618, 16]} />
-        <axesHelper args={[5]} />
 
         {/* basic map, TODO: move to component file */}
         <mesh rotation={[-Math.PI / 2, 0,0]}>
@@ -38,6 +49,7 @@ function App() {
           <meshBasicMaterial wireframe></meshBasicMaterial>
         </mesh>
       </Canvas>  
+    </ErrorBoundary>
   );
 }
 
