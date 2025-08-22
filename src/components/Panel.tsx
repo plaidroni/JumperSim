@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import '../css/devconsole.css'
 
 interface PanelProps {
-    title: string;
-    children: React.ReactNode; 
-    minimize: () => void;
-    close: () => void;
+    title?: string;
+    children?: React.ReactNode; 
+    minimize?: () => void;
+    close?: () => void;
 }
 
 export default function Panel(props: PanelProps) {
@@ -69,8 +69,8 @@ export default function Panel(props: PanelProps) {
                 <h2>{props.title}</h2>
                 <div className="panel-controls">
                     {/* TODO: Add onclick actions for panels */}
-                    <button onClick={props.minimize}>-</button>
-                    <button onClick={props.close}>x</button>
+                    {props.minimize && <button onClick={props.minimize}>-</button>}
+                    {props.close && <button onClick={props.close}>x</button>}
                 </div>
             </div>
             <div className="panel-body">
