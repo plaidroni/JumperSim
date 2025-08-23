@@ -39,7 +39,7 @@ const playbackBody = document.getElementById("playback-body");
 
 (<any>window).pause = function () {
   (<any>window).isPlaying = false;
-  (<any>window).playPauseButton.textContent = "⏵";
+  (<any>window).playPauseButton.textContent = "▶";
   clearInterval((<any>window).playbackInterval);
 };
 
