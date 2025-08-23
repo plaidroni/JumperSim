@@ -3,7 +3,7 @@ import * as BaseEntities from "../../js/classes/BaseEntities";
 import TrajectoryLine from "./trajectoryLine";
 import { KinematicTrack } from "../../js/Kinematics";
 
-import { MathUtils } from "three";
+import { MathUtils, MeshBasicMaterial } from "three";
 
 import { useState, useRef, Suspense, Key, useEffect } from "react";
 import { STLLoader } from "three/examples/jsm/Addons.js";
@@ -17,6 +17,7 @@ type ColorRGB = [number, number, number];
 // atm this is a straight port from Base Jumper
 interface JumperProps {
     index: Key
+    isPlaying?: boolean
     plane?: BaseEntities.Plane
     jumpInterval?: number
     deployDelay?: number
@@ -37,22 +38,30 @@ function Jumper(props: JumperProps) {
     const track = useRef<KinematicTrack>(new KinematicTrack());
     const panel = useRef(true);
     const meshRef = useRef(null);
+    const materialRef = useRef<MeshBasicMaterial | null>(null);
 
     // changing any of these values causes the object to disappear
-    const { onoff, interpolation, pos, color } = useControls({
-        onoff: true,
-        interpolation: 0.1,
-        pos: { x: 10, y: 10, z: 10},
-        color: {
-            options: ['red', 'green', 'blue'],
-            value: 'red'
-        }
+    const color = useControls({
+        // color: {
+        //     value: [200, 10, 10],
+        //     // onChange: (v) => {
+        //     //     if (materialRef.current) {
+        //     //         materialRef.current.color = v;
+        //     //     }
+        //     // },
+        //     transient: false
+        // }
     })
+
+    const interpolation = 0.1;
 
     useFrame((state, delta) => {
         if (!meshRef.current) return;
 
-        meshRef.current.position.x = MathUtils.lerp(meshRef.current.position.x, onoff ? Math.sin(state.clock.elapsedTime) * 50 : 0, interpolation);
+        // materialRef.current.color = color;
+        meshRef.current.position.x = MathUtils.lerp(meshRef.current.position.x, true ? Math.sin(state.clock.elapsedTime) * 50 : 0, interpolation);
+        meshRef.current.position.y = MathUtils.lerp(meshRef.current.position.y, true ? Math.cos(state.clock.elapsedTime) * 50 : 0, interpolation);
+        // meshRef.current.position.z = MathUtils.lerp(meshRef.current.position.z, true ? Math.sin(state.clock.elapsedTime) * 50 : 0, interpolation);
     });
 
     // TODO: on mount, calculate trajectory 
@@ -61,13 +70,11 @@ function Jumper(props: JumperProps) {
         // setTrack(magic)
 
         // return cleanup function if needed
-    }, [track]);
+    }, []);
 
     function DiverModel() {
         // this puts suspense on the object
-        const model = useLoader(STLLoader, 'fabs/skydiver_fix.stl', undefined, (e) => {
-            loadProgress.current = e.loaded / e.total;
-        });
+        const model = useLoader(STLLoader, 'fabs/skydiver_fix.stl');
         return <primitive object={model} />
     }
 
@@ -83,7 +90,7 @@ function Jumper(props: JumperProps) {
     //
     return ( 
         <mesh position={[0,0,0]} ref={meshRef}>
-            <meshBasicMaterial wireframe color={color}/>
+            <meshBasicMaterial wireframe ref={materialRef} color={color.value}/>
             <Suspense fallback={null}>
                 <DiverModel/>
             </Suspense>
