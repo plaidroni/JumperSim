@@ -85,14 +85,19 @@
         <div class="menu-item dropdown">
           <span>View</span>
           <div class="dropdown-menu">
-             <div class="dropdown-item">
+            <div class="dropdown-item">
               <span>Enable Trajectory Lines</span>
               <input
                 type="checkbox"
-                onclick="handleToggle(this, 'trajectory-lines')"
               />
             </div>
-            
+            <div class="dropdown-item" id="show-tooltip">
+              <span>Show Tooltip</span>
+              <input
+                type="checkbox"
+                checked
+              />
+            </div>
           </div>
         </div>
 

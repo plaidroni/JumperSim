@@ -150,3 +150,7 @@ input[type="number"] {
   margin-left: 4px;
   padding: 2px 8px 4px 8px;
 }
+
+.tooltip {
+  position: absolute;
+}

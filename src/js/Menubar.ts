@@ -22,6 +22,40 @@ function handleFileSelect(): void {
 // function to handle opening Skydive Designer link
 function handleOpenSkydiveDesignerLink(): void {}
 
+export function addTooltipToggle(tooltip): void {
+
+  const showTooltip = document.getElementById('show-tooltip');
+  if (!showTooltip) return;
+
+  const checkbox = showTooltip.querySelector(
+        'input[type="checkbox"]'
+      ) as HTMLInputElement;
+  if (!checkbox) return;
+    
+  function toggleTooltip(): void {
+    
+  }
+
+  checkbox.addEventListener("change", (e) => {
+      e.stopPropagation(); // Prevent menuItem click from firing
+
+      tooltip.show = checkbox.checked;
+  });
+  
+  // Handle clicking the menu item itself
+  showTooltip.addEventListener("click", (e) => {
+    // Don't handle if they clicked the checkbox directly
+    if ((e.target as HTMLElement).tagName === "INPUT") return;
+    
+    if (checkbox.checked) {
+        tooltip.show = checkbox.checked = false;
+      } 
+      else {
+        tooltip.show = checkbox.checked = true;
+      }
+  });
+}
+
 function updateWindowSubmenu(panels: PanelManager): void {
   // Get all panel states
   const panelStates = panels.getPanelStates();
@@ -58,7 +92,7 @@ export function initializePanelManager() {
     panels.restoreAllPanels();
   });
 
-  // Set up panel visibility toggles for checkboxes and menu items
+  // Set up panel visibility toggles for checkboxes and menu items in window tab
   document
     .querySelectorAll<HTMLInputElement>("#window-submenu .dropdown-item")
     .forEach((menuItem) => {

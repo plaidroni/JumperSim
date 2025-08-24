@@ -19,7 +19,7 @@ import {
 } from "./ui/TrajectoryLines";
 import { loadJumpFormation } from "./exampleData/Formations";
 import { Formation } from "./classes/Formations";
-import { initializePanelManager } from "./Menubar";
+import { addTooltipToggle, initializePanelManager } from "./Menubar";
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
@@ -55,7 +55,12 @@ camera.position.set(0, 108, 30);
 controls.update();
 
 // === TOOLTIP ===
-const tooltip = document.getElementById("info-tooltip");
+const tooltip = {
+  element: document.getElementById("info-tooltip"),
+  show: true
+};
+addTooltipToggle(tooltip);
+
 const compass = document.getElementById("compass");
 const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
@@ -91,8 +96,10 @@ function onMouseMove(event) {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   if (tooltip) {
-    (tooltip as HTMLElement).style.left = `${event.clientX + 10}px`;
-    (tooltip as HTMLElement).style.top = `${event.clientY + 10}px`;
+    
+    // (tooltip.element as HTMLElement).style.left = `${event.clientX + 10}px`;
+    // (tooltip.element as HTMLElement).style.top = `${event.clientY + 10}px`;
+    (tooltip.element as HTMLElement).style.transform = `translate(${event.clientX + 10}px, ${event.clientY + 10}px)`
   }
 }
 
@@ -194,12 +201,12 @@ function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
 
       // we check if the object we're following is a plane, if so we put the user into edit mode
 
-      if (data?.label && tooltip) {
+      if (data?.label && tooltip.element && tooltip.show) {
         let html = `<strong>${data.label}</strong><br>`;
         for (const key in data)
           if (key !== "label") html += `${key}: ${data[key]}<br>`;
-        (tooltip as HTMLElement).innerHTML = html;
-        (tooltip as HTMLElement).style.display = "block";
+        (tooltip.element as HTMLElement).innerHTML = html;
+        (tooltip.element as HTMLElement).style.display = "block";
       }
 
       if (clickedThisFrame) {
@@ -217,10 +224,10 @@ function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
       return;
     }
 
-    if (tooltip) (tooltip as HTMLElement).style.display = "none";
+    if (tooltip) (tooltip.element as HTMLElement).style.display = "none";
   } catch (err) {
     console.warn("Raycast error:", err);
-    if (tooltip) (tooltip as HTMLElement).style.display = "none";
+    if (tooltip) (tooltip.element as HTMLElement).style.display = "none";
   }
 }
 
