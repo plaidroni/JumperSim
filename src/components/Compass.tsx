@@ -1,5 +1,5 @@
+// see https://github.com/pmndrs/drei/blob/master/src/core/GizmoHelper.tsx
 
-// props is likely rotation/yaw
 function Compass(props) {
     return (
     <div id="compassContainer" style={{ position: 'absolute', margin: '3rem'}}>
