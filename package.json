@@ -23,15 +23,23 @@
   },
   "homepage": "https://github.com/plaidroni/JumperSim#readme",
   "dependencies": {
-    "@react-three/fiber": "^9.2.0",
+    "@react-three/drei": "^10.7.3",
+    "@react-three/fiber": "^9.3.0",
+    "@tsconfig/recommended": "^1.0.10",
     "@types/three": "^0.178.1",
+    "leva": "^0.10.0",
     "mapbox-gl": "^3.13.0",
     "node": "^22.16.0",
     "openmeteo": "^1.2.0",
-    "three": "^0.176.0"
+    "react-dom": "^19.1.1",
+    "three": "^0.176.0",
+    "use-error-boundary": "^2.0.6"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^4.7.0",
     "uuid": "^11.1.0",
     "vite": "^6.3.5"
   }

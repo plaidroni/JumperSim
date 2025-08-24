@@ -26,7 +26,7 @@ input[type="number"] {
 }
 
 .panel {
-  position: fixed;
+  position: absolute;
   top: 200px;
   left: 100px;
   display: inline-block;

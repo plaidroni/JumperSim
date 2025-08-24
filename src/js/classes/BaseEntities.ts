@@ -3,8 +3,8 @@ import { SimPlane } from "./SimEntities";
 import { Formation } from "./Formations";
 import { v4 as uuidv4 } from "uuid";
 
-type SuitType = "baggy" | "skintight" | "normal";
-type FlyingStyle =
+export type SuitType = "baggy" | "skintight" | "normal";
+export type FlyingStyle =
   | "freefly"
   | "headdown"
   | "sitfly"

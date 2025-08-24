@@ -652,3 +652,6 @@ initializePanelManager();
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;
+
+// Initialize React overlay
+initializeOverlay();
