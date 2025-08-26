@@ -27,6 +27,7 @@ import { alignPlaneToJumprun } from "./utils/AlignJumprun";
 import { askForRefresh } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
 import { renderPlaneLoad } from "./ui/PlaneSettings";
+import { PlaneLoad } from "./ui/PlaneLoad";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -104,6 +105,108 @@ function onMouseMove(event) {
 }
 
 document.addEventListener("mousemove", onMouseMove);
+
+// group formations first, then others.
+
+// we should refactor this later to include proper load order:
+// First to board: High pullers/Canopy Relative Work
+// Wingsuits
+// Tracking dives 2
+// Tandems
+// Skydiver Training Program Students
+// Freefly groups, smallest to largest.
+// Belly-fly groups, smallest to largest.
+// Tracking/tracing/horizontal dives (Tracking and other horizontal skydives are approved and placed in the loading order on a case-by-case basis after approval from one of our S&TAs, load organizers, or drop zone manager.)
+// Last to board, first to exit: Any lower-altitude individuals or groups.
+// Ensure formation jumpers are grouped together and indices are sequential
+function groupAndReindexJumpers(
+  plane: SimPlane,
+  all: SimJumper[]
+): SimJumper[] {
+  // Helper to get style, fallback to 'belly'
+  function getStyle(j: SimJumper): string {
+    return (j as any).flyingStyle || "belly";
+  }
+
+  // Helper to assign random style if missing
+  function ensureStyle(j: SimJumper) {
+    if (!(j as any).flyingStyle) (j as any).flyingStyle = "belly";
+  }
+
+  // Formation jumpers first, in formation order
+  const formations = plane.formations || [];
+  const formationJumpers: SimJumper[] = [];
+  const formationSet = new Set<string>();
+  formations.forEach((f: any) => {
+    const group = (f?.getAllJumpers?.() || []) as SimJumper[];
+    group.forEach((j) => {
+      ensureStyle(j);
+      formationJumpers.push(j);
+      formationSet.add(j.id);
+    });
+  });
+
+  // Non-formation jumpers
+  const others = all.filter((j) => !formationSet.has(j.id));
+  others.forEach(ensureStyle);
+
+  // Grouping logic for non-formation jumpers
+  // Map of style to jumpers
+  const styleGroups: Record<string, SimJumper[]> = {};
+  for (const j of others) {
+    const style = getStyle(j);
+    if (!styleGroups[style]) styleGroups[style] = [];
+    styleGroups[style].push(j);
+  }
+
+  // Helper to sort by group size (ascending)
+  function byGroupSizeAsc(a: SimJumper[], b: SimJumper[]) {
+    return a.length - b.length;
+  }
+
+  // Order per comment
+  const ordered: SimJumper[] = [
+    ...formationJumpers,
+    ...(styleGroups["crw"] || []), // High pullers/CRW
+    ...(styleGroups["wingsuit"] || []), // Wingsuits
+    ...(styleGroups["tracking2"] || []), // Tracking dives 2
+    ...(styleGroups["tandem"] || []), // Tandems
+    ...(styleGroups["student"] || []), // Students
+    // Freefly groups, smallest to largest
+    ...(styleGroups["freefly"] ? [styleGroups["freefly"]] : [])
+      .sort(byGroupSizeAsc)
+      .flat(),
+    // Belly-fly groups, smallest to largest
+    ...(styleGroups["belly"] ? [styleGroups["belly"]] : [])
+      .sort(byGroupSizeAsc)
+      .flat(),
+    ...(styleGroups["tracking"] || []), // Tracking/tracing/horizontal
+    ...(styleGroups["low-altitude"] || []), // Lower-altitude
+  ];
+
+  // Add any remaining styles not explicitly listed
+  const usedStyles = new Set([
+    "crw",
+    "wingsuit",
+    "tracking2",
+    "tandem",
+    "student",
+    "freefly",
+    "belly",
+    "tracking",
+    "low-altitude",
+  ]);
+  Object.entries(styleGroups).forEach(([style, group]) => {
+    if (!usedStyles.has(style)) ordered.push(...group);
+  });
+
+  // Assign contiguous indices
+  ordered.forEach((j, i) => {
+    j.index = i;
+  });
+
+  return ordered;
+}
 
 function collectTwoAlignPoints(
   mapPlane: THREE.Object3D
@@ -243,6 +346,12 @@ handlePlaneSelection("twin-otter", scene, simPlane);
 
 let formations: Formation[] = [];
 let simJumpers: SimJumper[] = [];
+(<any>window).simPlane = simPlane;
+(<any>window).simJumpers = simJumpers;
+// attach PlaneLoad instance to plane for centralized state
+(simPlane as any).planeLoad = new PlaneLoad(simPlane);
+// keep plane reference to jumpers array in sync
+simPlane.jumpers = simJumpers;
 
 try {
   // const formationData1 = await loadJumpFormation("/formations/3way6a.jump");
@@ -250,7 +359,7 @@ try {
   console.log("Loaded formation data:", formationData1);
   const formation1 = new Formation(formationData1);
   formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
-  simJumpers = createDefaultSimJumpers(simPlane, 10);
+  simJumpers = createDefaultSimJumpers(10, simPlane);
   simPlane.addFormation(formation1);
 
   // const formationData2 = await loadJumpFormation("/formations/another.jump");
@@ -262,6 +371,11 @@ try {
   // Gather all jumpers from all formations
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
   simJumpers.push(...createDefaultSimJumpers(10, simPlane));
+  // Group formation jumpers together and reindex sequentially
+  simJumpers = groupAndReindexJumpers(simPlane, simJumpers);
+  (<any>window).simJumpers = simJumpers;
+  simPlane.jumpers = simJumpers;
+  (simPlane as any).planeLoad?.render();
 
   // Success notification with action button
   notificationManager.success(
@@ -286,7 +400,11 @@ try {
   );
 } catch (e) {
   // fallback: no formation, use default jumpers
-  simJumpers = createDefaultSimJumpers(simPlane, 10);
+  simJumpers = createDefaultSimJumpers(10, simPlane);
+  simJumpers = groupAndReindexJumpers(simPlane, simJumpers);
+  (<any>window).simJumpers = simJumpers;
+  simPlane.jumpers = simJumpers;
+  (simPlane as any).planeLoad?.render();
   // Warning notification for fallback scenario
   notificationManager.warning(
     "Formation loading failed - using default jumpers",
@@ -314,6 +432,9 @@ function startPlaneEdit() {
 }
 
 (window as any).startPlaneEdit = startPlaneEdit;
+
+// Render plane load editor at startup
+(simPlane as any).planeLoad?.render();
 
 // load active objects into the panel
 const panelBody = document.querySelector("#objects-panel .panel-body");
@@ -562,10 +683,15 @@ systemsOK.then(() => {
         mesh.quaternion.copy(planeSample.angle);
       }
     }
+    const EXIT_THRESHOLD_METERS = 2; // kinematic separation to consider exited
     simJumpers.forEach((jumper) => {
       const sample = jumper.track.getInterpolatedSample(time);
       if (!sample) return;
       jumper.getMesh().position.copy(sample.position);
+      if (planeSample) {
+        const dist = sample.position.distanceTo(planeSample.position);
+        jumper.hasJumped = dist > EXIT_THRESHOLD_METERS;
+      }
 
       const posFeet = sample.position.clone().multiplyScalar(3.28084);
       // edit quaternion of mesh to match angle
@@ -606,6 +732,9 @@ systemsOK.then(() => {
       ? simulationTime + deltaTime
       : (window as any).currentTime;
 
+    // expose for UI components (e.g., plane load jumped indicator)
+    (window as any).simulationTime = simulationTime;
+
     (window as any).updateScrubber?.(simulationTime);
 
     if (simulationTime !== lastSimTime) {
@@ -615,6 +744,9 @@ systemsOK.then(() => {
     controls.update();
 
     updateTrajectoryLines(lines, simulationTime);
+
+    // Update PlaneLoad UI every frame for dynamic values
+    (simPlane as any).planeLoad?.updateRuntime?.();
 
     renderer.render(scene, camera);
 

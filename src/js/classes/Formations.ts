@@ -79,8 +79,11 @@ export class Formation {
       const slot = firstPoint.slots[i];
       if (!slot) continue;
       const jumper = new SimJumper(i, plane, 0, 7, 190);
-      const mat = jumper.mesh.material as THREE.MeshBasicMaterial;
-      if (mat && (mat as any).color) mat.color.set(jumperConfig.color);
+      const meshObj = jumper.getMesh();
+      if (meshObj instanceof THREE.Mesh) {
+        const mat = meshObj.material as THREE.MeshBasicMaterial;
+        if (mat && (mat as any).color) mat.color.set(jumperConfig.color);
+      }
       // set jumper quaternion based on slot angle from .jump file and point
       jumper.formationOffset = this.calculateSlotOffset(
         slot,
@@ -90,8 +93,16 @@ export class Formation {
       jumper.angle = this.calculateAngleOffset(slot.angleDeg);
       console.log(`Jumper ${i} angle offset:`, slot.angleDeg, "for slot:", i);
       jumper.isInFormation = true;
+      jumper.linked = true; // ensure formation jumpers are linked by default
       this.jumpers.push(jumper);
     }
+    // Assign contiguous indices to formation group so they appear together initially
+    this.jumpers.forEach((j, i) => {
+      j.index = i;
+    });
+    // Set a common jumpTime for all formation members so they exit together
+    const baseJumpTime = this.jumpers.length > 0 ? this.jumpers[0].jumpTime : 0;
+    this.jumpers.forEach((j) => (j.jumpTime = baseJumpTime));
   }
 
   private calculateAngleOffset(angleDeg: number): THREE.Quaternion {

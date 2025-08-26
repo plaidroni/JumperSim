@@ -97,9 +97,9 @@ export class Jumper {
   deployDelay: number;
   canopySize: number;
   direction: THREE.Vector3;
-  plane: SimPlane;
+  plane: Plane;
   initialVelocity: THREE.Vector3;
-  mesh: THREE.Mesh;
+  mesh: THREE.Object3D;
   deployed: boolean;
   position: THREE.Vector3;
   currentVelocity: THREE.Vector3;
@@ -109,6 +109,8 @@ export class Jumper {
   name: String;
   height: number;
   targetPosition: THREE.Vector3;
+  // If true, this jumper exits linked with their formation group
+  linked: boolean = false;
 
   surfaceArea: number; // m^2
   weight: number;
@@ -123,7 +125,7 @@ export class Jumper {
     deployDelay: number | undefined = 7,
     canopySize: number | undefined = 190,
     flyingStyle: FlyingStyle | undefined = "belly",
-    weight: number | undefined = 80,
+    weight: number | undefined = Math.round(Math.random() * 30 + 60),
     extraWeight: number | undefined = 0,
     suitType: SuitType | undefined = "normal"
   ) {
@@ -191,7 +193,7 @@ export class Jumper {
     this.mesh.position.copy(this.position);
   }
 
-  getMesh(): THREE.Mesh {
+  getMesh(): THREE.Object3D {
     return this.mesh;
   }
 
@@ -210,6 +212,7 @@ export class Jumper {
       deployDelay: this.deployDelay,
       canopySize: this.canopySize,
       isInFormation: this.isInFormation,
+      linked: this.linked,
       formationId: (this.formation as any)?.id,
       formationName: (this.formation as any)?.name,
       targetPosition: {

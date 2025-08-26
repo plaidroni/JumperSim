@@ -2,6 +2,16 @@
 
 JumperSim is a 3D skydiving physics simulator built with Three.js and TypeScript, designed for visualizing and analyzing jumper dynamics in both freefall and canopy flight. Featuring real-time weather data, layered wind modeling, and a full timeline playback system, JumperSim is built as a safety training and planning tool for skydivers, instructors, and dropzone operators.
 
+### Plane Load & Organizer
+
+Open the Plane Settings panel and click "Edit Plane Load" to view the seating map.
+
+Notes:
+
+- Load order is based on the jumper's `index`; jump time = index × interval.
+- Works with default jumpers and formation jumpers.
+- You can link/unlink formation jumpers to simulate a linked float / dive exit, the rest will independently dive
+
 ![A screenshot of JumperSim](https://github.com/user-attachments/assets/ea099efa-3778-4fbd-93d6-a3982caebf26)
 
 ## Features

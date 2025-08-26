@@ -14,6 +14,9 @@ const mass = 80;
 export class SimPlane extends Plane {
   track: KinematicTrack;
   formations: Formation[] = [];
+  jumpers: SimJumper[] = [];
+  // UI state holder, assigned at runtime to avoid circular imports
+  planeLoad?: any;
 
   constructor(position, speedKnots, direction) {
     super(position, speedKnots, direction);
@@ -78,6 +81,8 @@ export class SimJumper extends Jumper {
     super(index, plane, jumpInterval, deployDelay, canopySize);
     this.track = new KinematicTrack();
     this.velocity = plane.vector.clone();
+    this.hasJumped = false;
+    this.hasLanded = false;
   }
 
   addLandingSpot() {}
@@ -139,9 +144,9 @@ export class SimJumper extends Jumper {
       return lowerVec.lerp(upperVec, t);
     }
 
-    const planeSampleAtJump = this.plane.track.getInterpolatedSample(
-      this.jumpTime
-    );
+    const planeSampleAtJump = (
+      this.plane as SimPlane
+    ).track.getInterpolatedSample(this.jumpTime);
     let currentPosition = planeSampleAtJump
       ? planeSampleAtJump.position.clone().add(this.origin)
       : this.plane.position.clone().add(this.origin);
@@ -153,7 +158,9 @@ export class SimJumper extends Jumper {
       const simTime = t;
 
       if (simTime < this.jumpTime) {
-        const sample = this.plane.track.getInterpolatedSample(simTime);
+        const sample = (this.plane as SimPlane).track.getInterpolatedSample(
+          simTime
+        );
         if (sample) {
           currentPosition = sample.position.clone();
           this.velocity = sample.velocity.clone();
