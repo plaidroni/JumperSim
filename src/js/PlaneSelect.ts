@@ -3,7 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SimPlane } from "./classes/SimEntities";
 
 let currentPlane = null;
-let planeMesh: THREE.Mesh = null;
+let planeMesh: THREE.Object3D | null = null;
 const loader = new GLTFLoader();
 
 const planeConfigs = {
@@ -33,6 +33,7 @@ const planeConfigs = {
     scale: [8, 8, 8],
     color: 0xff0066,
     name: "Twin Otter",
+    slotCount: 22,
     rotation: [0, 0, 0],
   },
 };
@@ -61,22 +62,23 @@ export function handlePlaneSelection(
   loadPlane(config, scene, simPlane);
 }
 function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
-  let meshes = [];
+  let meshes: THREE.Object3D[] = [];
   loader.load(
     config.file,
     function (gltf) {
-      gltf.scene.traverse((child) => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({
+      gltf.scene.traverse((child: any) => {
+        if ((child as any).isMesh) {
+          (child as any).material = new THREE.MeshStandardMaterial({
             color: config.color,
             wireframe: true,
           });
-          meshes.push(child);
+          meshes.push(child as THREE.Object3D);
         }
       });
 
       if (meshes.length > 0) {
-        gltf.scene.scale.set(...config.scale);
+        const s = config.scale as [number, number, number];
+        gltf.scene.scale.set(s[0], s[1], s[2]);
 
         if (config.rotation) {
           const [xDeg, yDeg, zDeg] = config.rotation;
@@ -89,9 +91,13 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
         addNoseLine(gltf.scene, scene);
         gltf.scene.userData.label = "Plane";
 
-        planeMesh = gltf.scene;
+        planeMesh = gltf.scene as THREE.Object3D;
 
         simPlane.setMesh(planeMesh);
+        // propagate capacity if provided by config (used for load panel warnings)
+        if (typeof config.slotCount === "number") {
+          (simPlane as any).capacity = config.slotCount;
+        }
         scene.add(planeMesh);
 
         updateStatus(
@@ -125,11 +131,15 @@ function getCurrentPlane() {
 
 // initialization method is cool, out of pattern however. maybe replace with global scene in future
 export function initializePlaneManager(scene, simPlane) {
-  const planeSelect = document.getElementById("plane-select");
+  const planeSelect = document.getElementById(
+    "plane-select"
+  ) as HTMLSelectElement | null;
   if (planeSelect) {
     planeSelect.value = "twin-otter";
-    planeSelect.addEventListener("change", function (event) {
-      handlePlaneSelection(event.target.value, scene, simPlane);
+    planeSelect.addEventListener("change", function (event: Event) {
+      const target = event.target as HTMLSelectElement | null;
+      if (!target) return;
+      handlePlaneSelection(target.value, scene, simPlane);
     });
   }
   console.log("Plane Manager Initialized");

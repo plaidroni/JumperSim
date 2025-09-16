@@ -1,6 +1,4 @@
 import { SimPlane, SimJumper } from "../classes/SimEntities";
-import { Formation } from "../classes/Formations";
-import { notificationManager } from "../classes/NotificationManager";
 import { askForRefresh } from "../core/data/SimulationVariables";
 
 export type PlaneLayout = {
@@ -21,9 +19,6 @@ export class PlaneLoad {
   selectedId: string | null = null;
   view: "organizer" = "organizer";
   layout: PlaneLayout;
-  private selectedFormationIdx: number = 0;
-  // User-configurable interval (seconds) between exits for sequential groups
-  private jumpIntervalSeconds: number = 10;
 
   constructor(plane: SimPlane, layout?: PlaneLayout) {
     this.plane = plane;
@@ -49,53 +44,35 @@ export class PlaneLoad {
 
   normalizeJumpTimes() {
     const sorted = [...this.jumpers].sort((a, b) => a.index - b.index);
-    const baseInterval = Math.max(0, this.jumpIntervalSeconds);
-
-    // Identify linked formation members
-    const linkedSet = new Set(sorted.filter((j) => j.linked).map((j) => j.id));
-    if (linkedSet.size === 0) {
-      // No linked group, assign simple sequential times
-      sorted.forEach((j, i) => (j.jumpTime = i * baseInterval));
-      return;
-    }
-
-    // Determine earliest position of any linked jumper in the ordered list
-    const firstLinkedIdx = sorted.findIndex((j) => linkedSet.has(j.id));
-
-    // Partition non-linked before/after the first linked position
-    const before: SimJumper[] = [];
-    const linkedGroup: SimJumper[] = [];
-    const after: SimJumper[] = [];
-    sorted.forEach((j, i) => {
-      const isLinked = linkedSet.has(j.id);
-      if (isLinked) linkedGroup.push(j);
-      else if (i < firstLinkedIdx) before.push(j);
-      else after.push(j);
-    });
-
-    // Build groups preserving relative placement: before (each solo), linked group, after (each solo)
-    type Group = SimJumper[];
-    const groups: Group[] = [];
-    before.forEach((j) => groups.push([j]));
-    if (linkedGroup.length) groups.push(linkedGroup);
-    after.forEach((j) => groups.push([j]));
-
-    // Assign group-based jump times (same time for all in a group)
-    let tIndex = 0;
-    groups.forEach((g) => {
-      const t = tIndex * baseInterval;
-      g.forEach((j) => (j.jumpTime = t));
-      tIndex += 1;
-    });
+    const baseInterval =
+      sorted.length > 1
+        ? Math.max(1, sorted[1].jumpTime - sorted[0].jumpTime)
+        : 10;
+    sorted.forEach((j, i) => (j.jumpTime = i * baseInterval));
   }
 
   swapSeats(aId: string, bId: string) {
     const a = this.jumpers.find((j) => j.id === aId);
     const b = this.jumpers.find((j) => j.id === bId);
     if (!a || !b || a.id === b.id) return;
-    const tmp = a.index;
-    a.index = b.index;
-    b.index = tmp;
+    const sorted = [...this.jumpers].sort((x, y) => x.index - y.index);
+    const getGroupByFormation = (pivot: SimJumper) => {
+      if (!pivot.isInFormation || !(pivot as any).formation) return [pivot];
+      const f = (pivot as any).formation;
+      return sorted.filter((j) => (j as any).formation === f);
+    };
+    if (a.isInFormation || b.isInFormation) {
+      const group = a.isInFormation ? getGroupByFormation(a) : getGroupByFormation(b);
+      const remainder = sorted.filter((j) => !group.includes(j));
+      const targetIdx = a.isInFormation ? b.index : a.index;
+      const insertAt = Math.max(0, Math.min(targetIdx, remainder.length));
+      remainder.splice(insertAt, 0, ...group);
+      remainder.forEach((j, i) => (j.index = i));
+    } else {
+      const tmp = a.index;
+      a.index = b.index;
+      b.index = tmp;
+    }
     this.normalizeJumpTimes();
     this.render();
     // notify to recalc from organizer changes
@@ -146,11 +123,23 @@ export class PlaneLoad {
     const sorted = [...this.jumpers].sort((a, b) => a.index - b.index);
     const i = sorted.findIndex((x) => x.id === j.id);
     if (i <= 0) return;
-    const prev = sorted[i - 1];
-    const cur = sorted[i];
-    const tmp = prev.index;
-    prev.index = cur.index;
-    cur.index = tmp;
+    if (j.isInFormation && (j as any).formation) {
+      const f = (j as any).formation;
+      const group = sorted.filter((x) => (x as any).formation === f);
+      const firstIdx = sorted.findIndex((x) => group.includes(x));
+      if (firstIdx <= 0) return;
+      const before = sorted.slice(0, firstIdx - 1);
+      const swapWith = sorted[firstIdx - 1];
+      const after = sorted.slice(firstIdx + group.length);
+      const rebuilt = [...before, ...group, swapWith, ...after];
+      rebuilt.forEach((jj, idx) => (jj.index = idx));
+    } else {
+      const prev = sorted[i - 1];
+      const cur = sorted[i];
+      const tmp = prev.index;
+      prev.index = cur.index;
+      cur.index = tmp;
+    }
     this.reindexSequential();
     this.normalizeJumpTimes();
     this.render();
@@ -173,11 +162,24 @@ export class PlaneLoad {
     const sorted = [...this.jumpers].sort((a, b) => a.index - b.index);
     const i = sorted.findIndex((x) => x.id === j.id);
     if (i < 0 || i >= sorted.length - 1) return;
-    const next = sorted[i + 1];
-    const cur = sorted[i];
-    const tmp = next.index;
-    next.index = cur.index;
-    cur.index = tmp;
+    if (j.isInFormation && (j as any).formation) {
+      const f = (j as any).formation;
+      const group = sorted.filter((x) => (x as any).formation === f);
+      const firstIdx = sorted.findIndex((x) => group.includes(x));
+      const lastIdx = firstIdx + group.length - 1;
+      if (lastIdx >= sorted.length - 1) return;
+      const before = sorted.slice(0, firstIdx);
+      const swapWith = sorted[lastIdx + 1];
+      const after = sorted.slice(lastIdx + 2);
+      const rebuilt = [...before, swapWith, ...group, ...after];
+      rebuilt.forEach((jj, idx) => (jj.index = idx));
+    } else {
+      const next = sorted[i + 1];
+      const cur = sorted[i];
+      const tmp = next.index;
+      next.index = cur.index;
+      cur.index = tmp;
+    }
     this.reindexSequential();
     this.normalizeJumpTimes();
     this.render();
@@ -236,7 +238,18 @@ export class PlaneLoad {
     const name = document.createElement("input");
     name.type = "text";
     name.value = (j as any).name || "";
-    name.addEventListener("input", () => ((j as any).name = name.value));
+    name.addEventListener("input", () => {
+      (j as any).name = name.value;
+      askForRefresh(
+        () => {
+          const plane: SimPlane = this.plane;
+          plane.precalculate(300);
+          this.jumpers.forEach((jj) => jj.precalculate(300));
+        },
+        false,
+        "PlaneLoad-Details-Name"
+      );
+    });
     addRow("Name", name);
 
     const styleSel = document.createElement("select");
@@ -252,25 +265,50 @@ export class PlaneLoad {
     styleSel.addEventListener("change", () => {
       (j as any).flyingStyle = styleSel.value;
       j.calculateSurfaceArea();
+      askForRefresh(
+        () => {
+          const plane: SimPlane = this.plane;
+          plane.precalculate(300);
+          this.jumpers.forEach((jj) => jj.precalculate(300));
+        },
+        false,
+        "PlaneLoad-Details-Style"
+      );
     });
     addRow("Flying Style", styleSel);
 
     const weight = document.createElement("input");
     weight.type = "number";
     weight.value = String((j as any).weight ?? 80);
-    weight.addEventListener(
-      "input",
-      () => ((j as any).weight = Number(weight.value))
-    );
+    weight.addEventListener("input", () => {
+      (j as any).weight = Number(weight.value);
+      askForRefresh(
+        () => {
+          const plane: SimPlane = this.plane;
+          plane.precalculate(300);
+          this.jumpers.forEach((jj) => jj.precalculate(300));
+        },
+        false,
+        "PlaneLoad-Details-Weight"
+      );
+    });
     addRow("Weight (kg)", weight);
 
     const extra = document.createElement("input");
     extra.type = "number";
     extra.value = String((j as any).extraWeight ?? 0);
-    extra.addEventListener(
-      "input",
-      () => ((j as any).extraWeight = Number(extra.value))
-    );
+    extra.addEventListener("input", () => {
+      (j as any).extraWeight = Number(extra.value);
+      askForRefresh(
+        () => {
+          const plane: SimPlane = this.plane;
+          plane.precalculate(300);
+          this.jumpers.forEach((jj) => jj.precalculate(300));
+        },
+        false,
+        "PlaneLoad-Details-ExtraWeight"
+      );
+    });
     addRow("Extra Weight (kg)", extra);
 
     const suit = document.createElement("select");
@@ -281,25 +319,52 @@ export class PlaneLoad {
       if ((j as any).suitType === opt) o.selected = true;
       suit.appendChild(o);
     });
-    suit.addEventListener("change", () => ((j as any).suitType = suit.value));
+    suit.addEventListener("change", () => {
+      (j as any).suitType = suit.value;
+      askForRefresh(
+        () => {
+          const plane: SimPlane = this.plane;
+          plane.precalculate(300);
+          this.jumpers.forEach((jj) => jj.precalculate(300));
+        },
+        false,
+        "PlaneLoad-Details-Suit"
+      );
+    });
     addRow("Suit", suit);
 
     const canopy = document.createElement("input");
     canopy.type = "number";
     canopy.value = String(j.canopySize ?? 190);
-    canopy.addEventListener(
-      "input",
-      () => (j.canopySize = Number(canopy.value))
-    );
+    canopy.addEventListener("input", () => {
+      j.canopySize = Number(canopy.value);
+      askForRefresh(
+        () => {
+          const plane: SimPlane = this.plane;
+          plane.precalculate(300);
+          this.jumpers.forEach((jj) => jj.precalculate(300));
+        },
+        false,
+        "PlaneLoad-Details-Canopy"
+      );
+    });
     addRow("Canopy (sqft)", canopy);
 
     const deploy = document.createElement("input");
     deploy.type = "number";
     deploy.value = String(j.deployDelay ?? 7);
-    deploy.addEventListener(
-      "input",
-      () => (j.deployDelay = Number(deploy.value))
-    );
+    deploy.addEventListener("input", () => {
+      j.deployDelay = Number(deploy.value);
+      askForRefresh(
+        () => {
+          const plane: SimPlane = this.plane;
+          plane.precalculate(300);
+          this.jumpers.forEach((jj) => jj.precalculate(300));
+        },
+        false,
+        "PlaneLoad-Details-Deploy"
+      );
+    });
     addRow("Deploy Delay (s)", deploy);
 
     const indexInput = document.createElement("input");
@@ -326,81 +391,6 @@ export class PlaneLoad {
 
   private buildOrganizer(): HTMLElement {
     const wrap = document.createElement("div");
-    // Formation toolbar: import + selector
-    const toolbar = document.createElement("div");
-    toolbar.style.display = "flex";
-    toolbar.style.gap = "8px";
-    toolbar.style.alignItems = "center";
-    toolbar.style.margin = "4px 0 8px";
-
-    const importBtn = document.createElement("button");
-    importBtn.textContent = "Import Formation (.jump)";
-    importBtn.addEventListener("click", () => this.openFormationImport());
-
-    const formSel = document.createElement("select");
-    const formations = this.plane.formations || [];
-    if (formations.length === 0) {
-      const opt = document.createElement("option");
-      opt.value = "-1";
-      opt.textContent = "No formations";
-      formSel.appendChild(opt);
-      formSel.disabled = true;
-    } else {
-      formations.forEach((f, i) => {
-        const opt = document.createElement("option");
-        opt.value = String(i);
-        opt.textContent = f.title || `Formation ${i + 1}`;
-        if (i === this.selectedFormationIdx) opt.selected = true;
-        formSel.appendChild(opt);
-      });
-    }
-    formSel.addEventListener("change", () => {
-      this.selectedFormationIdx = Math.max(0, Number(formSel.value) || 0);
-      this.render();
-    });
-
-    // Jump interval editor
-    const intervalWrap = document.createElement("div");
-    intervalWrap.style.display = "inline-flex";
-    intervalWrap.style.alignItems = "center";
-    intervalWrap.style.gap = "4px";
-    const intervalLabel = document.createElement("label");
-    intervalLabel.textContent = "Interval (s)";
-    const intervalInput = document.createElement("input");
-    intervalInput.type = "number";
-    intervalInput.min = "0";
-    intervalInput.step = "0.5";
-    intervalInput.style.width = "6em";
-    intervalInput.value = String(this.jumpIntervalSeconds);
-    intervalInput.addEventListener("change", () => {
-      const v = Number(intervalInput.value);
-      this.jumpIntervalSeconds = isFinite(v)
-        ? Math.max(0, v)
-        : this.jumpIntervalSeconds;
-      this.normalizeJumpTimes();
-      // prompt recalc
-      askForRefresh(
-        () => {
-          const w: any = window as any;
-          const plane: SimPlane = this.plane;
-          const js: SimJumper[] = Array.isArray(w.simJumpers)
-            ? (w.simJumpers as SimJumper[])
-            : plane.jumpers;
-          plane.precalculate(300);
-          js.forEach((j) => j.precalculate(300));
-        },
-        false,
-        "PlaneLoad"
-      );
-      this.render();
-    });
-    intervalWrap.appendChild(intervalLabel);
-    intervalWrap.appendChild(intervalInput);
-
-    toolbar.appendChild(importBtn);
-    toolbar.appendChild(formSel);
-    toolbar.appendChild(intervalWrap);
-    wrap.appendChild(toolbar);
     const table = document.createElement("table");
     table.style.width = "100%";
     table.style.borderCollapse = "collapse";
@@ -461,8 +451,28 @@ export class PlaneLoad {
       const name = document.createElement("input");
       name.type = "text";
       name.value = (j as any).name || "";
-      name.addEventListener("input", () => ((j as any).name = name.value));
+      name.addEventListener("input", () => {
+        (j as any).name = name.value;
+        askForRefresh(
+          () => {
+            const plane: SimPlane = this.plane;
+            plane.precalculate(300);
+            this.jumpers.forEach((jj) => jj.precalculate(300));
+          },
+          false,
+          "PlaneLoad-Name"
+        );
+      });
       tdName.appendChild(name);
+      // Capacity warning for excess jumpers
+      const cap: number | undefined = (this.plane as any)?.capacity;
+      if (cap && i + 1 > cap) {
+        const warn = document.createElement("span");
+        warn.textContent = " ⚠ over capacity";
+        warn.style.color = "#ff9800";
+        warn.title = `Plane capacity ${cap}. This jumper exceeds it by ${i + 1 - cap}.`;
+        tdName.appendChild(warn);
+      }
       tr.appendChild(tdName);
 
       const tdStyle = document.createElement("td");
@@ -484,6 +494,15 @@ export class PlaneLoad {
       styleSel.addEventListener("change", () => {
         (j as any).flyingStyle = styleSel.value;
         j.calculateSurfaceArea();
+        askForRefresh(
+          () => {
+            const plane: SimPlane = this.plane;
+            plane.precalculate(300);
+            this.jumpers.forEach((jj) => jj.precalculate(300));
+          },
+          false,
+          "PlaneLoad-Style"
+        );
       });
       tdStyle.appendChild(styleSel);
       tr.appendChild(tdStyle);
@@ -493,7 +512,18 @@ export class PlaneLoad {
       w.type = "number";
       w.style.width = "5em";
       w.value = String((j as any).weight ?? 80);
-      w.addEventListener("input", () => ((j as any).weight = Number(w.value)));
+      w.addEventListener("input", () => {
+        (j as any).weight = Number(w.value);
+        askForRefresh(
+          () => {
+            const plane: SimPlane = this.plane;
+            plane.precalculate(300);
+            this.jumpers.forEach((jj) => jj.precalculate(300));
+          },
+          false,
+          "PlaneLoad-Weight"
+        );
+      });
       tdW.appendChild(w);
       tr.appendChild(tdW);
 
@@ -502,7 +532,18 @@ export class PlaneLoad {
       c.type = "number";
       c.style.width = "5em";
       c.value = String(j.canopySize ?? 190);
-      c.addEventListener("input", () => (j.canopySize = Number(c.value)));
+      c.addEventListener("input", () => {
+        j.canopySize = Number(c.value);
+        askForRefresh(
+          () => {
+            const plane: SimPlane = this.plane;
+            plane.precalculate(300);
+            this.jumpers.forEach((jj) => jj.precalculate(300));
+          },
+          false,
+          "PlaneLoad-Canopy"
+        );
+      });
       tdC.appendChild(c);
       tr.appendChild(tdC);
 
@@ -511,7 +552,18 @@ export class PlaneLoad {
       d.type = "number";
       d.style.width = "5em";
       d.value = String(j.deployDelay ?? 7);
-      d.addEventListener("input", () => (j.deployDelay = Number(d.value)));
+      d.addEventListener("input", () => {
+        j.deployDelay = Number(d.value);
+        askForRefresh(
+          () => {
+            const plane: SimPlane = this.plane;
+            plane.precalculate(300);
+            this.jumpers.forEach((jj) => jj.precalculate(300));
+          },
+          false,
+          "PlaneLoad-Deploy"
+        );
+      });
       tdD.appendChild(d);
       tr.appendChild(tdD);
 
@@ -548,89 +600,14 @@ export class PlaneLoad {
         this.plane.formations?.findIndex((f: any) =>
           f.getAllJumpers?.().includes(j)
         ) ?? -1;
-      const colors = ["#b06ab3", "gold", "#5669d8", "#4db6ac", "#ff7043"];
-      const badgeBtn = document.createElement("button");
-      badgeBtn.title =
-        fIdx >= 0
-          ? `Click to remove from formation ${
-              this.plane.formations?.[fIdx]?.title || fIdx + 1
-            }`
-          : formations.length > 0
-          ? `Click to add to formation ${
-              formations[this.selectedFormationIdx]?.title ||
-              this.selectedFormationIdx + 1
-            }`
-          : "No formations available";
-      badgeBtn.style.display = "inline-block";
-      badgeBtn.style.width = "18px";
-      badgeBtn.style.height = "18px";
-      badgeBtn.style.borderRadius = "50%";
-      badgeBtn.style.border = "1px solid #444";
-      badgeBtn.style.cursor = formations.length ? "pointer" : "not-allowed";
-      const color = fIdx < 0 ? "#777" : colors[fIdx % colors.length];
-      badgeBtn.style.background = color;
-      // Inline dropdown for formation selection
-      const formSelect = document.createElement("select");
-      formSelect.style.marginLeft = "6px";
-      formSelect.style.display = "none";
-      // Options: None + each formation
-      const optNone = document.createElement("option");
-      optNone.value = "-1";
-      optNone.textContent = "None";
-      formSelect.appendChild(optNone);
-      formations.forEach((f, i) => {
-        const opt = document.createElement("option");
-        opt.value = String(i);
-        opt.textContent = f.title || `Formation ${i + 1}`;
-        formSelect.appendChild(opt);
-      });
-      formSelect.value = String(fIdx);
-
-      badgeBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (!formations.length) return;
-        // Toggle dropdown visibility
-        formSelect.style.display =
-          formSelect.style.display === "none" ? "inline-block" : "none";
-      });
-      // Optional slot selector (appears when a formation is chosen)
-      const slotSelect = document.createElement("select");
-      slotSelect.style.marginLeft = "4px";
-      slotSelect.style.display = "none";
-      const rebuildSlots = (fIndex: number) => {
-        slotSelect.innerHTML = "";
-        if (fIndex < 0 || fIndex >= formations.length) {
-          slotSelect.style.display = "none";
-          return;
-        }
-        const f = formations[fIndex];
-        const slots = (f as any).points?.[0]?.slots || [];
-        for (let s = 0; s < slots.length; s++) {
-          const opt = document.createElement("option");
-          opt.value = String(s);
-          opt.textContent = `Slot ${s + 1}`;
-          slotSelect.appendChild(opt);
-        }
-        slotSelect.style.display = slots.length ? "inline-block" : "none";
-      };
-      formSelect.addEventListener("change", () => {
-        const idx = Number(formSelect.value);
-        this.assignJumperToFormation(j, idx);
-        rebuildSlots(idx);
-      });
-      slotSelect.addEventListener("change", () => {
-        const fIdx2 = Number(formSelect.value);
-        const sIdx = Number(slotSelect.value);
-        const f = (this.plane.formations || [])[fIdx2];
-        if (!f) return;
-        (f as any).assignExistingJumperToSlot?.(j, sIdx);
-        // After slot change, keep group timing and regroup UI
-        this.normalizeJumpTimes();
-        this.render();
-      });
-      tdF.appendChild(badgeBtn);
-      tdF.appendChild(formSelect);
-      tdF.appendChild(slotSelect);
+      const badge = document.createElement("span");
+      const colors = ["#b06ab3", "gold", "#5669d8"];
+      badge.style.display = "inline-block";
+      badge.style.width = "16px";
+      badge.style.height = "16px";
+      badge.style.borderRadius = "50%";
+      badge.style.background = fIdx < 0 ? "#777" : colors[fIdx % colors.length];
+      tdF.appendChild(badge);
       tr.appendChild(tdF);
 
       const tdJ = document.createElement("td");
@@ -646,70 +623,6 @@ export class PlaneLoad {
     table.appendChild(tbody);
     wrap.appendChild(table);
     return wrap;
-  }
-
-  // Import a .jump formation file and attach to plane
-  private openFormationImport() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".jump,application/json";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        const formation = new Formation(data);
-        // Create formation jumpers for this plane
-        formation.createJumpersForPlane(this.plane, data.jumpers || []);
-        this.plane.addFormation(formation as any);
-        notificationManager.success(
-          `Imported formation: ${formation.title || file.name}`
-        );
-        this.selectedFormationIdx = Math.max(
-          0,
-          (this.plane.formations?.length || 1) - 1
-        );
-        this.render();
-      } catch (e) {
-        console.error("Failed to import .jump file", e);
-        notificationManager.error("Failed to import formation (.jump)");
-      }
-    };
-    input.click();
-  }
-
-  private assignJumperToFormation(j: SimJumper, formationIndex: number) {
-    const formations = this.plane.formations || [];
-    // Remove jumper from any current formation first
-    formations.forEach((f: any) => {
-      f.jumpers = (f.getAllJumpers?.() || []).filter(
-        (x: SimJumper) => x.id !== j.id
-      );
-    });
-    if (formationIndex >= 0 && formationIndex < formations.length) {
-      const target = formations[formationIndex];
-      target.jumpers.push(j);
-      j.isInFormation = true;
-      j.linked = true;
-    } else {
-      j.isInFormation = false;
-    }
-
-    // Resort: formation members first, maintain stable order
-    const formSet = new Set<string>(
-      (this.plane.formations || [])
-        .flatMap((f: any) => f.getAllJumpers?.() || [])
-        .map((x: SimJumper) => x.id)
-    );
-    const ordered = [
-      ...this.jumpers.filter((x) => formSet.has(x.id)),
-      ...this.jumpers.filter((x) => !formSet.has(x.id)),
-    ];
-    ordered.forEach((x, i) => (x.index = i));
-    this.jumpers = ordered;
-    this.normalizeJumpTimes();
-    this.render();
   }
 
   // Determine exit state via kinematics: if jumper has separated from plane by threshold
@@ -740,26 +653,6 @@ export class PlaneLoad {
 
   render() {
     this.refreshJumpers();
-    // group formations first, then others.
-
-    // we should refactor this later to include proper load order:
-    // First to board: High pullers/Canopy Relative Work
-    // Wingsuits
-    // Tracking dives 2
-    // Tandems
-    // Skydiver Training Program Students
-    // Freefly groups, smallest to largest.
-    // Belly-fly groups, smallest to largest.
-    // Tracking/tracing/horizontal dives (Tracking and other horizontal skydives are approved and placed in the loading order on a case-by-case basis after approval from one of our S&TAs, load organizers, or drop zone manager.)
-    // Last to board, first to exit: Any lower-altitude individuals or groups.
-    const formSet = new Set<string>();
-    (this.plane.formations || []).forEach((f: any) => {
-      (f?.getAllJumpers?.() || []).forEach((j: SimJumper) => formSet.add(j.id));
-    });
-    this.jumpers = [
-      ...this.jumpers.filter((j) => formSet.has(j.id)),
-      ...this.jumpers.filter((j) => !formSet.has(j.id)),
-    ];
     const panel = document.querySelector("#plane-panel .plane-load-editor");
     if (!panel) return;
     const container = panel as HTMLElement;

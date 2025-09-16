@@ -66,7 +66,11 @@ export class Formation {
     this.title = data.title;
   }
 
-  public createJumpersForPlane(plane: SimPlane, jumperConfigs: any[]) {
+  public createJumpersForPlane(
+    plane: SimPlane,
+    jumperConfigs: any[],
+    people?: any[]
+  ) {
     this.jumpers = [];
     const firstPoint = this.points[0];
     if (!firstPoint || !firstPoint.slots) {
@@ -79,6 +83,18 @@ export class Formation {
       const slot = firstPoint.slots[i];
       if (!slot) continue;
       const jumper = new SimJumper(i, plane, 0, 7, 190);
+      // assign human-friendly name if available from .jump data
+      try {
+        const person = jumperConfig?.person;
+        const nameFromConfig =
+          person?.name || person?.displayName || person?.label;
+        if (nameFromConfig) (jumper as any).name = String(nameFromConfig);
+        else if (people && Array.isArray(people) && people[i]) {
+          const p = people[i];
+          const pn = p?.name || p?.displayName || p?.label;
+          if (pn) (jumper as any).name = String(pn);
+        }
+      } catch {}
       const meshObj = jumper.getMesh();
       if (meshObj instanceof THREE.Mesh) {
         const mat = meshObj.material as THREE.MeshBasicMaterial;
@@ -94,6 +110,7 @@ export class Formation {
       console.log(`Jumper ${i} angle offset:`, slot.angleDeg, "for slot:", i);
       jumper.isInFormation = true;
       jumper.linked = true; // ensure formation jumpers are linked by default
+      (jumper as any).formation = this as any;
       this.jumpers.push(jumper);
     }
     // Assign contiguous indices to formation group so they appear together initially

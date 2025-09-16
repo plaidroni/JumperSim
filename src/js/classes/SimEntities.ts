@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Plane, Jumper } from "./BaseEntities";
+import { Plane, Jumper } from "./baseEntities";
 import { KinematicTrack } from "../Kinematics";
 import { convertWeatherSnapshotToWindLayers } from "../Utils";
 import { clamp } from "three/src/Three.TSL.js";
@@ -17,6 +17,8 @@ export class SimPlane extends Plane {
   jumpers: SimJumper[] = [];
   // UI state holder, assigned at runtime to avoid circular imports
   planeLoad?: any;
+  // Maximum number of jumpers this plane can carry (used for UI warnings)
+  capacity?: number;
 
   constructor(position, speedKnots, direction) {
     super(position, speedKnots, direction);
