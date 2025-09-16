@@ -4,7 +4,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
 import { clampVectorAboveYZero } from "./Utils";
 import { GlobalWindVars } from "./GlobalVars";
-import { Plane, Jumper } from "./classes/BaseEntities";
 import {
   createDefaultSimJumpers,
   SimJumper,
@@ -58,7 +57,7 @@ controls.update();
 // === TOOLTIP ===
 const tooltip = {
   element: document.getElementById("info-tooltip"),
-  show: true
+  show: true,
 };
 addTooltipToggle(tooltip);
 
@@ -97,10 +96,11 @@ function onMouseMove(event) {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   if (tooltip) {
-    
     // (tooltip.element as HTMLElement).style.left = `${event.clientX + 10}px`;
     // (tooltip.element as HTMLElement).style.top = `${event.clientY + 10}px`;
-    (tooltip.element as HTMLElement).style.transform = `translate(${event.clientX + 10}px, ${event.clientY + 10}px)`
+    (tooltip.element as HTMLElement).style.transform = `translate(${
+      event.clientX + 10
+    }px, ${event.clientY + 10}px)`;
   }
 }
 
@@ -119,7 +119,7 @@ document.addEventListener("mousemove", onMouseMove);
 // Tracking/tracing/horizontal dives (Tracking and other horizontal skydives are approved and placed in the loading order on a case-by-case basis after approval from one of our S&TAs, load organizers, or drop zone manager.)
 // Last to board, first to exit: Any lower-altitude individuals or groups.
 // Ensure formation jumpers are grouped together and indices are sequential
-function groupAndReindexJumpers(
+export function groupAndReindexJumpers(
   plane: SimPlane,
   all: SimJumper[]
 ): SimJumper[] {
@@ -207,6 +207,9 @@ function groupAndReindexJumpers(
 
   return ordered;
 }
+
+// Expose grouping utility for UI modules without direct import to avoid cycles
+(window as any).groupAndReindexJumpers = groupAndReindexJumpers;
 
 function collectTwoAlignPoints(
   mapPlane: THREE.Object3D
@@ -358,7 +361,11 @@ try {
   const formationData1 = await loadJumpFormation("/formations/jff2.jump");
   console.log("Loaded formation data:", formationData1);
   const formation1 = new Formation(formationData1);
-  formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
+  formation1.createJumpersForPlane(
+    simPlane,
+    formationData1.jumpers,
+    (formationData1 as any).people
+  );
   simJumpers = createDefaultSimJumpers(10, simPlane);
   simPlane.addFormation(formation1);
 
@@ -370,7 +377,8 @@ try {
   formations = simPlane.formations;
   // Gather all jumpers from all formations
   simJumpers = formations.flatMap((f) => f.getAllJumpers());
-  simJumpers.push(...createDefaultSimJumpers(10, simPlane));
+  const soloPool = createDefaultSimJumpers(10, simPlane);
+  simJumpers.push(...soloPool);
   // Group formation jumpers together and reindex sequentially
   simJumpers = groupAndReindexJumpers(simPlane, simJumpers);
   (<any>window).simJumpers = simJumpers;
@@ -378,15 +386,75 @@ try {
   (simPlane as any).planeLoad?.render();
 
   // Success notification with action button
-  notificationManager.success(
-    `Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`,
+  const notifId = notificationManager.success(
+    `Formation loaded: ${formations.length} formation(s).`,
     {
-      duration: 5000,
+      duration: 0,
       actions: [
+        {
+          label: "Assign solos to formation?",
+          callback: () => {
+            // Assign any remaining solos to this formation if sizes allow
+            const f = formations[0];
+            if (f) {
+              // Determine how many needed to match first point size
+              const firstPointSize =
+                f.getCurrentPoint()?.slots?.length || f.getAllJumpers().length;
+              const missing = Math.max(
+                0,
+                firstPointSize - f.getAllJumpers().length
+              );
+              if (missing > 0) {
+                const take = soloPool.splice(0, missing);
+                // Add to plane/formation grouping (treat as non-slotted but linked to formation)
+                take.forEach((j, i) => {
+                  j.isInFormation = true;
+                  j.linked = true;
+                  (j as any).formation = f as any;
+                  j.index = f.getAllJumpers().length + i;
+                });
+                const otherFormationJumpers = formations
+                  .filter((ff) => ff !== f)
+                  .flatMap((ff) => ff.getAllJumpers());
+                simJumpers = groupAndReindexJumpers(simPlane, [
+                  ...f.getAllJumpers(),
+                  ...take,
+                  ...otherFormationJumpers,
+                  ...soloPool,
+                ]);
+                (window as any).simJumpers = simJumpers;
+                simPlane.jumpers = simJumpers;
+                (simPlane as any).planeLoad?.render();
+              }
+            }
+            // After assignment, prompt for refresh
+            askForRefresh(
+              () => {
+                simPlane.precalculate(300);
+                simJumpers.forEach((j) => j.precalculate(300));
+              },
+              false,
+              "FormationAssign"
+            );
+          },
+          primary: true,
+        },
+        {
+          label: "Refresh now",
+          callback: () => {
+            askForRefresh(
+              () => {
+                simPlane.precalculate(300);
+                simJumpers.forEach((j) => j.precalculate(300));
+              },
+              true,
+              "FormationImport"
+            );
+          },
+        },
         {
           label: "View Objects",
           callback: () => {
-            // Show objects panel - find and maximize it
             const objectsPanel = document.querySelector(
               "#objects-panel"
             ) as HTMLElement;
