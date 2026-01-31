@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-(<any>(<any>window)).simScale = 0.1; // 10x smaller units
+(<any>(<any>window)).simScale = 1; // real-world scale
 
 // To Cole: use (<any>window).weatherSnapshotLog[0]
 // to get the current weather data

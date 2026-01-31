@@ -9,7 +9,7 @@ import {
   createDefaultSimJumpers,
   SimJumper,
   SimPlane,
-} from "./classes/SimEntities";
+} from "./classes/simEntities";
 import { loadDropzones } from "./LocationSelect";
 import { handlePlaneSelection, initializePlaneManager } from "./PlaneSelect";
 import {
@@ -28,6 +28,10 @@ import { askForRefresh } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
 import { renderPlaneLoad } from "./ui/PlaneSettings";
 import { PlaneLoad } from "./ui/PlaneLoad";
+import {
+  initializeSeparationGame,
+  getSeparationGame,
+} from "./classes/SeparationGame";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -58,7 +62,7 @@ controls.update();
 // === TOOLTIP ===
 const tooltip = {
   element: document.getElementById("info-tooltip"),
-  show: true
+  show: true,
 };
 addTooltipToggle(tooltip);
 
@@ -97,10 +101,11 @@ function onMouseMove(event) {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   if (tooltip) {
-    
     // (tooltip.element as HTMLElement).style.left = `${event.clientX + 10}px`;
     // (tooltip.element as HTMLElement).style.top = `${event.clientY + 10}px`;
-    (tooltip.element as HTMLElement).style.transform = `translate(${event.clientX + 10}px, ${event.clientY + 10}px)`
+    (tooltip.element as HTMLElement).style.transform = `translate(${
+      event.clientX + 10
+    }px, ${event.clientY + 10}px)`;
   }
 }
 
@@ -784,3 +789,24 @@ initializePanelManager();
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;
+
+// === SEPARATION GAME INTEGRATION ===
+// Initialize the separation game after systems are ready
+systemsOK.then(() => {
+  const separationGame = initializeSeparationGame(
+    scene,
+    camera,
+    renderer,
+    simPlane
+  );
+
+  // Add event listener to launch the game from the menu
+  const launchButton = document.getElementById("launch-separation-game");
+  launchButton?.addEventListener("click", () => {
+    console.log("Launching Separation Timing Challenge");
+    separationGame.startGame();
+  });
+
+  // Make it globally accessible for debugging
+  (window as any).separationGame = separationGame;
+});
