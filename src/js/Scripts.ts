@@ -9,7 +9,7 @@ import {
   createDefaultSimJumpers,
   SimJumper,
   SimPlane,
-} from "./classes/SimEntities";
+} from "./classes/simEntities";
 import { loadDropzones } from "./LocationSelect";
 import { handlePlaneSelection, initializePlaneManager } from "./PlaneSelect";
 import {
@@ -28,6 +28,10 @@ import { askForRefresh } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
 import { renderPlaneLoad } from "./ui/PlaneSettings";
 import { PlaneLoad } from "./ui/PlaneLoad";
+import {
+  initializeSeparationGame,
+  getSeparationGame,
+} from "./classes/SeparationGame";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -36,12 +40,76 @@ const camera = new THREE.PerspectiveCamera(
   50,
   window.innerWidth / window.innerHeight,
   0.1,
-  100000
+  100000,
 );
 const controls = new OrbitControls(camera, renderer.domElement);
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+// === SKY BACKGROUND + CLOUDS ===
+const skyColor = new THREE.Color(0x87ceeb);
+scene.background = skyColor;
+renderer.setClearColor(skyColor, 1);
+
+function createCloudTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+
+  for (let i = 0; i < 6; i++) {
+    const x = size * (0.2 + Math.random() * 0.6);
+    const y = size * (0.2 + Math.random() * 0.6);
+    const r = size * (0.12 + Math.random() * 0.18);
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function addCloudLayer(): void {
+  const cloudGroup = new THREE.Group();
+  const cloudTexture = createCloudTexture();
+  cloudTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+  const baseMaterial = new THREE.MeshLambertMaterial({
+    map: cloudTexture,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false,
+  });
+
+  for (let i = 0; i < 30; i++) {
+    const size = THREE.MathUtils.randFloat(200, 600);
+    const geometry = new THREE.PlaneGeometry(size, size * 0.6);
+    const material = baseMaterial.clone();
+    material.opacity = THREE.MathUtils.randFloat(0.35, 0.85);
+
+    const cloud = new THREE.Mesh(geometry, material);
+    cloud.position.set(
+      THREE.MathUtils.randFloatSpread(4000),
+      THREE.MathUtils.randFloat(600, 1200),
+      THREE.MathUtils.randFloatSpread(4000),
+    );
+    cloud.rotation.x = -Math.PI / 2;
+    cloud.rotation.y = Math.random() * Math.PI * 2;
+    cloud.renderOrder = -1;
+    cloudGroup.add(cloud);
+  }
+
+  scene.add(cloudGroup);
+}
+
+addCloudLayer();
 
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(10, 10, 10);
@@ -58,7 +126,7 @@ controls.update();
 // === TOOLTIP ===
 const tooltip = {
   element: document.getElementById("info-tooltip"),
-  show: true
+  show: true,
 };
 addTooltipToggle(tooltip);
 
@@ -97,10 +165,11 @@ function onMouseMove(event) {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   if (tooltip) {
-    
     // (tooltip.element as HTMLElement).style.left = `${event.clientX + 10}px`;
     // (tooltip.element as HTMLElement).style.top = `${event.clientY + 10}px`;
-    (tooltip.element as HTMLElement).style.transform = `translate(${event.clientX + 10}px, ${event.clientY + 10}px)`
+    (tooltip.element as HTMLElement).style.transform = `translate(${
+      event.clientX + 10
+    }px, ${event.clientY + 10}px)`;
   }
 }
 
@@ -121,7 +190,7 @@ document.addEventListener("mousemove", onMouseMove);
 // Ensure formation jumpers are grouped together and indices are sequential
 function groupAndReindexJumpers(
   plane: SimPlane,
-  all: SimJumper[]
+  all: SimJumper[],
 ): SimJumper[] {
   // Helper to get style, fallback to 'belly'
   function getStyle(j: SimJumper): string {
@@ -209,7 +278,7 @@ function groupAndReindexJumpers(
 }
 
 function collectTwoAlignPoints(
-  mapPlane: THREE.Object3D
+  mapPlane: THREE.Object3D,
 ): Promise<[THREE.Vector3, THREE.Vector3]> {
   console.log("Listening for clicks");
   return new Promise((resolve) => {
@@ -249,9 +318,11 @@ async function handleStartAlignJumprun() {
     ? (window as any).mapPlane
     : (window as any).gridHelper;
 
-  notificationManager.info(
-    "Click two points on the map to set jumprun direction."
-  );
+  if (!document.body.classList.contains("separation-game-active")) {
+    notificationManager.info(
+      "Click two points on the map to set jumprun direction.",
+    );
+  }
   const [p1, p2] = await collectTwoAlignPoints(mapPlane);
   alignPoints = [p1, p2];
   drawAlignArrow();
@@ -339,7 +410,7 @@ const stlLoader = new STLLoader();
 const simPlane = new SimPlane(
   new THREE.Vector3(0, 3962, 0),
   90,
-  new THREE.Vector3(90, 0, 0)
+  new THREE.Vector3(90, 0, 0),
 );
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
@@ -358,7 +429,7 @@ try {
   const formationData1 = await loadJumpFormation("/formations/jff2.jump");
   console.log("Loaded formation data:", formationData1);
   const formation1 = new Formation(formationData1);
-  formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
+  // formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
   simJumpers = createDefaultSimJumpers(10, simPlane);
   simPlane.addFormation(formation1);
 
@@ -378,26 +449,28 @@ try {
   (simPlane as any).planeLoad?.render();
 
   // Success notification with action button
-  notificationManager.success(
-    `Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`,
-    {
-      duration: 5000,
-      actions: [
-        {
-          label: "View Objects",
-          callback: () => {
-            // Show objects panel - find and maximize it
-            const objectsPanel = document.querySelector(
-              "#objects-panel"
-            ) as HTMLElement;
-            if (objectsPanel) {
-              objectsPanel.style.visibility = "visible";
-            }
+  if (!document.body.classList.contains("separation-game-active")) {
+    notificationManager.success(
+      `Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`,
+      {
+        duration: 5000,
+        actions: [
+          {
+            label: "View Objects",
+            callback: () => {
+              // Show objects panel - find and maximize it
+              const objectsPanel = document.querySelector(
+                "#objects-panel",
+              ) as HTMLElement;
+              if (objectsPanel) {
+                objectsPanel.style.visibility = "visible";
+              }
+            },
           },
-        },
-      ],
-    }
-  );
+        ],
+      },
+    );
+  }
 } catch (e) {
   // fallback: no formation, use default jumpers
   simJumpers = createDefaultSimJumpers(10, simPlane);
@@ -406,12 +479,14 @@ try {
   simPlane.jumpers = simJumpers;
   (simPlane as any).planeLoad?.render();
   // Warning notification for fallback scenario
-  notificationManager.warning(
-    "Formation loading failed - using default jumpers",
-    {
-      duration: 6000,
-    }
-  );
+  if (!document.body.classList.contains("separation-game-active")) {
+    notificationManager.warning(
+      "Formation loading failed - using default jumpers",
+      {
+        duration: 6000,
+      },
+    );
+  }
 }
 
 // TODO: move into menubar with refactor
@@ -427,7 +502,7 @@ function startPlaneEdit() {
       isEditingPlane = true;
       return {} as any;
     },
-    isEditingPlane
+    isEditingPlane,
   );
 }
 
@@ -476,7 +551,7 @@ document.querySelectorAll(".focus-button").forEach((btn) =>
         .forEach((b) => b.classList.remove("following"));
       button.classList.add("following");
     }
-  })
+  }),
 );
 
 /**
@@ -516,7 +591,7 @@ function updateCameraFollow() {
     controls.target.copy(center);
     camera.position.lerp(
       center.clone().add(new THREE.Vector3(100, 100, 100)),
-      0.05
+      0.05,
     );
     controls.update();
   }
@@ -563,16 +638,18 @@ export const systemsOK = waitAllSystems();
 
 // === JUMPER LOGIC ===
 systemsOK.then(() => {
-  notificationManager.success("Simulation loaded successfully!", {
-    actions: [
-      {
-        label: "View Objects",
-        callback: () => {
-          console.log("Opening objects panel");
+  if (!document.body.classList.contains("separation-game-active")) {
+    notificationManager.success("Simulation loaded successfully!", {
+      actions: [
+        {
+          label: "View Objects",
+          callback: () => {
+            console.log("Opening objects panel");
+          },
         },
-      },
-    ],
-  });
+      ],
+    });
+  }
 
   const defaultPoints = (window as any).defaultJumprunPoints;
   if (defaultPoints && defaultPoints.length === 2) {
@@ -582,17 +659,19 @@ systemsOK.then(() => {
     alignPlaneToJumprun(simPlane, defaultPoints[0], defaultPoints[1]);
   }
   if (alignPoints.length === 0) {
-    notificationManager.warning("Jumprun is not aligned", {
-      duration: 0,
-      actions: [
-        {
-          label: "Align Jumprun",
-          callback: () => {
-            handleStartAlignJumprun();
+    if (!document.body.classList.contains("separation-game-active")) {
+      notificationManager.warning("Jumprun is not aligned", {
+        duration: 0,
+        actions: [
+          {
+            label: "Align Jumprun",
+            callback: () => {
+              handleStartAlignJumprun();
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
+    }
   }
 
   // start initial precalculation for jumpers
@@ -613,7 +692,7 @@ systemsOK.then(() => {
         const color = new THREE.Color(
           Math.random(),
           Math.random(),
-          Math.random()
+          Math.random(),
         );
 
         const material = new THREE.MeshBasicMaterial({
@@ -658,7 +737,7 @@ systemsOK.then(() => {
     },
     (error) => {
       console.error("error with loading jumper", error);
-    }
+    },
   );
 
   let simulationTime = 0;
@@ -706,15 +785,15 @@ systemsOK.then(() => {
         label: `Jumper #${jumper.index}`,
         time: sample.time.toFixed(2),
         pos: `(${posFeet.x.toFixed(1)}, ${posFeet.y.toFixed(
-          1
+          1,
         )}, ${posFeet.z.toFixed(1)}) ft`,
         velocity: `(${sample.velocity.x.toFixed(
-          1
+          1,
         )}, ${sample.velocity.y.toFixed(1)}, ${sample.velocity.z.toFixed(
-          1
+          1,
         )}) m/s`,
         rotation: `(${jumper.angle.x.toFixed(1)}, ${jumper.angle.y.toFixed(
-          1
+          1,
         )}, ${jumper.angle.z.toFixed(1)}) deg`,
       };
     });
@@ -784,3 +863,24 @@ initializePanelManager();
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;
+
+// === SEPARATION GAME INTEGRATION ===
+// Initialize the separation game after systems are ready
+systemsOK.then(() => {
+  const separationGame = initializeSeparationGame(
+    scene,
+    camera,
+    renderer,
+    simPlane,
+  );
+
+  // Add event listener to launch the game from the menu
+  const launchButton = document.getElementById("launch-separation-game");
+  launchButton?.addEventListener("click", () => {
+    console.log("Launching Separation Timing Challenge");
+    separationGame.startGame();
+  });
+
+  // Make it globally accessible for debugging
+  (window as any).separationGame = separationGame;
+});

@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="./src/css/minimized-windows.css" />
     <link rel="stylesheet" href="./src/css/notification.css" />
     <link rel="stylesheet" href="./src/css/planeloadui.css" />
+    <link rel="stylesheet" href="./src/css/separation-game.css" />
   </head>
   <body>
     <div id="mapbox-offscreen" style="width:512px;height:512px;position:absolute;left:-9999px;"></div>
@@ -161,6 +162,14 @@
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="handleClick('Undo')">
               <span>Information</span>
+            </div>
+          </div>
+        </div>
+        <div class="menu-item dropdown">
+          <span>Minigames</span>
+          <div class="dropdown-menu">
+            <div class="dropdown-item" id="launch-separation-game">
+              <span>Separation Timing Challenge</span>
             </div>
           </div>
         </div>
@@ -478,5 +487,146 @@
     <script src="./src/js/LocationSelect.ts" type="module"></script>
     <script src="./src/js/Menubar.ts" type="module"></script>
     <script src="./src/js/ui/PlaneSettings.ts" type="module"></script>
+
+    <!-- Separation Timing Minigame -->
+    <div id="separation-game-container">
+      <div class="separation-game-overlay">
+        <!-- Header -->
+        <div class="game-header">
+          <div class="game-title">Separation Timing Challenge</div>
+          <div class="bonus-indicator" id="bonus-indicator" style="display:none;">🎉 BONUS ROUND! 🎉</div>
+          <div class="round-display">Round <span id="current-round">1</span></div>
+          <div class="score-display">
+            <div class="score-item">
+              <div class="score-label">Wins</div>
+              <div class="score-value" id="wins-count">0</div>
+            </div>
+            <div class="score-item">
+              <div class="score-label">Losses</div>
+              <div class="score-value fail" id="losses-count">0</div>
+            </div>
+            <div class="score-item">
+              <div class="score-label">Streak</div>
+              <div class="score-value" id="streak-count">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Game Area -->
+        <div class="game-main">
+          <!-- Left Panel -->
+          <div class="game-left-panel">
+            <!-- Separation Table -->
+            <div class="game-info-card">
+              <h3>Separation Table</h3>
+              <table class="separation-table">
+                <thead>
+                  <tr>
+                    <th>Ground Speed (kts)</th>
+                    <th>Separation (sec)</th>
+                  </tr>
+                </thead>
+                <tbody id="separation-table-body">
+                  <tr><td>100</td><td>6</td></tr>
+                  <tr><td>95</td><td>7</td></tr>
+                  <tr><td>90</td><td>7</td></tr>
+                  <tr><td>85</td><td>7</td></tr>
+                  <tr><td>80</td><td>8</td></tr>
+                  <tr><td>75</td><td>8</td></tr>
+                  <tr><td>70</td><td>9</td></tr>
+                  <tr><td>65</td><td>10</td></tr>
+                  <tr><td>60</td><td>10</td></tr>
+                  <tr><td>55</td><td>11</td></tr>
+                  <tr><td>50</td><td>12</td></tr>
+                  <tr><td>45</td><td>14</td></tr>
+                  <tr><td>40</td><td>15</td></tr>
+                  <tr><td>35</td><td>17</td></tr>
+                  <tr><td>30</td><td>20</td></tr>
+                  <tr><td>25</td><td>24</td></tr>
+                  <tr><td>20</td><td>30</td></tr>
+                  <tr><td>15</td><td>40</td></tr>
+                  <tr><td>10</td><td>60</td></tr>
+                  <tr><td>5</td><td>119</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Current Challenge -->
+            <div class="game-info-card">
+              <h3>Current Challenge</h3>
+              <div class="challenge-info">
+                <div class="challenge-row">
+                  <span class="challenge-label">Airspeed:</span>
+                  <span class="challenge-value" id="current-airspeed">-- kts</span>
+                </div>
+                <div class="challenge-row">
+                  <span class="challenge-label">Headwind:</span>
+                  <span class="challenge-value" id="current-headwind">-- kts</span>
+                </div>
+                <div class="challenge-row">
+                  <span class="challenge-label">Ground Speed (Airspeed - Headwind):</span>
+                  <span class="challenge-value" id="current-speed">-- kts</span>
+                </div>
+                <div class="challenge-row">
+                  <span class="challenge-label">Required Separation:</span>
+                  <span class="challenge-value" id="required-separation">-- sec</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timer -->
+            <div class="game-info-card">
+              <div class="timer-display">
+                <div class="timer-label">Time Since First Jumper</div>
+                <div class="timer-value" id="game-timer">0.00</div>
+              </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="game-info-card game-instructions">
+              <strong>📋 How to Play:</strong><br>
+              <strong style="color: #4CAF50;">1.</strong> Use Airspeed − Headwind to get Ground Speed<br>
+              <strong style="color: #4CAF50;">2.</strong> Find the required wait time in the table<br>
+              <strong style="color: #4CAF50;">3.</strong> Watch the first jumper (red) exit the plane<br>
+              <strong style="color: #4CAF50;">4.</strong> Press the button when the timer reaches that time<br>
+              <strong style="color: #4CAF50;">5.</strong> Win by being within 2 seconds of the correct separation!<br>
+              <br>
+              <strong style="color: #f44336;">⚠️ Warning:</strong> Jumping too early = collision risk = automatic loss!
+              <br>
+              <strong style="color: #4CAF50;">Tip:</strong> Space/Enter triggers the main button.
+            </div>
+          </div>
+
+          <!-- Right Panel - 3D View -->
+          <div class="game-view-container" id="game-3d-view">
+            <div class="game-view-overlay">
+              <div class="view-status" id="game-view-status">Waiting to start...</div>
+            </div>
+
+            <div class="corner-button">
+              <button class="jump-button" id="jump-now-button" disabled>
+                JUMP!
+              </button>
+            </div>
+            
+            <!-- Results Overlay -->
+            <div class="results-overlay" id="results-overlay">
+              <div class="results-content">
+                <div class="results-title" id="results-title">SUCCESS!</div>
+                <div class="results-details" id="results-details">
+                  Your separation: <span class="highlight" id="player-separation">5.2 sec</span>
+                  Required: <span class="highlight" id="required-separation-result">6.0 sec</span>
+                  Difference: <span class="highlight" id="separation-diff">0.8 sec</span>
+                </div>
+                <div class="results-actions">
+                  <button class="results-button primary" id="next-round-button">Next Round</button>
+                  <button class="results-button secondary" id="view-replay-button">View Separation</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
