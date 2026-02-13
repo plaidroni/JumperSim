@@ -97,8 +97,7 @@
   gap: 15px;
   width: 400px;
   flex-shrink: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .game-info-card {
@@ -145,13 +144,29 @@
 }
 
 .separation-table tr.highlight {
-  background: rgba(76, 175, 80, 0.2);
+  background: rgba(76, 175, 80, 0.3);
+  box-shadow: inset 0 0 8px rgba(76, 175, 80, 0.5);
 }
 
 .separation-table tr.highlight td {
-  background: rgba(76, 175, 80, 0.2);
+  background: rgba(76, 175, 80, 0.3);
   font-weight: bold;
   color: #4caf50;
+  border-color: #4caf50;
+}
+
+.separation-table tr.active-separation {
+  animation: pulse-highlight 0.6s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+  0%,
+  100% {
+    box-shadow: inset 0 0 8px rgba(76, 175, 80, 0.5);
+  }
+  50% {
+    box-shadow: inset 0 0 12px rgba(76, 175, 80, 0.8);
+  }
 }
 
 /* Current Challenge Info */
@@ -221,6 +236,14 @@
   justify-content: center;
   align-items: center;
   padding: 20px;
+}
+
+.corner-button {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 20;
+  pointer-events: auto;
 }
 
 .jump-button {
@@ -303,6 +326,15 @@
   align-items: flex-start;
   pointer-events: none;
   z-index: 10;
+}
+
+/* Hide simulator UI while in minigame */
+body.separation-game-active #menu,
+body.separation-game-active #minimized-bar,
+body.separation-game-active #compassContainer,
+body.separation-game-active .panel,
+body.separation-game-active canvas:not(#separation-game-container canvas) {
+  display: none !important;
 }
 
 .view-status {
@@ -441,30 +473,6 @@
   50% {
     background: linear-gradient(135deg, #ffa500, #ffd700);
   }
-}
-
-/* Exit Button */
-.exit-game-button {
-  position: fixed;
-  top: 15px;
-  right: 15px;
-  padding: 12px 24px;
-  background: rgba(244, 67, 54, 0.95);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  z-index: 10001;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-.exit-game-button:hover {
-  background: rgba(244, 67, 54, 1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
 }
 
 /* Responsive adjustments */

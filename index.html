@@ -490,14 +490,12 @@
 
     <!-- Separation Timing Minigame -->
     <div id="separation-game-container">
-      <button class="exit-game-button" id="exit-separation-game">Exit Game</button>
-      
       <div class="separation-game-overlay">
         <!-- Header -->
         <div class="game-header">
           <div class="game-title">Separation Timing Challenge</div>
           <div class="bonus-indicator" id="bonus-indicator" style="display:none;">🎉 BONUS ROUND! 🎉</div>
-          <div class="round-display">Round <span id="current-round">1</span> of 3</div>
+          <div class="round-display">Round <span id="current-round">1</span></div>
           <div class="score-display">
             <div class="score-item">
               <div class="score-label">Wins</div>
@@ -506,6 +504,10 @@
             <div class="score-item">
               <div class="score-label">Losses</div>
               <div class="score-value fail" id="losses-count">0</div>
+            </div>
+            <div class="score-item">
+              <div class="score-label">Streak</div>
+              <div class="score-value" id="streak-count">0</div>
             </div>
           </div>
         </div>
@@ -580,15 +582,6 @@
               </div>
             </div>
 
-            <!-- Button -->
-            <div class="game-info-card">
-              <div class="button-container">
-                <button class="jump-button" id="jump-now-button" disabled>
-                  JUMP!
-                </button>
-              </div>
-            </div>
-
             <!-- Instructions -->
             <div class="game-info-card game-instructions">
               <strong>📋 How to Play:</strong><br>
@@ -608,6 +601,12 @@
           <div class="game-view-container" id="game-3d-view">
             <div class="game-view-overlay">
               <div class="view-status" id="game-view-status">Waiting to start...</div>
+            </div>
+
+            <div class="corner-button">
+              <button class="jump-button" id="jump-now-button" disabled>
+                JUMP!
+              </button>
             </div>
             
             <!-- Results Overlay -->

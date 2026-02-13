@@ -1,9 +1,14 @@
 import * as THREE from "three";
 import { SimPlane, SimJumper } from "./simEntities";
+import {
+  createDynamicTrajectoryLine,
+  updateTrajectoryLines,
+} from "../ui/TrajectoryLines";
 
 /**
  * Perris separation table based on ground speed (kts)
  * Returns the required separation time in seconds
+ * Capped at 15 seconds maximum for the game
  */
 const SEPARATION_TABLE = [
   { speed: 100, separation: 6 },
@@ -19,13 +24,6 @@ const SEPARATION_TABLE = [
   { speed: 50, separation: 12 },
   { speed: 45, separation: 14 },
   { speed: 40, separation: 15 },
-  { speed: 35, separation: 17 },
-  { speed: 30, separation: 20 },
-  { speed: 25, separation: 24 },
-  { speed: 20, separation: 30 },
-  { speed: 15, separation: 40 },
-  { speed: 10, separation: 60 },
-  { speed: 5, separation: 119 },
 ];
 
 const KNOTS_TO_MS = 0.51444;
@@ -57,10 +55,10 @@ function highlightTableRow(groundSpeedKnots: number): void {
   const normalized = normalizeGroundSpeed(groundSpeedKnots);
   const rows = tableBody.querySelectorAll("tr");
   rows.forEach((row, index) => {
-    row.classList.remove("highlight");
+    row.classList.remove("highlight", "active-separation");
     const entry = SEPARATION_TABLE[index];
     if (entry && entry.speed === normalized) {
-      row.classList.add("highlight");
+      row.classList.add("highlight", "active-separation");
     }
   });
 }
@@ -98,6 +96,7 @@ export class SeparationGame {
   // Jumpers for the round
   private firstJumper: SimJumper | null = null;
   private playerJumper: SimJumper | null = null;
+  private trajectoryLines: THREE.Line[] = [];
 
   // Camera tracking
   private originalCameraPosition: THREE.Vector3 = new THREE.Vector3();
@@ -107,6 +106,8 @@ export class SeparationGame {
   // Animation
   private animationId: number | null = null;
   private gameTime: number = 0;
+  private streak: number = 0;
+  private streakWinPending: boolean = false;
   private isTimerRunning: boolean = false;
 
   // Game container references
@@ -117,7 +118,7 @@ export class SeparationGame {
   private isBonusRound: boolean = false;
 
   // Camera mode
-  private cameraMode: "door" | "side" = "door";
+  private cameraMode: "door" | "side" = "side";
 
   // Fixed spectator camera anchors (world space)
   private spectatorDoorPos: THREE.Vector3 = new THREE.Vector3();
@@ -163,10 +164,6 @@ export class SeparationGame {
    * Setup all event listeners for the game UI
    */
   private setupEventListeners(): void {
-    // Exit button
-    const exitButton = document.getElementById("exit-separation-game");
-    exitButton?.addEventListener("click", () => this.exitGame());
-
     // Jump button (primary action)
     const jumpButton = document.getElementById("jump-now-button");
     jumpButton?.addEventListener("click", () => this.handlePrimaryAction());
@@ -194,20 +191,7 @@ export class SeparationGame {
     }
 
     if (this.state === GameState.SHOWING_RESULTS) {
-      if (this.currentRound >= 3) {
-        if (this.wins === 3 && !this.isBonusRound) {
-          this.startBonusRound();
-        } else {
-          this.endGame();
-        }
-      } else {
-        this.startNextRound();
-      }
-      return;
-    }
-
-    if (this.state === GameState.GAME_COMPLETE) {
-      this.restartGame();
+      this.startNextRound();
       return;
     }
   }
@@ -268,12 +252,14 @@ export class SeparationGame {
     this.losses = 0;
     this.isBonusRound = false;
     this.cameraMode = "door";
+    this.streak = 0;
 
     const bonusIndicator = document.getElementById("bonus-indicator");
     if (bonusIndicator) bonusIndicator.style.display = "none";
 
     // Show game container
     this.gameContainer.classList.add("active");
+    document.body.classList.add("separation-game-active");
 
     // Save original camera state
     this.originalCameraPosition.copy(this.camera.position);
@@ -317,6 +303,7 @@ export class SeparationGame {
 
     // Hide game container
     this.gameContainer.classList.remove("active");
+    document.body.classList.remove("separation-game-active");
 
     // Restore renderer to main view
     document.body.appendChild(this.renderer.domElement);
@@ -339,19 +326,13 @@ export class SeparationGame {
    * Start the next round
    */
   private startNextRound(): void {
-    // Check if game is complete
-    if (this.currentRound >= 3) {
-      if (this.wins === 3) {
-        this.startBonusRound();
-      } else {
-        this.endGame();
-      }
-      return;
-    }
-
     this.currentRound++;
     this.state = GameState.NOT_STARTED;
     this.isBonusRound = false;
+    if (this.streakWinPending) {
+      this.streak = 0;
+      this.streakWinPending = false;
+    }
 
     const bonusIndicator = document.getElementById("bonus-indicator");
     if (bonusIndicator) bonusIndicator.style.display = "none";
@@ -414,13 +395,15 @@ export class SeparationGame {
     this.cleanupRoundJumpers();
 
     // Create two jumpers: first jumper and player
-    this.firstJumper = new SimJumper(0, this.plane, 0, 50, 190);
+    const deployDelay = 999; // keep in freefall for the game
+    const canopySize = 190;
+    this.firstJumper = new SimJumper(0, this.plane, 0, deployDelay, canopySize);
     this.playerJumper = new SimJumper(
       1,
       this.plane,
       this.requiredSeparation,
-      50,
-      190,
+      deployDelay,
+      canopySize,
     );
 
     // Precalculate their trajectories
@@ -442,6 +425,22 @@ export class SeparationGame {
     this.playerJumper.setMesh(mesh2);
     this.scene.add(mesh1);
     this.scene.add(mesh2);
+
+    // Trajectory lines for visual separation
+    this.clearTrajectoryLines();
+    this.trajectoryLines = [
+      createDynamicTrajectoryLine(this.firstJumper),
+      createDynamicTrajectoryLine(this.playerJumper),
+    ];
+    this.trajectoryLines.forEach((line) => {
+      line.visible = false;
+      this.scene.add(line);
+    });
+  }
+
+  private clearTrajectoryLines(): void {
+    this.trajectoryLines.forEach((line) => this.scene.remove(line));
+    this.trajectoryLines = [];
   }
 
   private createJumperMesh(): THREE.Object3D {
@@ -475,6 +474,7 @@ export class SeparationGame {
    * Clean up jumpers from previous round
    */
   private cleanupRoundJumpers(): void {
+    this.clearTrajectoryLines();
     if (this.firstJumper && this.firstJumper.getMesh()) {
       this.scene.remove(this.firstJumper.getMesh());
     }
@@ -500,8 +500,8 @@ export class SeparationGame {
     const { forward, right, up } = this.getPlaneBasis(planeSample);
     this.spectatorDoorPos = planePos
       .clone()
-      .add(right.clone().multiplyScalar(8))
-      .add(up.clone().multiplyScalar(2.5))
+      .add(right.clone().multiplyScalar(65))
+      .add(up.clone().multiplyScalar(-3.8))
       .add(forward.clone().multiplyScalar(-12));
     this.spectatorWidePos = planePos
       .clone()
@@ -557,7 +557,6 @@ export class SeparationGame {
   private startAnimationLoop(): void {
     const animate = () => {
       this.animationId = requestAnimationFrame(animate);
-
       const now = performance.now();
       const deltaTime = (now - this.roundStartTime) / 1000;
       this.gameTime = deltaTime;
@@ -567,6 +566,10 @@ export class SeparationGame {
 
       // Update jumper positions based on game time
       this.updateJumperPositions();
+
+      if (this.trajectoryLines.length) {
+        updateTrajectoryLines(this.trajectoryLines, this.gameTime);
+      }
 
       // Update camera if following a target
       this.updateCamera();
@@ -646,11 +649,25 @@ export class SeparationGame {
    * Update camera position - stays on plane looking at jumpers
    */
   private updateCamera(): void {
+    const planeSample = this.plane.track.getInterpolatedSample(this.gameTime);
+    const planePos =
+      planeSample?.position.clone() || this.plane.position.clone();
+    const { forward, right, up } = this.getPlaneBasis(planeSample);
+
+    const followOffset = right
+      .clone()
+      .multiplyScalar(13)
+      .add(up.clone().multiplyScalar(-6.2))
+      .add(forward.clone().multiplyScalar(-14));
+
     let targetPos =
       this.cameraMode === "door"
-        ? this.spectatorDoorPos.clone()
+        ? planePos.clone().add(followOffset)
         : this.spectatorWidePos.clone();
-    let targetLookAt = this.spectatorLookAt.clone();
+    let targetLookAt =
+      this.cameraMode === "door"
+        ? planePos.clone().add(forward.clone().multiplyScalar(25))
+        : this.spectatorLookAt.clone();
 
     if (
       this.state === GameState.COUNTING ||
@@ -676,7 +693,7 @@ export class SeparationGame {
         const spread = Math.max(12, distance);
         const basePos =
           this.cameraMode === "door"
-            ? this.spectatorDoorPos
+            ? planePos.clone().add(followOffset)
             : this.spectatorWidePos;
         targetPos = basePos.clone().add(new THREE.Vector3(0, spread * 0.15, 0));
         targetLookAt = center.clone();
@@ -765,7 +782,7 @@ export class SeparationGame {
     if (statusElement) {
       const diff = Math.abs(actualSeparation - this.requiredSeparation);
       if (actualSeparation < this.requiredSeparation) {
-        statusElement.textContent = "⚠️ Too early! Watch what happens...";
+        statusElement.textContent = "⚠️ Too early! Analyzing separation...";
         statusElement.style.color = "#f44336";
       } else if (diff <= 2.0) {
         statusElement.textContent = "✓ Good timing! Analyzing separation...";
@@ -783,6 +800,8 @@ export class SeparationGame {
 
     // Zoom out camera to show both jumpers
     this.zoomOutCamera();
+
+    // No replay messaging
   }
 
   /**
@@ -818,11 +837,20 @@ export class SeparationGame {
     // Determine if player won or lost
     const isWin =
       difference <= 2.0 && actualSeparation >= this.requiredSeparation;
+    const isPerfect = isWin && difference <= 0.5;
+    const isGreat = isWin && difference > 0.5 && difference <= 1.0;
 
     if (isWin) {
       this.wins++;
+      this.streak++;
     } else {
       this.losses++;
+      this.streak = 0;
+    }
+
+    const streakWin = isWin && this.streak >= 3;
+    if (streakWin) {
+      this.streakWinPending = true;
     }
 
     console.log(`Round ${this.currentRound} result: ${isWin ? "WIN" : "LOSS"}`);
@@ -849,7 +877,15 @@ export class SeparationGame {
     ) as HTMLButtonElement;
 
     if (resultsTitle) {
-      resultsTitle.textContent = isWin ? "SUCCESS!" : "MISSED!";
+      resultsTitle.textContent = streakWin
+        ? "STREAK WIN!"
+        : isPerfect
+          ? "PERFECT!"
+          : isGreat
+            ? "GREAT!"
+            : isWin
+              ? "SUCCESS!"
+              : "MISSED!";
       resultsTitle.className = isWin
         ? "results-title success"
         : "results-title fail";
@@ -869,7 +905,7 @@ export class SeparationGame {
     if (resultsDetails) {
       if (isWin) {
         resultsDetails.innerHTML = `
-          Great job! You jumped at the right time!<br>
+          ${streakWin ? "🎉 You hit a 3-streak!" : isPerfect ? "Bullseye timing!" : isGreat ? "Nice timing!" : "Good timing!"}<br>
           <span class="highlight">Your separation: ${actualSeparation.toFixed(
             2,
           )} sec</span>
@@ -879,6 +915,8 @@ export class SeparationGame {
           <span class="highlight">Difference: ${difference.toFixed(
             2,
           )} sec</span>
+          <span class="highlight">Streak: ${this.streak}</span>
+          ${streakWin ? '<span class="highlight">You win this run! Streak resets next round.</span>' : ""}
         `;
       } else if (actualSeparation < this.requiredSeparation) {
         resultsDetails.innerHTML = `
@@ -892,6 +930,8 @@ export class SeparationGame {
           <span class="highlight">Too early by: ${(
             this.requiredSeparation - actualSeparation
           ).toFixed(2)} sec</span>
+          <span class="highlight">Streak reset</span>
+          <span class="highlight">Tip: Count slower or watch the timer tick.</span>
         `;
       } else {
         resultsDetails.innerHTML = `
@@ -905,18 +945,14 @@ export class SeparationGame {
           <span class="highlight">Too late by: ${(
             actualSeparation - this.requiredSeparation
           ).toFixed(2)} sec</span>
+          <span class="highlight">Streak reset</span>
+          <span class="highlight">Tip: Start counting as soon as red exits.</span>
         `;
       }
     }
 
     // Update next round button text
-    let primaryLabel = "Next Round";
-    const isFinalRound = this.currentRound >= 3 && !this.isBonusRound;
-    if (this.isBonusRound) {
-      primaryLabel = "View Final Score";
-    } else if (isFinalRound) {
-      primaryLabel = this.wins === 3 ? "Play Bonus Round!" : "View Final Score";
-    }
+    const primaryLabel = "Next Round";
     if (nextRoundButton) {
       nextRoundButton.textContent = primaryLabel;
     }
@@ -933,6 +969,8 @@ export class SeparationGame {
     }
 
     resultsOverlay?.classList.add("show");
+
+    this.trajectoryLines.forEach((line) => (line.visible = true));
   }
 
   /**
@@ -985,9 +1023,7 @@ export class SeparationGame {
   private updateRoundDisplay(): void {
     const roundElement = document.getElementById("current-round");
     if (roundElement) {
-      roundElement.textContent = this.isBonusRound
-        ? "BONUS"
-        : `${this.currentRound}`;
+      roundElement.textContent = `${this.currentRound}`;
     }
   }
 
@@ -1008,9 +1044,11 @@ export class SeparationGame {
   private updateScoreDisplay(): void {
     const winsElement = document.getElementById("wins-count");
     const lossesElement = document.getElementById("losses-count");
+    const streakElement = document.getElementById("streak-count");
 
     if (winsElement) winsElement.textContent = `${this.wins}`;
     if (lossesElement) lossesElement.textContent = `${this.losses}`;
+    if (streakElement) streakElement.textContent = `${this.streak}`;
   }
 
   /**
