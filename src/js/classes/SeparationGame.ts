@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { SimPlane, SimJumper } from "./simEntities";
+import { SimPlane, SimJumper } from "./SimEntities";
 import {
   createDynamicTrajectoryLine,
   updateTrajectoryLines,
