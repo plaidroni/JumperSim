@@ -9,7 +9,7 @@ import {
   createDefaultSimJumpers,
   SimJumper,
   SimPlane,
-} from "./classes/simEntities";
+} from "./classes/SimEntities";
 import { loadDropzones } from "./LocationSelect";
 import { handlePlaneSelection, initializePlaneManager } from "./PlaneSelect";
 import {
