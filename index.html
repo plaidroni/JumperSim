@@ -169,7 +169,7 @@
           <span>Minigames</span>
           <div class="dropdown-menu">
             <div class="dropdown-item" id="launch-separation-game">
-              <span>Separation Timing Challenge</span>
+              <span>Fresh Meet 2026 Separation Game</span>
             </div>
           </div>
         </div>
@@ -620,7 +620,38 @@
                 </div>
                 <div class="results-actions">
                   <button class="results-button primary" id="next-round-button">Next Round</button>
-                  <button class="results-button secondary" id="view-replay-button">View Separation</button>
+                  <div class="results-submit" id="results-submit">
+                    <input
+                      class="results-input team-number"
+                      id="team-number-input"
+                      type="text"
+                      inputmode="text"
+                      placeholder="Team name"
+                      aria-label="Team name"
+                    />
+
+                    <button class="results-button secondary" id="submit-team-button">Submit</button>
+                  </div>
+                </div>
+                <div class="results-submit-status" id="submission-status"></div>
+              </div>
+            </div>
+
+            <!-- Ready Overlay -->
+            <div class="ready-overlay" id="ready-overlay">
+              <div class="ready-content">
+                <div class="ready-title">Ready?</div>
+                <div class="ready-details">
+                  Round <span class="ready-round" id="ready-round">1</span>
+                </div>
+                <div class="ready-separation">
+                  Required separation: <span id="ready-separation">-- sec</span>
+                </div>
+                <div class="ready-instructions" id="ready-instructions"></div>
+                <div class="ready-actions">
+                  <button class="results-button primary" id="ready-round-button">
+                    Start Round
+                  </button>
                 </div>
               </div>
             </div>

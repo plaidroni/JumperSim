@@ -380,6 +380,75 @@ body.separation-game-active canvas:not(#separation-game-container canvas) {
   display: flex;
 }
 
+.ready-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 110;
+}
+
+.ready-overlay.show {
+  display: flex;
+}
+
+.ready-content {
+  background: #2c2c2c;
+  padding: 36px 40px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 420px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6);
+}
+
+.ready-title {
+  font-size: 42px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  color: #ffd54a;
+  text-transform: uppercase;
+}
+
+.ready-details {
+  font-size: 18px;
+  color: #ccc;
+  margin-bottom: 24px;
+}
+
+.ready-separation {
+  font-size: 18px;
+  color: #fff;
+  margin-bottom: 16px;
+}
+
+.ready-separation span {
+  color: #ffd54a;
+  font-weight: 700;
+}
+
+.ready-instructions {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cfcfcf;
+  margin: 0 auto 22px;
+  max-width: 340px;
+}
+
+.ready-round {
+  color: #fff;
+  font-weight: 700;
+}
+
+.ready-actions {
+  display: flex;
+  justify-content: center;
+}
+
 .results-content {
   background: #2c2c2c;
   padding: 40px;
@@ -421,6 +490,42 @@ body.separation-game-active canvas:not(#separation-game-container canvas) {
   display: flex;
   gap: 20px;
   justify-content: center;
+  flex-wrap: wrap;
+}
+
+.results-submit {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.results-input {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #1f1f1f;
+  color: #fff;
+  font-size: 14px;
+  min-width: 140px;
+}
+
+.results-input.team-number {
+  min-width: 90px;
+  width: 90px;
+  text-align: center;
+}
+
+.results-input::placeholder {
+  color: #888;
+}
+
+.results-submit-status {
+  margin-top: 15px;
+  font-size: 14px;
+  color: #ccc;
+  min-height: 18px;
 }
 
 .results-button {

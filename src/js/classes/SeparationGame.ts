@@ -27,6 +27,8 @@ const SEPARATION_TABLE = [
 ];
 
 const KNOTS_TO_MS = 0.51444;
+const TEAM_WEBHOOK_URL =
+  "https://script.google.com/macros/s/AKfycbxN7BrlEBI9BYJy_pX6x6N7fJOrWpnQWSc-BI72dVJFW8T_JGbm-q4qj8hPBDIM9N1xCw/exec";
 
 /**
  * Get required separation based on ground speed
@@ -65,6 +67,7 @@ function highlightTableRow(groundSpeedKnots: number): void {
 
 export enum GameState {
   NOT_STARTED = "not_started",
+  READY = "ready",
   WATCHING_FIRST_JUMPER = "watching_first_jumper",
   COUNTING = "counting",
   PLAYER_JUMPED = "player_jumped",
@@ -174,17 +177,39 @@ export class SeparationGame {
       this.handlePrimaryAction(),
     );
 
-    // View separation button
-    const viewSeparationButton = document.getElementById("view-replay-button");
-    viewSeparationButton?.addEventListener("click", () =>
-      this.viewSeparation(),
+    // Submit team result button
+    const submitTeamButton = document.getElementById("submit-team-button");
+    submitTeamButton?.addEventListener("click", () =>
+      this.handleWebhookSubmit(),
     );
+
+    const readyRoundButton = document.getElementById("ready-round-button");
+    readyRoundButton?.addEventListener("click", () => this.beginRound());
+
+    const submitInputIds = [
+      "team-number-input",
+      "team-name-input",
+      "team-data-input",
+    ];
+    submitInputIds.forEach((id) => {
+      const input = document.getElementById(id) as HTMLInputElement | null;
+      input?.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        this.handleWebhookSubmit();
+      });
+    });
   }
 
   /**
    * Primary action handler (single-button control)
    */
   private handlePrimaryAction(): void {
+    if (this.state === GameState.READY) {
+      this.beginRound();
+      return;
+    }
+
     if (this.state === GameState.COUNTING) {
       this.handlePlayerJump();
       return;
@@ -379,12 +404,13 @@ export class SeparationGame {
     // Hide results overlay
     const resultsOverlay = document.getElementById("results-overlay");
     resultsOverlay?.classList.remove("show");
+    this.hideReadyOverlay();
 
     // Create jumpers for this round
     this.setupRoundJumpers();
 
-    // Start the round animation
-    this.beginRound();
+    // Show ready screen before starting the round
+    this.showReadyOverlay();
   }
 
   /**
@@ -489,6 +515,9 @@ export class SeparationGame {
    * Begin the round - show first jumper exiting
    */
   private beginRound(): void {
+    if (this.state === GameState.COUNTING) return;
+
+    this.hideReadyOverlay();
     this.state = GameState.WATCHING_FIRST_JUMPER;
     this.roundStartTime = performance.now();
     this.gameTime = 0;
@@ -536,6 +565,48 @@ export class SeparationGame {
 
     // Start animation loop
     this.startAnimationLoop();
+  }
+
+  private showReadyOverlay(): void {
+    this.state = GameState.READY;
+
+    const readyOverlay = document.getElementById("ready-overlay");
+    readyOverlay?.classList.add("show");
+
+    const readyRound = document.getElementById("ready-round");
+    if (readyRound) {
+      readyRound.textContent = `${this.currentRound}`;
+    }
+
+    const readySeparation = document.getElementById("ready-separation");
+    if (readySeparation) {
+      readySeparation.textContent = `${this.requiredSeparation} sec`;
+    }
+
+    const readyInstructions = document.getElementById("ready-instructions");
+    if (readyInstructions) {
+      if (this.streak === 0) {
+        readyInstructions.textContent =
+          "Use the separation chart to find ground speed vs separation time, then count within ~2 seconds of the required separation and press JUMP!";
+        readyInstructions.style.display = "block";
+      } else {
+        readyInstructions.textContent = "";
+        readyInstructions.style.display = "none";
+      }
+    }
+
+    const statusElement = document.getElementById("game-view-status");
+    if (statusElement) {
+      statusElement.textContent = "Ready for the next round.";
+      statusElement.style.color = "#4CAF50";
+    }
+
+    this.updatePrimaryButton("READY", true);
+  }
+
+  private hideReadyOverlay(): void {
+    const readyOverlay = document.getElementById("ready-overlay");
+    readyOverlay?.classList.remove("show");
   }
 
   /**
@@ -805,6 +876,91 @@ export class SeparationGame {
   }
 
   /**
+   * Submit the team name payload to the webhook
+   */
+  private async handleWebhookSubmit(): Promise<void> {
+    const teamInput = document.getElementById(
+      "team-number-input",
+    ) as HTMLInputElement | null;
+    const submitButton = document.getElementById(
+      "submit-team-button",
+    ) as HTMLButtonElement | null;
+    const statusElement = document.getElementById("submission-status");
+
+    if (!teamInput) return;
+
+    const teamName = teamInput.value.trim();
+    if (!teamName) {
+      if (statusElement) {
+        statusElement.textContent = "Enter a team name.";
+        statusElement.style.color = "#f44336";
+      }
+      teamInput.focus();
+      return;
+    }
+
+    const payload = {
+      name: teamName,
+    };
+
+    await this.submitWebhook(payload, statusElement, submitButton, "Submit");
+  }
+
+  private async submitWebhook(
+    payload: { name: string },
+    statusElement: HTMLElement | null,
+    button: HTMLButtonElement | null,
+    buttonLabel: string,
+  ): Promise<void> {
+    let submitted = false;
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Submitting...";
+    }
+
+    if (statusElement) {
+      statusElement.textContent = "Submitting...";
+      statusElement.style.color = "#ccc";
+    }
+
+    try {
+      await fetch(TEAM_WEBHOOK_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=UTF-8",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (statusElement) {
+        statusElement.textContent = "Submitted successfully.";
+        statusElement.style.color = "#4caf50";
+      }
+
+      submitted = true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Webhook submission failed", error);
+      if (statusElement) {
+        statusElement.textContent = `Submission failed: ${message}`;
+        statusElement.style.color = "#f44336";
+      }
+    } finally {
+      if (button) {
+        if (submitted && buttonLabel === "Submit") {
+          button.disabled = true;
+          button.textContent = "Submitted";
+        } else {
+          button.disabled = false;
+          button.textContent = buttonLabel;
+        }
+      }
+    }
+  }
+
+  /**
    * Zoom out the camera to show both jumpers
    * This happens after the player jumps
    */
@@ -875,6 +1031,7 @@ export class SeparationGame {
     const nextRoundButton = document.getElementById(
       "next-round-button",
     ) as HTMLButtonElement;
+    const submitContainer = document.getElementById("results-submit");
 
     if (resultsTitle) {
       resultsTitle.textContent = streakWin
@@ -961,11 +1118,28 @@ export class SeparationGame {
     this.updatePrimaryButton(primaryLabel.toUpperCase(), false);
 
     // Update view separation button
-    const viewSeparationButton = document.getElementById(
-      "view-replay-button",
+    const submitTeamButton = document.getElementById(
+      "submit-team-button",
     ) as HTMLButtonElement;
-    if (viewSeparationButton) {
-      viewSeparationButton.textContent = "View Separation";
+    if (submitTeamButton) {
+      submitTeamButton.textContent = "Submit";
+    }
+
+    const testTeamButton = document.getElementById(
+      "test-team-button",
+    ) as HTMLButtonElement;
+    if (testTeamButton) {
+      testTeamButton.textContent = "Test";
+    }
+
+    const submissionStatus = document.getElementById("submission-status");
+    if (submissionStatus) {
+      submissionStatus.textContent = "";
+      submissionStatus.style.color = "#ccc";
+    }
+
+    if (submitContainer) {
+      submitContainer.style.display = streakWin ? "flex" : "none";
     }
 
     resultsOverlay?.classList.add("show");
