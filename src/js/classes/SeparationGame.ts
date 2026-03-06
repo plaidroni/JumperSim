@@ -1088,7 +1088,7 @@ export class SeparationGame {
             this.requiredSeparation - actualSeparation
           ).toFixed(2)} sec</span>
           <span class="highlight">Streak reset</span>
-          <span class="highlight">Tip: Count slower or watch the timer tick.</span>
+          <span class="highlight">Tip: Count "One mississippi", or "One One Thousand"!</span>
         `;
       } else {
         resultsDetails.innerHTML = `
