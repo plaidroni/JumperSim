@@ -13,4 +13,8 @@ export default defineConfig({
     target: "esnext",
   },
   plugins: [],
+  define: {
+    // Expose Mapbox token to client code
+    'import.meta.env.VITE_MAPBOX_TOKEN': JSON.stringify(process.env.MAPBOX_TOKEN)
+  }
 });

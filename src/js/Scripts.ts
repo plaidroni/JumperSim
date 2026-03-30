@@ -827,6 +827,12 @@ systemsOK.then(() => {
     // Update PlaneLoad UI every frame for dynamic values
     (simPlane as any).planeLoad?.updateRuntime?.();
 
+    // Update Mapbox canvas texture every frame
+    const mapboxRenderer = (window as any).mapboxRenderer;
+    if (mapboxRenderer) {
+      mapboxRenderer.updateCanvasTexture();
+    }
+
     renderer.render(scene, camera);
 
     camera.getWorldDirection(dir);

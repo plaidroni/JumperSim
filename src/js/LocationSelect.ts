@@ -5,6 +5,9 @@ import * as THREE from "three";
 import { handleForeignRecalculation, signalMeshReady } from "./Scripts";
 import { HeightAxis } from "./ui/HeightAxis";
 import { finalization } from "process";
+import { MapboxCanvasRenderer } from "./MapboxCanvasRenderer";
+
+let mapboxRenderer: MapboxCanvasRenderer | null = null;
 
 export async function loadDropzones(scene: THREE.Scene) {
   const response = await fetch("/json/dropzones.json");
@@ -85,8 +88,13 @@ export async function loadDropzones(scene: THREE.Scene) {
     const centerLat = dz.latitude;
     const centerLon = dz.longitude;
     const zoom = 14;
-    const mapUrl = `/.netlify/functions/mapbox-proxy?lat=${centerLat}&lon=${centerLon}&zoom=${zoom}`;
     const planeSize = 4618;
+
+    // Dispose previous renderer if it exists
+    if (mapboxRenderer) {
+      mapboxRenderer.dispose();
+      mapboxRenderer = null;
+    }
 
     const gridHelper = new THREE.GridHelper(planeSize, 16);
     (window as any).gridHelper = gridHelper;
@@ -103,16 +111,19 @@ export async function loadDropzones(scene: THREE.Scene) {
     scene.add(heightAxis.getObject());
 
     try {
-      const response = await fetch(mapUrl);
-      if (!response.ok) throw new Error("Failed to load map image");
+      // Initialize Mapbox Canvas Renderer
+      mapboxRenderer = new MapboxCanvasRenderer();
+      await mapboxRenderer.initialize(centerLat, centerLon, zoom);
 
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
+      // Check if renderer initialized successfully
+      if (!mapboxRenderer.isInitialized()) {
+        throw new Error("Mapbox renderer failed to initialize");
+      }
 
-      const loader = new THREE.TextureLoader();
-      const texture = await new Promise((resolve, reject) => {
-        loader.load(objectUrl, resolve, undefined, reject);
-      });
+      const texture = mapboxRenderer.getTexture();
+      if (!texture) {
+        throw new Error("Failed to get texture from Mapbox renderer");
+      }
 
       const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
       let material = new THREE.MeshBasicMaterial({ map: texture });
@@ -120,11 +131,22 @@ export async function loadDropzones(scene: THREE.Scene) {
       const mapPlane = new THREE.Mesh(geometry, material);
 
       (window as any).mapPlane = mapPlane;
+      (window as any).mapboxRenderer = mapboxRenderer;
       mapPlane.rotation.x = -Math.PI / 2;
 
       scene.add(mapPlane);
       signalMeshReady();
     } catch (err) {
+      console.error(
+        "Map texture load failed. Falling back to wireframe.",
+        err
+      );
+
+      if (mapboxRenderer) {
+        mapboxRenderer.dispose();
+        mapboxRenderer = null;
+      }
+
       const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
 
       const material = new THREE.MeshBasicMaterial({
@@ -135,8 +157,8 @@ export async function loadDropzones(scene: THREE.Scene) {
       (window as any).mapPlane = mapPlane;
       mapPlane.rotation.x = -Math.PI / 2;
       scene.add(mapPlane);
-      console.error("Map texture load failed. Did you check the API Key?", err);
       signalMeshReady();
     }
   }
+
 }
