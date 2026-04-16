@@ -14,7 +14,7 @@ export async function loadDropzones(scene: THREE.Scene) {
   const dropzones = await response.json();
 
   const select = document.getElementById(
-    "dropzone-select"
+    "dropzone-select",
   ) as HTMLSelectElement;
   const detailsDiv = document.getElementById("dropzone-details");
 
@@ -71,7 +71,7 @@ export async function loadDropzones(scene: THREE.Scene) {
       console.log("Default jumprun found for", dz.name);
       (window as any).defaultJumprunPoints = dz.defaultJumprun.map(
         (pt: { x: number; y: number; z: number }) =>
-          new THREE.Vector3(pt.x, pt.y, pt.z)
+          new THREE.Vector3(pt.x, pt.y, pt.z),
       );
     }
 
@@ -137,10 +137,7 @@ export async function loadDropzones(scene: THREE.Scene) {
       scene.add(mapPlane);
       signalMeshReady();
     } catch (err) {
-      console.error(
-        "Map texture load failed. Falling back to wireframe.",
-        err
-      );
+      console.error("Map texture load failed. Falling back to wireframe.", err);
 
       if (mapboxRenderer) {
         mapboxRenderer.dispose();
@@ -160,5 +157,4 @@ export async function loadDropzones(scene: THREE.Scene) {
       signalMeshReady();
     }
   }
-
 }
