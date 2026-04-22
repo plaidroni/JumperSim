@@ -48,68 +48,32 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // === SKY BACKGROUND + CLOUDS ===
-const skyColor = new THREE.Color(0x87ceeb);
-scene.background = skyColor;
-renderer.setClearColor(skyColor, 1);
-
-function createCloudTexture(): THREE.CanvasTexture {
-  const size = 256;
+function createBackgroundTexture(): THREE.CanvasTexture {
+  const size = 1024;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
 
-  ctx.clearRect(0, 0, size, size);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  const gradient = ctx.createLinearGradient(0, 0, 0, size);
+  gradient.addColorStop(0, "#040404");
+  gradient.addColorStop(0.5, "#0a0a0a");
+  gradient.addColorStop(1, "#111111");
 
-  for (let i = 0; i < 6; i++) {
-    const x = size * (0.2 + Math.random() * 0.6);
-    const y = size * (0.2 + Math.random() * 0.6);
-    const r = size * (0.12 + Math.random() * 0.18);
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
 
   const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
   texture.needsUpdate = true;
   return texture;
 }
 
-function addCloudLayer(): void {
-  const cloudGroup = new THREE.Group();
-  const cloudTexture = createCloudTexture();
-  cloudTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-
-  const baseMaterial = new THREE.MeshLambertMaterial({
-    map: cloudTexture,
-    transparent: true,
-    opacity: 0.75,
-    depthWrite: false,
-  });
-
-  for (let i = 0; i < 30; i++) {
-    const size = THREE.MathUtils.randFloat(200, 600);
-    const geometry = new THREE.PlaneGeometry(size, size * 0.6);
-    const material = baseMaterial.clone();
-    material.opacity = THREE.MathUtils.randFloat(0.35, 0.85);
-
-    const cloud = new THREE.Mesh(geometry, material);
-    cloud.position.set(
-      THREE.MathUtils.randFloatSpread(4000),
-      THREE.MathUtils.randFloat(600, 1200),
-      THREE.MathUtils.randFloatSpread(4000),
-    );
-    cloud.rotation.x = -Math.PI / 2;
-    cloud.rotation.y = Math.random() * Math.PI * 2;
-    cloud.renderOrder = -1;
-    cloudGroup.add(cloud);
-  }
-
-  scene.add(cloudGroup);
-}
-
-addCloudLayer();
+const backgroundTexture = createBackgroundTexture();
+scene.background = backgroundTexture;
+renderer.setClearColor(0x000000, 1);
 
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(10, 10, 10);
@@ -826,6 +790,12 @@ systemsOK.then(() => {
 
     // Update PlaneLoad UI every frame for dynamic values
     (simPlane as any).planeLoad?.updateRuntime?.();
+
+    // Update Mapbox canvas texture every frame
+    const mapboxRenderer = (window as any).mapboxRenderer;
+    if (mapboxRenderer) {
+      mapboxRenderer.updateCanvasTexture();
+    }
 
     renderer.render(scene, camera);
 
