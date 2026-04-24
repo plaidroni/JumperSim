@@ -1,5 +1,9 @@
 export async function handler(event) {
   const { lat, lon, zoom = "14" } = event.queryStringParameters;
+  const token =
+    process.env.MAPBOX_TOKEN ||
+    process.env.VITE_MAPBOX_TOKEN ||
+    process.env.VITE_MAPBOX;
 
   if (!lat || !lon) {
     return {
@@ -8,7 +12,18 @@ export async function handler(event) {
     };
   }
 
-  const mapboxUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${lon},${lat},${zoom}/512x512?access_token=${process.env.MAPBOX_TOKEN}`;
+  if (!token) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: "Missing Mapbox token",
+        message:
+          "Set MAPBOX_TOKEN (server) or VITE_MAPBOX_TOKEN/VITE_MAPBOX (fallback).",
+      }),
+    };
+  }
+
+  const mapboxUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${lon},${lat},${zoom}/512x512?access_token=${token}`;
 
   try {
     const mapboxRes = await fetch(mapboxUrl);
