@@ -25,13 +25,12 @@ export class Plane {
   constructor(
     position: THREE.Vector3,
     speedKnots = (window as any).devConsoleVars.planeSpeed,
-    direction = new THREE.Vector3(1, 0, 0)
+    direction = new THREE.Vector3(1, 0, 0),
   ) {
     this.initialPosition = position.clone();
     this.position = position.clone();
     this.direction = direction.normalize();
-    // this.speed = speedKnots * 0.51444 * (window as any).simScale;
-    this.speed = speedKnots * 0.51444;
+    this.speed = speedKnots * 0.51444 * (window as any).simScale;
     this.vector = this.direction.clone().multiplyScalar(this.speed);
   }
 
@@ -39,7 +38,7 @@ export class Plane {
     this.position.copy(
       this.initialPosition
         .clone()
-        .add(this.vector.clone().multiplyScalar(simulationTime))
+        .add(this.vector.clone().multiplyScalar(simulationTime)),
     );
     if (this.mesh) this.mesh.position.copy(this.position);
   }
@@ -127,7 +126,7 @@ export class Jumper {
     flyingStyle: FlyingStyle | undefined = "belly",
     weight: number | undefined = Math.round(Math.random() * 30 + 60),
     extraWeight: number | undefined = 0,
-    suitType: SuitType | undefined = "normal"
+    suitType: SuitType | undefined = "normal",
   ) {
     this.index = index;
     this.jumpTime = index * jumpInterval;
@@ -154,7 +153,7 @@ export class Jumper {
 
     this.mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.2, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+      new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     );
   }
 
@@ -166,13 +165,11 @@ export class Jumper {
       const deployTime = Math.max(0, timeSinceJump - this.deployDelay);
       const fallTime = Math.min(timeSinceJump, this.deployDelay);
 
-      // const gravity = new THREE.Vector3(0, -9.81 * (window as any).simScale, 0);
-      const gravity = new THREE.Vector3(0, -9.81, 0);
+      const gravity = new THREE.Vector3(0, -9.81 * (window as any).simScale, 0);
       const canopyDescentRate = new THREE.Vector3(
         0,
-        // -2.5 * (window as any).simScale,
-        -2.5,
-        0
+        -2.5 * (window as any).simScale,
+        0,
       );
 
       const freefall = gravity
@@ -185,7 +182,7 @@ export class Jumper {
         this.plane.initialPosition
           .clone()
           .add(this.plane.vector.clone().multiplyScalar(this.jumpTime))
-          .add(totalFall)
+          .add(totalFall),
       );
       this.position.y = Math.max(0, this.position.y);
     }
