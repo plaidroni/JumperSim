@@ -1,9 +1,15 @@
 // App entry point. On touch-only devices (phones, tablets) JumperSim shows the
 // mobile blocker instead, and none of the sim (three.js, aircraft models, terrain,
 // weather) is downloaded. Keep this query in sync with src/css/mobile-blocker.css.
-const MOBILE_QUERY = "(hover: none) and (pointer: coarse)";
+//
+// any-hover / any-pointer look at every input device, not just the primary one, so
+// touchscreen laptops with a trackpad or mouse are never treated as mobile.
+const MOBILE_QUERY = "(any-hover: none) and (any-pointer: coarse)";
+const ALLOW_MOBILE_KEY = "jumpersim.allowMobile";
 
-if (window.matchMedia(MOBILE_QUERY).matches) {
+const allowMobile = document.documentElement.classList.contains("allow-mobile");
+
+if (window.matchMedia(MOBILE_QUERY).matches && !allowMobile) {
   setUpMobileBlocker();
 } else {
   // Same modules, same order as the original <script type="module"> tags.
@@ -35,6 +41,19 @@ function setUpMobileBlocker() {
     }
     window.setTimeout(() => (button.textContent = "Copy link"), 2000);
   });
+
+  // escape hatch for devices that misreport their inputs
+  document
+    .getElementById("mobile-blocker-continue")
+    ?.addEventListener("click", () => {
+      try {
+        localStorage.setItem(ALLOW_MOBILE_KEY, "1");
+      } catch {
+        /* storage unavailable; the reload below still shows the app once */
+      }
+      document.documentElement.classList.add("allow-mobile");
+      window.location.reload();
+    });
 }
 
 export {};

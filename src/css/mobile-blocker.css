@@ -1,6 +1,8 @@
 /* === Mobile blocker ===
- * Shown on touch-only devices (phones, tablets). The same media query is used in
- * src/js/main.ts so the sim isn't downloaded on those devices.
+ * Shown on touch-only devices (phones, tablets): no input that can hover and a
+ * coarse (finger) pointer. It checks *every* input device (any-hover/any-pointer),
+ * so touchscreen laptops with a trackpad or mouse are never blocked.
+ * The same query is in src/js/main.ts. "Continue anyway" adds .allow-mobile to <html>.
  * Styled to match the app's panels (devconsole.css) and menubar (menu.css).
  */
 
@@ -8,20 +10,20 @@
   display: none;
 }
 
-@media (hover: none) and (pointer: coarse) {
-  html,
-  body {
+@media (any-hover: none) and (any-pointer: coarse) {
+  html:not(.allow-mobile),
+  html:not(.allow-mobile) body {
     margin: 0;
     height: 100%;
     overflow: hidden;
     background: linear-gradient(180deg, #040404 0%, #0a0a0a 50%, #111111 100%);
   }
 
-  body > *:not(#mobile-blocker) {
+  html:not(.allow-mobile) body > *:not(#mobile-blocker) {
     display: none !important;
   }
 
-  #mobile-blocker {
+  html:not(.allow-mobile) #mobile-blocker {
     display: flex;
     position: fixed;
     inset: 0;
@@ -112,4 +114,17 @@
   font-size: 12px;
   color: #999;
   word-break: break-all;
+}
+
+.mobile-blocker-continue {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #999;
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  font-family: inherit;
+  cursor: pointer;
 }

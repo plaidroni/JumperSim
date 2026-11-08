@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JumperSim</title>
+    <script>
+      // "Continue anyway" on the mobile blocker; set before render to avoid a flash
+      try {
+        if (localStorage.getItem("jumpersim.allowMobile") === "1")
+          document.documentElement.classList.add("allow-mobile");
+      } catch (e) {}
+    </script>
     <link rel="stylesheet" href="./src/css/devconsole.css" />
     <link rel="stylesheet" href="./src/css/tooltip.css" />
     <link rel="stylesheet" href="./src/css/playback-controls.css" />
@@ -40,6 +47,9 @@
             Copy link
           </button>
           <div class="mobile-blocker-url" id="mobile-blocker-url"></div>
+          <button class="mobile-blocker-continue" id="mobile-blocker-continue" type="button">
+            Continue anyway
+          </button>
         </div>
       </div>
     </div>
