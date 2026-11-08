@@ -13,8 +13,37 @@
     <link rel="stylesheet" href="./src/css/notification.css" />
     <link rel="stylesheet" href="./src/css/planeloadui.css" />
     <link rel="stylesheet" href="./src/css/separation-game.css" />
+    <link rel="stylesheet" href="./src/css/mobile-blocker.css" />
   </head>
   <body>
+    <!-- Shown instead of the app on phones/tablets (see src/css/mobile-blocker.css) -->
+    <div id="mobile-blocker" role="dialog" aria-labelledby="mobile-blocker-title">
+      <div class="mobile-blocker-panel">
+        <div class="mobile-blocker-header">
+          <h2>JumperSim</h2>
+          <span>Desktop only</span>
+        </div>
+        <div class="mobile-blocker-body">
+          <img
+            class="mobile-blocker-logo"
+            src="./src/img/jumpersim-logo-white.png"
+            alt="JumperSim logo"
+          />
+          <p class="mobile-blocker-title" id="mobile-blocker-title">
+            Not available on mobile
+          </p>
+          <p class="mobile-blocker-message">
+            JumperSim currently isn't available on mobile. Visit the app on your
+            desktop.
+          </p>
+          <button class="mobile-blocker-copy" id="mobile-blocker-copy" type="button">
+            Copy link
+          </button>
+          <div class="mobile-blocker-url" id="mobile-blocker-url"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="menu">
       <div id="logocontainer"></div>
       <div id="menu-items">
@@ -488,14 +517,8 @@
       <div class="panel-body"></div>
     </div> -->
 
-    <script src="./src/js/GlobalVars.ts" type="module" defer></script>
-    <script src="./src/js/DevConsole.ts" type="module"></script>
-    <script src="./src/js/TimeScrubber.ts" type="module"></script>
-    <script src="./src/js/Scripts.ts" type="module" defer></script>
-    <script src="./src/apidata/OpenMateo.ts" type="module"></script>
-    <script src="./src/js/LocationSelect.ts" type="module"></script>
-    <script src="./src/js/Menubar.ts" type="module"></script>
-    <script src="./src/js/ui/PlaneSettings.ts" type="module"></script>
+    <!-- Loads the app on desktop; shows the mobile blocker on phones/tablets -->
+    <script src="./src/js/main.ts" type="module"></script>
 
     <!-- Separation Timing Minigame -->
     <div id="separation-game-container">
