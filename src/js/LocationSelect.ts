@@ -4,6 +4,11 @@ import * as THREE from "three";
 import { handleForeignRecalculation, signalMeshReady } from "./Scripts";
 import { MapScene } from "./terrain/MapScene";
 import { initMapControls, readSavedMapOptions } from "./ui/MapControls";
+import {
+  hideMapLoader,
+  setMapLoaderProgress,
+  showMapLoader,
+} from "./ui/MapLoader";
 
 let mapScene: MapScene | null = null;
 let firstMapLoad = true;
@@ -88,11 +93,13 @@ export async function loadDropzones(scene: THREE.Scene) {
       initMapControls(mapScene);
     }
 
+    showMapLoader();
     try {
-      await mapScene.load(dz);
+      await mapScene.load(dz, setMapLoaderProgress);
     } catch (err) {
       console.error("Map load failed:", err);
     }
+    hideMapLoader();
 
     if (firstMapLoad) {
       // the sim waits for this before its first precalculation

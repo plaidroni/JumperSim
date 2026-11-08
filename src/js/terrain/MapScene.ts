@@ -19,7 +19,12 @@ import {
   THEME,
   isImageryAvailable,
 } from "./config";
-import { createImageryOverlay, IMAGERY_ATTRIBUTION } from "./imagery";
+import {
+  checkMapboxAccess,
+  createImageryOverlay,
+  IMAGERY_ATTRIBUTION,
+} from "./imagery";
+import { notificationManager } from "../classes/NotificationManager";
 import { GroundHeightField } from "./GroundHeightField";
 import { setGroundProvider } from "./GroundHeight";
 
@@ -122,8 +127,12 @@ export class MapScene {
    * Load the map for a dropzone. Resolves once the ground is calibrated and the
    * heightfield is built (or the fallback is in place, or the timeout passes).
    */
-  async load(dz: DropzoneLike): Promise<void> {
+  async load(
+    dz: DropzoneLike,
+    onProgress: (fraction: number) => void = () => {},
+  ): Promise<void> {
     const id = ++this.loadId;
+    onProgress(0.05);
     this.unload();
 
     this.latRad = THREE.MathUtils.degToRad(dz.latitude);
@@ -143,6 +152,12 @@ export class MapScene {
     const cached = Number(safeGet(cacheKey));
     const haveCache = Number.isFinite(cached) && safeGet(cacheKey) !== null;
     this.groundEllipsoidM = haveCache ? cached : 0;
+
+    // don't drape Mapbox tiles that Mapbox is going to refuse
+    if (this.options.imagery === "mapbox-dark" && !(await checkMapboxAccess())) {
+      this.fallBackToCesiumImagery();
+    }
+    if (id !== this.loadId) return;
 
     let rootFailed = false;
     try {
@@ -165,6 +180,8 @@ export class MapScene {
       this.terrain!,
       () => rootFailed,
       MAP_DEFAULTS.terrainReadyTimeoutMs,
+      // tiles streaming in covers most of the bar; calibration is the last bit
+      (f) => onProgress(0.1 + 0.8 * f),
     );
     if (id !== this.loadId) return; // a newer dropzone was selected meanwhile
 
@@ -175,6 +192,7 @@ export class MapScene {
       return;
     }
 
+    onProgress(0.92);
     this.calibrateGround();
     if (Number.isFinite(this.groundEllipsoidM)) {
       safeSet(cacheKey, this.groundEllipsoidM.toFixed(2));
@@ -189,6 +207,7 @@ export class MapScene {
       this.scheduleHeightRebuild(),
     );
 
+    onProgress(1);
     console.info(
       `Map ready for ${dz.name}: ground ellipsoid height ${this.groundEllipsoidM.toFixed(1)} m` +
         (outcome === "timeout" ? " (timed out waiting for full detail)" : ""),
@@ -228,9 +247,13 @@ export class MapScene {
   // ---------------------------------------------------------------- options
 
   /** Swap the imagery draped on the terrain without reloading anything else. */
-  setImagery(key: ImageryKey): boolean {
+  async setImagery(key: ImageryKey): Promise<boolean> {
     if (!isImageryAvailable(key)) return false;
     if (key === this.options.imagery) return true;
+    if (key === "mapbox-dark" && !(await checkMapboxAccess())) {
+      this.fallBackToCesiumImagery();
+      return false;
+    }
     this.options.imagery = key;
     this.applyTheme();
 
@@ -248,6 +271,25 @@ export class MapScene {
       this.retiringOverlays = [];
     }, 3000);
     return true;
+  }
+
+  private mapboxWarningShown = false;
+
+  /** Mapbox refused the token: use Cesium imagery and tell the user once. */
+  private fallBackToCesiumImagery() {
+    this.options.imagery = "cesium";
+    this.applyTheme();
+    window.dispatchEvent(
+      new CustomEvent("map-imagery-unavailable", { detail: "mapbox-dark" }),
+    );
+    if (!this.mapboxWarningShown) {
+      this.mapboxWarningShown = true;
+      notificationManager.warning(
+        "Mapbox refused the Dark map tiles, so the map is showing Cesium satellite. " +
+          "Check the Mapbox token's URL restrictions.",
+        { duration: 10000 },
+      );
+    }
   }
 
   setBuildingsEnabled(enabled: boolean) {
@@ -395,6 +437,7 @@ export class MapScene {
     tiles: TilesRenderer,
     failed: () => boolean,
     timeoutMs: number,
+    onProgress: (fraction: number) => void = () => {},
   ): Promise<"settled" | "timeout" | "failed"> {
     return new Promise((resolve) => {
       const start = performance.now();
@@ -406,12 +449,16 @@ export class MapScene {
         const busy = s.queued + s.downloading + s.parsing;
         let models = 0;
         tiles.forEachLoadedModel(() => models++);
+        if ((tiles as any).root) {
+          // share of known tiles that have finished loading
+          onProgress(s.loaded / Math.max(1, s.loaded + busy));
+        }
         quietPolls = (tiles as any).root && busy === 0 && models > 0 ? quietPolls + 1 : 0;
         if (quietPolls >= 3) return resolve("settled");
         if (performance.now() - start > timeoutMs) {
           return resolve(models > 0 ? "timeout" : "failed");
         }
-        window.setTimeout(poll, 400);
+        window.setTimeout(poll, 250);
       };
       poll();
     });

@@ -46,13 +46,22 @@ export function initMapControls(mapScene: MapScene) {
       );
     }
     select.value = mapScene.options.imagery;
-    select.addEventListener("change", () => {
+    select.addEventListener("change", async () => {
       const key = select.value as ImageryKey;
-      if (mapScene.setImagery(key)) {
+      if (await mapScene.setImagery(key)) {
         setCookie(COOKIE_STYLE, key, 365);
       } else {
         select.value = mapScene.options.imagery;
       }
+    });
+    // Mapbox refused the token (see checkMapboxAccess): show it in the dropdown
+    window.addEventListener("map-imagery-unavailable", () => {
+      if (darkOption) {
+        darkOption.disabled = true;
+        darkOption.textContent = "Dark (Mapbox) – unavailable";
+      }
+      select.title = "Mapbox refused the token. Check its URL restrictions.";
+      select.value = mapScene.options.imagery;
     });
   }
 

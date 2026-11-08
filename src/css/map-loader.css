@@ -1,0 +1,64 @@
+/* === Map loading screen ===
+ * Full-screen cover shown while the dropzone's terrain loads: the JumperSim logo
+ * with a small progress bar under it. Fades out when the map is ready
+ * (src/js/ui/MapLoader.ts). Colours match the app background and panel headers.
+ */
+
+#map-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #040404 0%, #0a0a0a 50%, #111111 100%);
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+#map-loader.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#map-loader.is-gone {
+  display: none;
+}
+
+.map-loader-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.map-loader-logo {
+  width: 96px;
+  height: 96px;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.map-loader-bar {
+  margin-top: 14px;
+  width: 96px;
+  height: 3px;
+  background-color: #2c2c2c;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.map-loader-fill {
+  height: 100%;
+  width: 0%;
+  background-color: #ffd700;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #map-loader,
+  .map-loader-fill {
+    transition: none;
+  }
+}
