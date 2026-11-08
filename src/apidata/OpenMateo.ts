@@ -24,6 +24,8 @@ type MateoParams = {
 
 export type WeatherSnapshot = {
   time: string;
+  /** Ground elevation (m MSL) of the forecast point, from the API response. */
+  elevationM?: number;
   temperature2m: string;
   /**
    * "1000hPa:" "12mph"
@@ -198,6 +200,7 @@ async function fetchWeatherData() {
     for (let i = 0; i < weatherData.daily.time.length; i++) {
       const snapshot = {
         time: weatherData.hourly.time[i].toLocaleString(),
+        elevationM: response.elevation(),
         temperature2m: `${weatherData.hourly.temperature2m[i]} °F`,
         windSpeeds: {
           "10m": `${weatherData.hourly.windSpeed10m[i]} mph`,
@@ -241,6 +244,9 @@ async function fetchWeatherData() {
         weatherData.daily.weatherCode[i]
       );
     }
+
+    // let the wind tower (and anything else) refresh from the new snapshot
+    window.dispatchEvent(new CustomEvent("weather-updated"));
 
     // Show success notification when weather data is loaded
     notificationManager.success("Weather data loaded successfully!", {

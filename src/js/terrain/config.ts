@@ -16,6 +16,7 @@ export const MAP_DEFAULTS = {
   imagery: "mapbox-dark" as ImageryKey,
   buildings: true,
   showGrid: false,
+  showWind: true,
   /** Heightfield sample spacing (m) for the physics ground lookup. */
   heightFieldSpacingM: 50,
   /** Max time (ms) to wait for terrain before letting the sim start anyway. */

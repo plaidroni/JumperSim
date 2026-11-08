@@ -27,6 +27,7 @@ import {
 import { notificationManager } from "../classes/NotificationManager";
 import { GroundHeightField } from "./GroundHeightField";
 import { setGroundProvider } from "./GroundHeight";
+import { WindTower } from "../wind/WindTower";
 
 export interface DropzoneLike {
   name: string;
@@ -38,9 +39,17 @@ export interface MapOptions {
   imagery: ImageryKey;
   buildings: boolean;
   showGrid: boolean;
+  showWind: boolean;
 }
 
 const PLANE_SIZE = 4618;
+const TOWER_TOP_M = 5500;
+/**
+ * Rotate the tiles 180° about the vertical so the scene matches the compass and the
+ * rest of the app (+X = east, -Z = north). Without it the tiles come in with
+ * +X = west, +Z = north.
+ */
+const TILE_AZIMUTH = Math.PI;
 const GROUND_CACHE_PREFIX = "jumpersim.groundEllipsoidM.";
 
 /**
@@ -73,6 +82,7 @@ export class MapScene {
 
   private grid: THREE.GridHelper | null = null;
   private heightAxis: HeightAxis | null = null;
+  private windTower: WindTower | null = null;
   private fallbackPlane: THREE.Mesh | null = null;
   private hemiLight: THREE.HemisphereLight;
   private attributionEl: HTMLElement;
@@ -100,6 +110,7 @@ export class MapScene {
       imagery: MAP_DEFAULTS.imagery,
       buildings: MAP_DEFAULTS.buildings,
       showGrid: MAP_DEFAULTS.showGrid,
+      showWind: MAP_DEFAULTS.showWind,
       ...options,
     };
     if (!isImageryAvailable(this.options.imagery)) {
@@ -301,6 +312,11 @@ export class MapScene {
     if (this.buildings) this.buildings.group.visible = enabled;
   }
 
+  setWindVisible(visible: boolean) {
+    this.options.showWind = visible;
+    this.windTower?.setVisible(visible);
+  }
+
   setGridVisible(visible: boolean) {
     this.options.showGrid = visible;
     if (this.grid) this.grid.visible = visible || this.usingFallback;
@@ -316,6 +332,7 @@ export class MapScene {
       lat: this.latRad,
       lon: this.lonRad,
       height: this.groundEllipsoidM,
+      azimuth: TILE_AZIMUTH,
     });
     tiles.registerPlugin(reorient);
     tiles.registerPlugin(
@@ -362,6 +379,7 @@ export class MapScene {
       lat: this.latRad,
       lon: this.lonRad,
       height: this.groundEllipsoidM,
+      azimuth: TILE_AZIMUTH,
     });
     tiles.registerPlugin(reorient);
     tiles.registerPlugin(
@@ -488,6 +506,7 @@ export class MapScene {
         this.latRad,
         this.lonRad,
         this.groundEllipsoidM,
+        TILE_AZIMUTH,
       );
     }
   }
@@ -516,6 +535,11 @@ export class MapScene {
     });
     (window as any).heightAxis = this.heightAxis;
     this.scene.add(this.heightAxis.getObject());
+
+    // wind arrows on the tower (x = the tower's position at the grid edge)
+    this.windTower = new WindTower(PLANE_SIZE / 2, TOWER_TOP_M);
+    this.windTower.setVisible(this.options.showWind);
+    this.heightAxis.getObject().add(this.windTower.object);
 
     this.scene.add(this.hemiLight);
     this.scene.fog = new THREE.Fog(THEME[this.options.imagery].fog, 15000, 60000);
@@ -568,6 +592,8 @@ export class MapScene {
 
   private unload() {
     this.unloadTiles();
+    this.windTower?.dispose();
+    this.windTower = null;
     for (const obj of [this.grid, this.heightAxis?.getObject(), this.fallbackPlane]) {
       if (!obj) continue;
       this.scene.remove(obj);

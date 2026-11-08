@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { Plane, Jumper } from "./BaseEntities";
 import { KinematicTrack } from "../Kinematics";
-import { convertWeatherSnapshotToWindLayers } from "../Utils";
+import { currentWindProfile, windAtHeight } from "../wind/WindProfile";
 import { clamp } from "three/src/Three.TSL.js";
 import { Formation } from "./Formations"; // add this import
 import { getGroundHeight } from "../terrain/GroundHeight";
@@ -113,9 +113,9 @@ export class SimJumper extends Jumper {
 
     const knotsToMs = (knots: number) => knots * 0.514444;
 
-    const windLayers = convertWeatherSnapshotToWindLayers(
-      (<any>window).weatherSnapshotLog[0]
-    );
+    // Same profile the wind tower draws: metres above the DZ, downwind vectors,
+    // +X east / -Z north (see wind/WindProfile.ts)
+    const windProfile = currentWindProfile();
 
     console.log(
       `Calculating Jumper Vector for ${this.index} in formation: ${this.isInFormation}`
@@ -131,58 +131,12 @@ export class SimJumper extends Jumper {
       return rho0 * Math.exp(-hMeters / scale);
     }
 
-    // Build arrays of altitudes (ft) and u/v components (m/s) so we interpolate components
-    const layerAltsFt: number[] = [];
-    const layerU_mps: number[] = []; // east
-    const layerV_mps: number[] = []; // north
-
-    for (const L of windLayers) {
-      layerAltsFt.push(L.altitude);
-      const sp = knotsToMs(L.speedKts);
-      const theta = THREE.MathUtils.degToRad(L.angleDeg);
-      // Using meteorological convention: degrees clockwise from North -> u = s * sin(theta), v = s * cos(theta)
-      layerU_mps.push(sp * Math.sin(theta));
-      layerV_mps.push(sp * Math.cos(theta));
-    }
-
-    // Linear interpolation function that clamps/extrapolates (we'll clamp to nearest for outside range)
-    function interpComponent(
-      alts: number[],
-      comps: number[],
-      queryAltFt: number
-    ) {
-      if (queryAltFt <= alts[0]) return comps[0];
-      if (queryAltFt >= alts[alts.length - 1]) return comps[comps.length - 1];
-      // find bracket
-      for (let i = 0; i < alts.length - 1; i++) {
-        const a0 = alts[i];
-        const a1 = alts[i + 1];
-        if (queryAltFt >= a0 && queryAltFt <= a1) {
-          const t = (queryAltFt - a0) / (a1 - a0);
-          return comps[i] * (1 - t) + comps[i + 1] * t;
-        }
-      }
-      return comps[comps.length - 1]; // fallback
-    }
-
     // Exponential smoothing helper for wind (in m/s)
     const windSmoothingTau = 0.5; // seconds, tweakable (smaller = less smoothing)
     let windPrev = new THREE.Vector3(0, 0, 0);
 
     function windVectorAt(altitudeMeters: number): THREE.Vector3 {
-      // windLayers altitudes are in ft, so convert
-      const altFt = metersToFeet(altitudeMeters);
-
-      // Interpolate components
-      const u = interpComponent(layerAltsFt, layerU_mps, altFt);
-      const v = interpComponent(layerAltsFt, layerV_mps, altFt);
-
-      // convert to THREE Vector3 (east, up=0, north)
-      const w = new THREE.Vector3(u, 0, v);
-
-      // simple exponential smoothing in time: alpha = dt/(tau+dt)
-      // but we don't have dt here; smoothing will be applied in the main loop where dt is known.
-      return w;
+      return windAtHeight(windProfile, altitudeMeters);
     }
 
     const planeSampleAtJump = (

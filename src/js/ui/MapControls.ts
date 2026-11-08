@@ -5,6 +5,7 @@ import type { MapOptions, MapScene } from "../terrain/MapScene";
 const COOKIE_STYLE = "mapStyle";
 const COOKIE_BUILDINGS = "mapBuildings";
 const COOKIE_GRID = "mapGrid";
+const COOKIE_WIND = "mapWind";
 
 /** Read the user's saved map choices (cookies), falling back to defaults. */
 export function readSavedMapOptions(): MapOptions {
@@ -14,10 +15,12 @@ export function readSavedMapOptions(): MapOptions {
   if (!isImageryAvailable(imagery)) imagery = "cesium";
   const b = getCookie(COOKIE_BUILDINGS);
   const g = getCookie(COOKIE_GRID);
+  const w = getCookie(COOKIE_WIND);
   return {
     imagery,
     buildings: b === null ? MAP_DEFAULTS.buildings : b === "1",
     showGrid: g === null ? MAP_DEFAULTS.showGrid : g === "1",
+    showWind: w === null ? MAP_DEFAULTS.showWind : w === "1",
   };
 }
 
@@ -31,6 +34,9 @@ export function initMapControls(mapScene: MapScene) {
   ) as HTMLInputElement | null;
   const grid = document.getElementById(
     "map-grid-toggle",
+  ) as HTMLInputElement | null;
+  const wind = document.getElementById(
+    "map-wind-toggle",
   ) as HTMLInputElement | null;
 
   if (select) {
@@ -70,6 +76,14 @@ export function initMapControls(mapScene: MapScene) {
     buildings.addEventListener("change", () => {
       mapScene.setBuildingsEnabled(buildings.checked);
       setCookie(COOKIE_BUILDINGS, buildings.checked ? "1" : "0", 365);
+    });
+  }
+
+  if (wind) {
+    wind.checked = mapScene.options.showWind;
+    wind.addEventListener("change", () => {
+      mapScene.setWindVisible(wind.checked);
+      setCookie(COOKIE_WIND, wind.checked ? "1" : "0", 365);
     });
   }
 
