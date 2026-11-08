@@ -1,7 +1,18 @@
 import { SimPlane, SimJumper } from "../classes/SimEntities";
 import { Formation } from "../classes/Formations";
 import { notificationManager } from "../classes/NotificationManager";
-import { askForRefresh } from "../core/data/SimulationVariables";
+import { requestRecalculation } from "../core/data/SimulationVariables";
+import {
+  BODY_POSITIONS,
+  BODY_POSITION_ORDER,
+  MS_TO_MPH,
+  TRACK_START_FT,
+  normalizeBodyPosition,
+} from "../physics/BodyPositions";
+
+const M_TO_FT = 3.28084;
+const NOT_SIMULATED_HINT =
+  "Saved with the jumper. Deployment and canopy flight aren't simulated yet.";
 
 export type PlaneLayout = {
   // rows, each element is number of seats in that row, left-to-right; -1 can represent aisle or door spacing, but we will simplify
@@ -24,6 +35,34 @@ export class PlaneLoad {
   private selectedFormationIdx: number = 0;
   // User-configurable interval (seconds) between exits for sequential groups
   private jumpIntervalSeconds: number = 10;
+  /** Edits made in the panel that haven't been applied to the sim yet. */
+  private dirty = false;
+
+  /** Note that the panel has changes the sim hasn't picked up (Save applies them). */
+  markDirty() {
+    this.dirty = true;
+    this.updateSaveState();
+  }
+
+  /** Apply the panel's changes: recalculate the sim, then redraw the panel. */
+  save() {
+    this.jumpers.forEach((j) => j.calculateSurfaceArea());
+    this.normalizeJumpTimes();
+    requestRecalculation();
+    queueMicrotask(() => {
+      this.dirty = false;
+      this.render();
+    });
+  }
+
+  private updateSaveState() {
+    const panel = document.querySelector("#plane-panel .plane-load-editor");
+    const btn = panel?.querySelector("#plane-load-save") as HTMLButtonElement | null;
+    const note = panel?.querySelector("#plane-load-dirty") as HTMLElement | null;
+    if (btn) btn.classList.toggle("is-dirty", this.dirty);
+    if (note) note.textContent = this.dirty ? "Unsaved changes" : "Up to date";
+    if (note) note.classList.toggle("is-dirty", this.dirty);
+  }
 
   constructor(plane: SimPlane, layout?: PlaneLayout) {
     this.plane = plane;
@@ -99,39 +138,14 @@ export class PlaneLoad {
     this.normalizeJumpTimes();
     this.render();
     // notify to recalc from organizer changes
-    askForRefresh(
-      () => {
-        // recompute using current global references
-        const w: any = window as any;
-        const plane: SimPlane = this.plane;
-        const js: SimJumper[] = Array.isArray(w.simJumpers)
-          ? (w.simJumpers as SimJumper[])
-          : plane.jumpers;
-        plane.precalculate(300);
-        js.forEach((j) => j.precalculate(300));
-      },
-      false,
-      "PlaneLoad"
-    );
+    this.markDirty();
   }
 
   setIndex(j: SimJumper, idx: number) {
     j.index = idx;
     this.normalizeJumpTimes();
     this.render();
-    askForRefresh(
-      () => {
-        const w: any = window as any;
-        const plane: SimPlane = this.plane;
-        const js: SimJumper[] = Array.isArray(w.simJumpers)
-          ? (w.simJumpers as SimJumper[])
-          : plane.jumpers;
-        plane.precalculate(300);
-        js.forEach((j) => j.precalculate(300));
-      },
-      false,
-      "PlaneLoad"
-    );
+    this.markDirty();
   }
 
   // Removed seat map & load visuals until app is ready.
@@ -154,19 +168,7 @@ export class PlaneLoad {
     this.reindexSequential();
     this.normalizeJumpTimes();
     this.render();
-    askForRefresh(
-      () => {
-        const w: any = window as any;
-        const plane: SimPlane = this.plane;
-        const js: SimJumper[] = Array.isArray(w.simJumpers)
-          ? (w.simJumpers as SimJumper[])
-          : plane.jumpers;
-        plane.precalculate(300);
-        js.forEach((j) => j.precalculate(300));
-      },
-      false,
-      "PlaneLoad"
-    );
+    this.markDirty();
   }
 
   private moveDown(j: SimJumper) {
@@ -181,19 +183,7 @@ export class PlaneLoad {
     this.reindexSequential();
     this.normalizeJumpTimes();
     this.render();
-    askForRefresh(
-      () => {
-        const w: any = window as any;
-        const plane: SimPlane = this.plane;
-        const js: SimJumper[] = Array.isArray(w.simJumpers)
-          ? (w.simJumpers as SimJumper[])
-          : plane.jumpers;
-        plane.precalculate(300);
-        js.forEach((j) => j.precalculate(300));
-      },
-      false,
-      "PlaneLoad"
-    );
+    this.markDirty();
   }
 
   private buildForm(): HTMLElement {
@@ -239,38 +229,27 @@ export class PlaneLoad {
     name.addEventListener("input", () => ((j as any).name = name.value));
     addRow("Name", name);
 
-    const styleSel = document.createElement("select");
-    ["belly", "freefly", "headdown", "sitfly", "tracking", "wingsuit"].forEach(
-      (opt) => {
-        const o = document.createElement("option");
-        o.value = opt;
-        o.textContent = opt;
-        if ((j as any).flyingStyle === opt) o.selected = true;
-        styleSel.appendChild(o);
-      }
-    );
-    styleSel.addEventListener("change", () => {
-      (j as any).flyingStyle = styleSel.value;
-      j.calculateSurfaceArea();
-    });
-    addRow("Flying Style", styleSel);
+    const styleSel = this.buildPositionSelect(j);
+    addRow("Body Position", styleSel);
 
     const weight = document.createElement("input");
     weight.type = "number";
     weight.value = String((j as any).weight ?? 80);
-    weight.addEventListener(
-      "input",
-      () => ((j as any).weight = Number(weight.value))
-    );
+    weight.addEventListener("input", () => {
+      const v = Number(weight.value);
+      if (Number.isFinite(v) && v > 0) (j as any).weight = v;
+      this.markDirty();
+    });
     addRow("Weight (kg)", weight);
 
     const extra = document.createElement("input");
     extra.type = "number";
     extra.value = String((j as any).extraWeight ?? 0);
-    extra.addEventListener(
-      "input",
-      () => ((j as any).extraWeight = Number(extra.value))
-    );
+    extra.addEventListener("input", () => {
+      const v = Number(extra.value);
+      if (Number.isFinite(v) && v >= 0) (j as any).extraWeight = v;
+      this.markDirty();
+    });
     addRow("Extra Weight (kg)", extra);
 
     const suit = document.createElement("select");
@@ -379,27 +358,31 @@ export class PlaneLoad {
         : this.jumpIntervalSeconds;
       this.normalizeJumpTimes();
       // prompt recalc
-      askForRefresh(
-        () => {
-          const w: any = window as any;
-          const plane: SimPlane = this.plane;
-          const js: SimJumper[] = Array.isArray(w.simJumpers)
-            ? (w.simJumpers as SimJumper[])
-            : plane.jumpers;
-          plane.precalculate(300);
-          js.forEach((j) => j.precalculate(300));
-        },
-        false,
-        "PlaneLoad"
-      );
+      this.markDirty();
       this.render();
     });
     intervalWrap.appendChild(intervalLabel);
     intervalWrap.appendChild(intervalInput);
 
+    // Save applies all panel edits to the sim
+    const saveWrap = document.createElement("div");
+    saveWrap.className = "plane-load-save-wrap";
+    const dirtyNote = document.createElement("span");
+    dirtyNote.id = "plane-load-dirty";
+    dirtyNote.className = "plane-load-dirty";
+    const saveBtn = document.createElement("button");
+    saveBtn.id = "plane-load-save";
+    saveBtn.className = "plane-load-save";
+    saveBtn.textContent = "Save";
+    saveBtn.title = "Apply these settings and recalculate the jump";
+    saveBtn.addEventListener("click", () => this.save());
+    saveWrap.appendChild(dirtyNote);
+    saveWrap.appendChild(saveBtn);
+
     toolbar.appendChild(importBtn);
     toolbar.appendChild(formSel);
     toolbar.appendChild(intervalWrap);
+    toolbar.appendChild(saveWrap);
     wrap.appendChild(toolbar);
     const table = document.createElement("table");
     table.style.width = "100%";
@@ -408,13 +391,16 @@ export class PlaneLoad {
     thead.innerHTML = `<tr>
       <th style="text-align:left">#</th>
       <th style="text-align:left">Name</th>
-      <th style="text-align:left">Style</th>
+      <th style="text-align:left" title="Freefall body position (sets the drag area)">Position</th>
+      <th style="text-align:left" title="Break off at ${TRACK_START_FT.toLocaleString()} ft and track away">Track</th>
       <th style="text-align:left">Wt (kg)</th>
-      <th style="text-align:left">Canopy</th>
-      <th style="text-align:left">Deploy(s)</th>
+      <th style="text-align:left" class="plane-load-muted" title="${NOT_SIMULATED_HINT}">Canopy*</th>
+      <th style="text-align:left" class="plane-load-muted" title="${NOT_SIMULATED_HINT}">Deploy(s)*</th>
       <th style="text-align:left">Linked</th>
       <th style="text-align:left">Formation</th>
-      <th style="text-align:left">Jumped</th>
+      <th style="text-align:left">Status</th>
+      <th style="text-align:right" title="Height above the dropzone">Alt (ft)</th>
+      <th style="text-align:right">Fall (mph)</th>
     </tr>`;
     const tbody = document.createElement("tbody");
 
@@ -466,34 +452,37 @@ export class PlaneLoad {
       tr.appendChild(tdName);
 
       const tdStyle = document.createElement("td");
-      const styleSel = document.createElement("select");
-      [
-        "belly",
-        "freefly",
-        "headdown",
-        "sitfly",
-        "tracking",
-        "wingsuit",
-      ].forEach((opt) => {
-        const o = document.createElement("option");
-        o.value = opt;
-        o.textContent = opt;
-        if ((j as any).flyingStyle === opt) o.selected = true;
-        styleSel.appendChild(o);
+      const tdTrack = document.createElement("td");
+      const track = document.createElement("input");
+      track.type = "checkbox";
+      const syncTrack = () => {
+        const canTrack = BODY_POSITIONS[normalizeBodyPosition(j.flyingStyle)].canTrack;
+        track.checked = canTrack && j.tracking;
+        track.disabled = !canTrack;
+        track.title = canTrack
+          ? `Break off at ${TRACK_START_FT.toLocaleString()} ft and track away`
+          : "Wingsuits glide the whole way down";
+      };
+      syncTrack();
+      track.addEventListener("change", () => {
+        j.tracking = track.checked;
+        this.markDirty();
       });
-      styleSel.addEventListener("change", () => {
-        (j as any).flyingStyle = styleSel.value;
-        j.calculateSurfaceArea();
-      });
-      tdStyle.appendChild(styleSel);
+      tdStyle.appendChild(this.buildPositionSelect(j, syncTrack));
+      tdTrack.appendChild(track);
       tr.appendChild(tdStyle);
+      tr.appendChild(tdTrack);
 
       const tdW = document.createElement("td");
       const w = document.createElement("input");
       w.type = "number";
       w.style.width = "5em";
       w.value = String((j as any).weight ?? 80);
-      w.addEventListener("input", () => ((j as any).weight = Number(w.value)));
+      w.addEventListener("input", () => {
+        const v = Number(w.value);
+        if (Number.isFinite(v) && v > 0) (j as any).weight = v;
+        this.markDirty();
+      });
       tdW.appendChild(w);
       tr.appendChild(tdW);
 
@@ -502,7 +491,11 @@ export class PlaneLoad {
       c.type = "number";
       c.style.width = "5em";
       c.value = String(j.canopySize ?? 190);
-      c.addEventListener("input", () => (j.canopySize = Number(c.value)));
+      c.title = NOT_SIMULATED_HINT;
+      c.addEventListener("input", () => {
+        j.canopySize = Number(c.value);
+        this.markDirty();
+      });
       tdC.appendChild(c);
       tr.appendChild(tdC);
 
@@ -511,7 +504,11 @@ export class PlaneLoad {
       d.type = "number";
       d.style.width = "5em";
       d.value = String(j.deployDelay ?? 7);
-      d.addEventListener("input", () => (j.deployDelay = Number(d.value)));
+      d.title = NOT_SIMULATED_HINT;
+      d.addEventListener("input", () => {
+        j.deployDelay = Number(d.value);
+        this.markDirty();
+      });
       tdD.appendChild(d);
       tr.appendChild(tdD);
 
@@ -526,19 +523,7 @@ export class PlaneLoad {
       linked.addEventListener("click", () => {
         j.linked = !j.linked;
         setLinkedStyle();
-        askForRefresh(
-          () => {
-            const w: any = window as any;
-            const plane: SimPlane = this.plane;
-            const js: SimJumper[] = Array.isArray(w.simJumpers)
-              ? (w.simJumpers as SimJumper[])
-              : plane.jumpers;
-            plane.precalculate(300);
-            js.forEach((j) => j.precalculate(300));
-          },
-          false,
-          "PlaneLoad"
-        );
+        this.markDirty();
       });
       tdLinked.appendChild(linked);
       tr.appendChild(tdLinked);
@@ -626,6 +611,7 @@ export class PlaneLoad {
         (f as any).assignExistingJumperToSlot?.(j, sIdx);
         // After slot change, keep group timing and regroup UI
         this.normalizeJumpTimes();
+        this.markDirty();
         this.render();
       });
       tdF.appendChild(badgeBtn);
@@ -633,11 +619,18 @@ export class PlaneLoad {
       tdF.appendChild(slotSelect);
       tr.appendChild(tdF);
 
-      const tdJ = document.createElement("td");
-      tdJ.dataset.role = "jumped-cell";
-      const jumped = this.hasJumperExited(j);
-      tdJ.textContent = jumped ? "Jumped" : "In Plane";
-      tr.appendChild(tdJ);
+      const tdStatus = document.createElement("td");
+      tdStatus.dataset.role = "status-cell";
+      const tdAlt = document.createElement("td");
+      tdAlt.dataset.role = "alt-cell";
+      tdAlt.style.textAlign = "right";
+      const tdFall = document.createElement("td");
+      tdFall.dataset.role = "fall-cell";
+      tdFall.style.textAlign = "right";
+      tr.appendChild(tdStatus);
+      tr.appendChild(tdAlt);
+      tr.appendChild(tdFall);
+      this.updateRow(tr, j);
 
       tbody.appendChild(tr);
     });
@@ -709,6 +702,7 @@ export class PlaneLoad {
     ordered.forEach((x, i) => (x.index = i));
     this.jumpers = ordered;
     this.normalizeJumpTimes();
+    this.markDirty();
     this.render();
   }
 
@@ -775,6 +769,8 @@ export class PlaneLoad {
     content.appendChild(this.buildOrganizer());
 
     container.appendChild(content);
+    this.updateSaveState();
+    this.updatePlaneSummary();
 
     this.attachTicker();
   }
@@ -788,25 +784,87 @@ export class PlaneLoad {
     w[key] = true;
   }
 
-  // Called each render loop to update dynamic cells (ex: "jumped?")
+  // Called each render loop: keep the live columns in step with the scene
   public updateRuntime() {
-    // refresh jumper list in case runtime mutated it
     this.refreshJumpers();
     const panel = document.querySelector(
       "#plane-panel .plane-load-editor"
     ) as HTMLElement | null;
-    if (!panel) return;
-    const rows = panel.querySelectorAll("table tbody tr");
-    const list = [...this.jumpers].sort((a, b) => a.index - b.index);
-    rows.forEach((row, i) => {
-      const j = list[i];
-      if (!j) return;
-      const cell = row.querySelector(
-        'td[data-role="jumped-cell"]'
-      ) as HTMLElement | null;
-      if (!cell) return;
-      const jumped = this.hasJumperExited(j);
-      cell.textContent = jumped ? "Jumped" : "In Plane";
+    if (!panel || panel.offsetParent === null) return; // hidden: nothing to update
+    this.updatePlaneSummary();
+    const byId = new Map(this.jumpers.map((j) => [j.id, j]));
+    panel.querySelectorAll<HTMLTableRowElement>("table tbody tr").forEach((row) => {
+      const j = byId.get(row.dataset.id || "");
+      if (j) this.updateRow(row, j);
     });
+  }
+
+  /** Fill a row's Status / Alt / Fall cells from the jumper's track at the current time. */
+  private updateRow(row: HTMLElement, j: SimJumper) {
+    const t = this.getSimulationTime();
+    const sample = j.track.getInterpolatedSample(t);
+    const set = (role: string, text: string) => {
+      const cell = row.querySelector(`td[data-role="${role}"]`) as HTMLElement | null;
+      if (cell && cell.textContent !== text) cell.textContent = text;
+    };
+    set("status-cell", this.statusFor(j, t));
+    if (!sample) {
+      set("alt-cell", "–");
+      set("fall-cell", "–");
+      return;
+    }
+    set("alt-cell", Math.round(sample.position.y * M_TO_FT).toLocaleString());
+    const falling = this.hasJumperExited(j) && !(j.landTime !== null && t >= j.landTime);
+    set("fall-cell", falling ? String(Math.round(Math.max(0, -sample.velocity.y) * MS_TO_MPH)) : "–");
+  }
+
+  private statusFor(j: SimJumper, t: number): string {
+    if (j.landTime !== null && t >= j.landTime) return "Landed";
+    if (!this.hasJumperExited(j)) return "In plane";
+    const position = normalizeBodyPosition(j.flyingStyle);
+    if (position === "wingsuit") return "Wingsuit flight";
+    if (j.trackStartTime !== null && t >= j.trackStartTime) return "Tracking";
+    return `Freefall · ${BODY_POSITIONS[position].label}`;
+  }
+
+  /** Fill the "Plane Summary" block from the plane the sim is actually flying. */
+  private updatePlaneSummary() {
+    const set = (id: string, text: string) => {
+      const el = document.getElementById(id);
+      if (el && el.textContent !== text) el.textContent = text;
+    };
+    set("load-size", String(this.jumpers.length));
+    // plane.speed is m/s (times simScale)
+    const scale = (window as any).simScale || 1;
+    set("plane-speed", String(Math.round(this.plane.speed / scale / 0.51444)));
+    const d = this.plane.direction;
+    if (Math.hypot(d.x, d.z) < 1e-6) {
+      set("plane-direction", "N/A");
+    } else {
+      // world: +X = east, -Z = north
+      const heading = (Math.round((Math.atan2(d.x, -d.z) * 180) / Math.PI) + 360) % 360;
+      set("plane-direction", `${String(heading).padStart(3, "0")}°`);
+    }
+  }
+
+  /** Body position dropdown for a jumper. */
+  private buildPositionSelect(j: SimJumper, onChange?: () => void): HTMLSelectElement {
+    const sel = document.createElement("select");
+    const current = normalizeBodyPosition(j.flyingStyle);
+    BODY_POSITION_ORDER.forEach((pos) => {
+      const o = document.createElement("option");
+      const spec = BODY_POSITIONS[pos];
+      o.value = pos;
+      o.textContent = spec.label;
+      o.title = `~${spec.refFallRateMph} mph fall rate (80 kg)`;
+      if (pos === current) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", () => {
+      j.setBodyPosition(sel.value);
+      onChange?.();
+      this.markDirty();
+    });
+    return sel;
   }
 }

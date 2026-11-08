@@ -254,18 +254,8 @@ async function fetchWeatherData() {
     });
     console.log("Asking for recalculation due to env var change");
     if (!firstLoad) {
-      notificationManager.warning("Simulation Variables Changed", {
-        duration: 0,
-
-        actions: [
-          {
-            label: "Recalculate",
-            callback: () => {
-              handleForeignRecalculation();
-            },
-          },
-        ],
-      });
+      // new weather changes the winds: recalculate straight away
+      handleForeignRecalculation();
     }
     firstLoad = false;
   } catch (error) {
@@ -294,7 +284,9 @@ async function fetchWeatherData() {
     // loader.style.display = "none";
     // fetchButton.style.display = "inline-block";
 
-    populateWeatherPanel((<any>window).weatherSnapshotLog[0]);
+    // weatherSnapshotLog is missing if the fetch failed; start the sim without wind
+    const snapshot = (<any>window).weatherSnapshotLog?.[0];
+    if (snapshot) populateWeatherPanel(snapshot);
     signalWeatherReady();
   }
 }

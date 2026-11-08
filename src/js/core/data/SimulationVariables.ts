@@ -1,50 +1,44 @@
-import { notificationManager } from "../../classes/NotificationManager";
+// Recalculation of the simulation after something changes (weather, jumprun, plane
+// load, ...). This used to show a "Simulation Variables Changed" prompt; now the sim
+// simply recalculates on its own. Requests in the same tick are merged into one run.
 
-// Track active refresh prompts by source to prevent duplicates
-const activeRefreshBySource = new Map<string, string>();
+type RecalcHandler = () => void;
 
-// callback in function for recalculation procedure
+let handler: RecalcHandler | null = null;
+let scheduled = false;
+const listeners = new Set<() => void>();
+
+/** Scripts.ts registers the function that re-runs the physics and redraws the scene. */
+export function setRecalculationHandler(fn: RecalcHandler) {
+  handler = fn;
+}
+
+/** Be told after every recalculation (e.g. so a panel can show fresh results). */
+export function onRecalculated(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+/** Recalculate the simulation (merged with any other request in the same tick). */
+export function requestRecalculation(fallback?: () => void) {
+  if (scheduled) return;
+  scheduled = true;
+  queueMicrotask(() => {
+    scheduled = false;
+    if (handler) handler();
+    else fallback?.();
+    listeners.forEach((fn) => fn());
+  });
+}
+
+/**
+ * Kept for existing callers: no longer asks, just recalculates.
+ * @deprecated use requestRecalculation()
+ */
 export function askForRefresh(
   onRecalculate?: () => void,
-  autoRecalculate: boolean = false,
-  source?: string
+  _autoRecalculate: boolean = true,
+  _source?: string,
 ) {
-  console.log("Asking for recalculation due to env var change");
-  if (autoRecalculate && onRecalculate) {
-    onRecalculate();
-    return;
-  }
-  // If the same source already has an active prompt, don't re-display
-  if (source) {
-    const existingId = activeRefreshBySource.get(source);
-    if (existingId) {
-      const el = document.querySelector(
-        `[data-notification-id="${existingId}"]`
-      );
-      if (el) return; // still visible; skip re-showing
-      activeRefreshBySource.delete(source);
-    }
-  }
-
-  const id = notificationManager.warning("Simulation Variables Changed", {
-    duration: 0,
-    actions: [
-      {
-        label: "Recalculate",
-        callback: () => {
-          if (onRecalculate) onRecalculate();
-          if (source) activeRefreshBySource.delete(source);
-        },
-        primary: true,
-      },
-      {
-        label: "Dismiss",
-        callback: () => {
-          if (source) activeRefreshBySource.delete(source);
-        },
-      },
-    ],
-  });
-
-  if (source) activeRefreshBySource.set(source, id);
+  requestRecalculation(onRecalculate);
 }

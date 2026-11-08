@@ -5,13 +5,12 @@ import { Formation } from "./Formations";
 import { v4 as uuidv4 } from "uuid";
 
 type SuitType = "baggy" | "skintight" | "normal";
-type FlyingStyle =
-  | "freefly"
-  | "headdown"
-  | "sitfly"
-  | "tracking"
-  | "belly"
-  | "wingsuit";
+import {
+  BODY_POSITIONS,
+  BodyPosition,
+  normalizeBodyPosition,
+} from "../physics/BodyPositions";
+type FlyingStyle = BodyPosition;
 
 export class Plane {
   id = uuidv4();
@@ -116,7 +115,10 @@ export class Jumper {
   weight: number;
   extraWeight: number;
   suitType: SuitType;
+  /** Freefall body position (belly, sit fly, head down, wingsuit). */
   flyingStyle: FlyingStyle;
+  /** Break off and track at TRACK_START_FT (ignored for wingsuits). */
+  tracking: boolean = true;
 
   constructor(
     index: number,
@@ -137,7 +139,7 @@ export class Jumper {
     this.plane = plane;
     this.initialVelocity = plane.vector;
     this.position = new THREE.Vector3();
-    this.flyingStyle = flyingStyle;
+    this.flyingStyle = normalizeBodyPosition(flyingStyle);
     this.weight = weight;
     this.extraWeight = extraWeight;
     this.suitType = suitType;
@@ -214,6 +216,11 @@ export class Jumper {
       canopySize: this.canopySize,
       isInFormation: this.isInFormation,
       linked: this.linked,
+      flyingStyle: this.flyingStyle,
+      tracking: this.tracking,
+      weight: this.weight,
+      extraWeight: this.extraWeight,
+      surfaceArea: this.surfaceArea,
       formationId: (this.formation as any)?.id,
       formationName: (this.formation as any)?.name,
       targetPosition: {
@@ -224,28 +231,15 @@ export class Jumper {
     };
   }
 
-  // depending on the flying style, change the surface area
-  // MEASURED IN m^2
+  /** Set the drag area (m²) from the body position (see physics/BodyPositions.ts). */
   calculateSurfaceArea() {
-    switch (this.flyingStyle) {
-      case "freefly":
-        this.surfaceArea = 0.8;
-        break;
-      case "headdown":
-        this.surfaceArea = 0.35;
-        break;
-      case "sitfly":
-        this.surfaceArea = 0.5;
-        break;
-      case "tracking":
-        this.surfaceArea = 0.45;
-        break;
-      case "belly":
-        this.surfaceArea = 0.8;
-        break;
-      case "wingsuit":
-        this.surfaceArea = 2;
-        break;
-    }
+    this.flyingStyle = normalizeBodyPosition(this.flyingStyle);
+    this.surfaceArea = BODY_POSITIONS[this.flyingStyle].dragAreaM2;
+  }
+
+  /** Change body position and keep the drag area in sync. */
+  setBodyPosition(position: unknown) {
+    this.flyingStyle = normalizeBodyPosition(position);
+    this.calculateSurfaceArea();
   }
 }

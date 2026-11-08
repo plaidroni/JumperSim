@@ -5,6 +5,15 @@ import { currentWindProfile, windAtHeight } from "../wind/WindProfile";
 import { clamp } from "three/src/Three.TSL.js";
 import { Formation } from "./Formations"; // add this import
 import { getGroundHeight } from "../terrain/GroundHeight";
+import {
+  AIR_DENSITY,
+  BODY_POSITIONS,
+  DRAG_COEFFICIENT,
+  GLIDE_TAU_S,
+  TRACK_SPEC,
+  TRACK_START_FT,
+  normalizeBodyPosition,
+} from "../physics/BodyPositions";
 
 const v_grav = new THREE.Vector3(0, -9.81, 0);
 const drag_air = 0.2;
@@ -84,6 +93,10 @@ export class SimJumper extends Jumper {
   // Debug: arrow indicating intended tracking direction
   debugArrow: THREE.ArrowHelper | null = null;
   debugArrowColor: number = 0x00ff00;
+  /** Sim time the jumper started tracking (null if they never track). Set by precalculate. */
+  trackStartTime: number | null = null;
+  /** Sim time the jumper landed (null if not within the precalculated window). */
+  landTime: number | null = null;
 
   constructor(
     index: number,
@@ -106,10 +119,18 @@ export class SimJumper extends Jumper {
     let timeSinceJump = 0;
 
     const g = 9.81;
-    const rho0 = 1.225; // sea-level density kg/m^3
-    const Cd = 1.0;
-    const A = this.surfaceArea;
+    const rho0 = AIR_DENSITY; // kg/m^3 (constant; see physics/BodyPositions.ts)
+    const Cd = DRAG_COEFFICIENT;
+    this.calculateSurfaceArea(); // keep area in sync with the body position
+    const position = normalizeBodyPosition(this.flyingStyle);
+    const spec = BODY_POSITIONS[position];
+    const isWingsuit = position === "wingsuit";
+    const tracks = this.tracking && spec.canTrack;
     const mass = this.weight + this.extraWeight;
+    this.trackStartTime = null;
+    this.landTime = null;
+    this.hasLanded = false;
+    if (this.debugArrow) (this.debugArrow as any).visible = false;
 
     const knotsToMs = (knots: number) => knots * 0.514444;
 
@@ -145,10 +166,10 @@ export class SimJumper extends Jumper {
     let currentPosition = planeSampleAtJump
       ? planeSampleAtJump.position.clone().add(this.origin)
       : this.plane.position.clone().add(this.origin);
-    // Tracking behavior parameters
-    const trackingStartAltitudeM = feetToMeters(4500);
-    const trackingRatio = 1.0; // horizontal tracking speed = |Vy| * ratio
+    // Tracking / gliding parameters
+    const trackingStartAltitudeM = feetToMeters(TRACK_START_FT);
     let trackingStarted = false;
+    const glideBlend = 1 - Math.exp(-step / GLIDE_TAU_S);
     // Determine the intended horizontal tracking direction
     const jumpRunDir = new THREE.Vector3(
       this.plane.direction.x,
@@ -226,69 +247,78 @@ export class SimJumper extends Jumper {
         this.hasJumped = true;
         timeSinceJump = simTime - this.jumpTime;
 
-        const wind = windVectorAt(currentPosition.y);
-        const relativeVelocity = this.velocity.clone().sub(wind);
-
-        const speed = relativeVelocity.length();
-        const dragMag = 0.5 * Cd * rho0 * A * speed * speed;
-        const drag = relativeVelocity
-          .clone()
-          .normalize()
-          .multiplyScalar(-dragMag);
-        const gravity = new THREE.Vector3(0, -mass * g, 0);
-        const netForce = gravity.clone().add(drag);
-        // console.log("jumper angle:", this.angle);
-
-        const acceleration = netForce.clone().divideScalar(mass);
-        this.velocity.add(acceleration.multiplyScalar(step));
-        currentPosition.add(this.velocity.clone().multiplyScalar(step));
-
-        // TODO: edit quaternion of mesh to match velocity direction when on the "hill" and speeding up to terminal
-
-        // Start tracking behavior at/below 4500 ft (~1371.6 m)
-        if (!trackingStarted && currentPosition.y <= trackingStartAltitudeM) {
-          trackingStarted = true;
-        }
-
-        if (trackingStarted) {
-          // Horizontal tracking speed proportional to vertical speed magnitude
-          const verticalSpeed = Math.abs(this.velocity.y);
-          const trackingSpeed = verticalSpeed * trackingRatio;
-          // Set horizontal velocity to tracking direction plus wind; keep vertical from physics
-          const desiredHoriz = trackingDir
-            .clone()
-            .multiplyScalar(trackingSpeed);
-          this.velocity.x = desiredHoriz.x + wind.x;
-          this.velocity.z = desiredHoriz.z + wind.z;
-
-          // Debug arrow: indicate intended tracking direction (on the jumper mesh)
-          try {
-            if (!this.debugArrow) {
-              const length = THREE.MathUtils.clamp(trackingSpeed, 1, 8);
-              this.debugArrow = new THREE.ArrowHelper(
-                desiredHoriz.clone().setY(0).normalize(),
-                new THREE.Vector3(0, 0, 0),
-                length,
-                this.debugArrowColor
-              );
-              this.getMesh()?.add(this.debugArrow);
-            } else {
-              const length = THREE.MathUtils.clamp(trackingSpeed, 1, 8);
-              this.debugArrow.setDirection(
-                desiredHoriz.clone().setY(0).normalize()
-              );
-              this.debugArrow.setLength(length, length * 0.2, length * 0.2);
-              this.debugArrow.position.set(0, 0, 0);
-              (this.debugArrow as any).visible = true;
-            }
-          } catch {}
-        }
-
-        const groundY = getGroundHeight(currentPosition.x, currentPosition.z);
-        if (currentPosition.y < groundY) {
-          currentPosition.y = groundY;
+        if (this.hasLanded) {
+          // stay put on the ground
           this.velocity.set(0, 0, 0);
-          this.hasLanded = true;
+        } else {
+          const wind = windVectorAt(currentPosition.y);
+
+          // Break off and track below TRACK_START_FT (if this jumper tracks)
+          if (tracks && !trackingStarted && currentPosition.y <= trackingStartAltitudeM) {
+            trackingStarted = true;
+            this.trackStartTime = simTime;
+          }
+          const gliding = isWingsuit || trackingStarted;
+          const A = trackingStarted ? TRACK_SPEC.dragAreaM2 : spec.dragAreaM2;
+          const k = 0.5 * Cd * rho0 * A; // drag = k·v²
+
+          if (!gliding) {
+            // Plain freefall: drag opposes the full air-relative velocity, so the exit
+            // throw bleeds off naturally while the jumper drifts with the wind.
+            const relativeVelocity = this.velocity.clone().sub(wind);
+            const speed = relativeVelocity.length();
+            const drag = relativeVelocity
+              .clone()
+              .normalize()
+              .multiplyScalar(-k * speed * speed);
+            const acceleration = drag
+              .divideScalar(mass)
+              .add(new THREE.Vector3(0, -g, 0));
+            this.velocity.add(acceleration.multiplyScalar(step));
+          } else {
+            // Gliding (track or wingsuit): drag sets the fall rate from the vertical
+            // speed, and the body converts it into forward speed at the glide ratio.
+            const vy = this.velocity.y;
+            const ay = -g + (k * vy * vy * (vy < 0 ? 1 : -1)) / mass;
+            this.velocity.y += ay * step;
+
+            const glide = isWingsuit ? spec.glideRatio : TRACK_SPEC.glideRatio;
+            const horizSpeed = Math.abs(this.velocity.y) * glide;
+            const targetX = trackingDir.x * horizSpeed + wind.x;
+            const targetZ = trackingDir.z * horizSpeed + wind.z;
+            // ease into the new horizontal speed rather than snapping to it
+            this.velocity.x += (targetX - this.velocity.x) * glideBlend;
+            this.velocity.z += (targetZ - this.velocity.z) * glideBlend;
+
+            // Debug arrow: intended glide direction (on the jumper mesh)
+            try {
+              const length = THREE.MathUtils.clamp(horizSpeed, 1, 8);
+              if (!this.debugArrow) {
+                this.debugArrow = new THREE.ArrowHelper(
+                  trackingDir.clone(),
+                  new THREE.Vector3(0, 0, 0),
+                  length,
+                  this.debugArrowColor
+                );
+                this.getMesh()?.add(this.debugArrow);
+              } else {
+                this.debugArrow.setDirection(trackingDir.clone());
+                this.debugArrow.setLength(length, length * 0.2, length * 0.2);
+                this.debugArrow.position.set(0, 0, 0);
+                (this.debugArrow as any).visible = true;
+              }
+            } catch {}
+          }
+
+          currentPosition.add(this.velocity.clone().multiplyScalar(step));
+
+          const groundY = getGroundHeight(currentPosition.x, currentPosition.z);
+          if (currentPosition.y < groundY) {
+            currentPosition.y = groundY;
+            this.velocity.set(0, 0, 0);
+            this.hasLanded = true;
+            this.landTime = simTime;
+          }
         }
       }
 

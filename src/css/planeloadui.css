@@ -66,3 +66,50 @@ body {
   font-size: 12px;
   z-index: 10;
 }
+
+/* === Plane Settings: Save + live columns === */
+.plane-load-save-wrap {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plane-load-dirty {
+  font-size: 12px;
+  color: #999;
+}
+
+.plane-load-dirty.is-dirty {
+  color: #ffd700;
+}
+
+.plane-load-save {
+  background: #444;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 3px 14px;
+  cursor: pointer;
+}
+
+.plane-load-save:hover {
+  background: #555;
+}
+
+.plane-load-save.is-dirty {
+  background: #ffd700;
+  border-color: #ffd700;
+  color: #1e1e1e;
+  font-weight: 600;
+}
+
+.plane-load-muted {
+  color: #999;
+  cursor: help;
+}
+
+.plane-load-editor td[data-role="alt-cell"],
+.plane-load-editor td[data-role="fall-cell"] {
+  font-variant-numeric: tabular-nums;
+}

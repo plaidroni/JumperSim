@@ -24,7 +24,10 @@ import { addTooltipToggle, initializePanelManager } from "./Menubar";
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
 import { alignPlaneToJumprun } from "./utils/AlignJumprun";
-import { askForRefresh } from "./core/data/SimulationVariables";
+import {
+  askForRefresh,
+  setRecalculationHandler,
+} from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
 import { renderPlaneLoad } from "./ui/PlaneSettings";
 import { PlaneLoad } from "./ui/PlaneLoad";
@@ -155,9 +158,11 @@ function groupAndReindexJumpers(
   plane: SimPlane,
   all: SimJumper[],
 ): SimJumper[] {
-  // Helper to get style, fallback to 'belly'
+  // Helper to get the load-order group, fallback to 'belly'
+  // (sit fly and head down board as freefly groups)
   function getStyle(j: SimJumper): string {
-    return (j as any).flyingStyle || "belly";
+    const style = (j as any).flyingStyle || "belly";
+    return style === "sitfly" || style === "headdown" ? "freefly" : style;
   }
 
   // Helper to assign random style if missing
@@ -555,10 +560,24 @@ function updateCameraFollow() {
   }
 }
 
+// Set when the tracks change so the scene redraws even while playback is paused
+let forceSceneUpdate = false;
+
+/** Re-run the physics for the plane and every jumper, then redraw. */
+export function recalculateSimulation() {
+  const jumpers: SimJumper[] = Array.isArray((window as any).simJumpers)
+    ? (window as any).simJumpers
+    : simJumpers;
+  simPlane.precalculate(300);
+  jumpers.forEach((jumper) => jumper.precalculate(300));
+  forceSceneUpdate = true;
+}
+setRecalculationHandler(recalculateSimulation);
+
 // This function can be used to handle recalculations from external sources
 export function handleForeignRecalculation() {
-  simPlane.precalculate(300);
-  simJumpers.forEach((jumper) => jumper.precalculate(300));
+  recalculateSimulation();
+  (simPlane as any).planeLoad?.render?.();
 }
 
 // === READY CHECKS ===
@@ -770,7 +789,8 @@ systemsOK.then(() => {
 
     (window as any).updateScrubber?.(simulationTime);
 
-    if (simulationTime !== lastSimTime) {
+    if (simulationTime !== lastSimTime || forceSceneUpdate) {
+      forceSceneUpdate = false;
       updateFromPrecalc(simulationTime);
       lastSimTime = simulationTime;
     }
