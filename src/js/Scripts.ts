@@ -28,10 +28,6 @@ import { askForRefresh } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
 import { renderPlaneLoad } from "./ui/PlaneSettings";
 import { PlaneLoad } from "./ui/PlaneLoad";
-import {
-  initializeSeparationGame,
-  getSeparationGame,
-} from "./classes/SeparationGame";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -286,11 +282,9 @@ async function handleStartAlignJumprun() {
     (window as any).mapPlane ??
     (window as any).gridHelper;
 
-  if (!document.body.classList.contains("separation-game-active")) {
-    notificationManager.info(
-      "Click two points on the map to set jumprun direction.",
-    );
-  }
+  notificationManager.info(
+    "Click two points on the map to set jumprun direction.",
+  );
   const [p1, p2] = await collectTwoAlignPoints(mapPlane);
   alignPoints = [p1, p2];
   drawAlignArrow();
@@ -417,28 +411,26 @@ try {
   (simPlane as any).planeLoad?.render();
 
   // Success notification with action button
-  if (!document.body.classList.contains("separation-game-active")) {
-    notificationManager.success(
-      `Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`,
-      {
-        duration: 5000,
-        actions: [
-          {
-            label: "View Objects",
-            callback: () => {
-              // Show objects panel - find and maximize it
-              const objectsPanel = document.querySelector(
-                "#objects-panel",
-              ) as HTMLElement;
-              if (objectsPanel) {
-                objectsPanel.style.visibility = "visible";
-              }
-            },
+  notificationManager.success(
+    `Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`,
+    {
+      duration: 5000,
+      actions: [
+        {
+          label: "View Objects",
+          callback: () => {
+            // Show objects panel - find and maximize it
+            const objectsPanel = document.querySelector(
+              "#objects-panel",
+            ) as HTMLElement;
+            if (objectsPanel) {
+              objectsPanel.style.visibility = "visible";
+            }
           },
-        ],
-      },
-    );
-  }
+        },
+      ],
+    },
+  );
 } catch (e) {
   // fallback: no formation, use default jumpers
   simJumpers = createDefaultSimJumpers(10, simPlane);
@@ -447,14 +439,12 @@ try {
   simPlane.jumpers = simJumpers;
   (simPlane as any).planeLoad?.render();
   // Warning notification for fallback scenario
-  if (!document.body.classList.contains("separation-game-active")) {
-    notificationManager.warning(
-      "Formation loading failed - using default jumpers",
-      {
-        duration: 6000,
-      },
-    );
-  }
+  notificationManager.warning(
+    "Formation loading failed - using default jumpers",
+    {
+      duration: 6000,
+    },
+  );
 }
 
 // TODO: move into menubar with refactor
@@ -606,18 +596,16 @@ export const systemsOK = waitAllSystems();
 
 // === JUMPER LOGIC ===
 systemsOK.then(() => {
-  if (!document.body.classList.contains("separation-game-active")) {
-    notificationManager.success("Simulation loaded successfully!", {
-      actions: [
-        {
-          label: "View Objects",
-          callback: () => {
-            console.log("Opening objects panel");
-          },
+  notificationManager.success("Simulation loaded successfully!", {
+    actions: [
+      {
+        label: "View Objects",
+        callback: () => {
+          console.log("Opening objects panel");
         },
-      ],
-    });
-  }
+      },
+    ],
+  });
 
   const defaultPoints = (window as any).defaultJumprunPoints;
   if (defaultPoints && defaultPoints.length === 2) {
@@ -627,19 +615,17 @@ systemsOK.then(() => {
     alignPlaneToJumprun(simPlane, defaultPoints[0], defaultPoints[1]);
   }
   if (alignPoints.length === 0) {
-    if (!document.body.classList.contains("separation-game-active")) {
-      notificationManager.warning("Jumprun is not aligned", {
-        duration: 0,
-        actions: [
-          {
-            label: "Align Jumprun",
-            callback: () => {
-              handleStartAlignJumprun();
-            },
+    notificationManager.warning("Jumprun is not aligned", {
+      duration: 0,
+      actions: [
+        {
+          label: "Align Jumprun",
+          callback: () => {
+            handleStartAlignJumprun();
           },
-        ],
-      });
-    }
+        },
+      ],
+    });
   }
 
   // start initial precalculation for jumpers
@@ -834,24 +820,3 @@ initializePanelManager();
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;
-
-// === SEPARATION GAME INTEGRATION ===
-// Initialize the separation game after systems are ready
-systemsOK.then(() => {
-  const separationGame = initializeSeparationGame(
-    scene,
-    camera,
-    renderer,
-    simPlane,
-  );
-
-  // Add event listener to launch the game from the menu
-  const launchButton = document.getElementById("launch-separation-game");
-  launchButton?.addEventListener("click", () => {
-    console.log("Launching Separation Timing Challenge");
-    separationGame.startGame();
-  });
-
-  // Make it globally accessible for debugging
-  (window as any).separationGame = separationGame;
-});
