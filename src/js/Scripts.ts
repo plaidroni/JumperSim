@@ -19,13 +19,18 @@ import {
 } from "./ui/TrajectoryLines";
 import { loadJumpFormation } from "./exampleData/Formations";
 import { Formation } from "./classes/Formations";
-import { addTooltipToggle, initializePanelManager } from "./Menubar";
+import { addTooltipToggle } from "./Menubar";
+import { initializeDock } from "./editor/Dock";
+import { initializeTimeline, renderTimelineMarkers } from "./editor/Timeline";
+import { initializeSceneObjects } from "./panels/SceneObjects";
+import { initializeWindWidget } from "./panels/WindWidget";
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
 import { alignPlaneToJumprun } from "./utils/AlignJumprun";
 import {
   askForRefresh,
+  notifyRecalculated,
   setRecalculationHandler,
 } from "./core/data/SimulationVariables";
 import { StartEditPlane } from "./ui/PlaneEdit";
@@ -45,9 +50,29 @@ const controls = new OrbitControls(camera, renderer.domElement);
 
 (window as any).simulationCamera = camera;
 (window as any).simulationRenderer = renderer;
+(window as any).simulationControls = controls;
 
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+// The 3D view fills #viewport (the editor layout sizes it), not the whole window
+const viewportEl = document.getElementById("viewport") ?? document.body;
+viewportEl.appendChild(renderer.domElement);
+function resizeToViewport() {
+  const width = Math.max(1, viewportEl.clientWidth);
+  const height = Math.max(1, viewportEl.clientHeight);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+  (window as any).mapScene?.onResize();
+}
+resizeToViewport();
+let resizeQueued = false;
+new ResizeObserver(() => {
+  if (resizeQueued) return;
+  resizeQueued = true;
+  requestAnimationFrame(() => {
+    resizeQueued = false;
+    resizeToViewport();
+  });
+}).observe(viewportEl);
 
 // === SKY BACKGROUND + CLOUDS ===
 function createBackgroundTexture(): THREE.CanvasTexture {
@@ -99,7 +124,6 @@ addTooltipToggle(tooltip);
 const compass = document.getElementById("compass");
 const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
-let clickedThisFrame = false;
 
 // const gridHelper = new THREE.GridHelper(1609, 16); // 16 subdivisions = 100m spacing
 // scene.add(gridHelper);
@@ -114,21 +138,27 @@ let isAligningJumprun: Boolean = false;
 let alignPoints: THREE.Vector3[] = [];
 let alignArrow: THREE.ArrowHelper | null = null;
 
-window.addEventListener("mousedown", () => {
-  if (controls) {
-    clickedThisFrame = true;
-
-    // if this causes issues or lag put into animate frame instead
-
-    setTimeout(() => {
-      clickedThisFrame = false;
-    }, 1);
-  }
+// A click (press + release without dragging) on the plane or a jumper selects and
+// follows it. Raycast at click time; the old "flag for the next frame" approach missed
+// clicks whenever a frame didn't land within 1 ms.
+let pressAt: { x: number; y: number } | null = null;
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  pressAt = e.button === 0 ? { x: e.clientX, y: e.clientY } : null;
+});
+renderer.domElement.addEventListener("pointerup", (e) => {
+  if (!pressAt || e.button !== 0) return;
+  const moved = Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y);
+  pressAt = null;
+  if (moved > 4 || isEditingPlane || isAligningJumprun) return;
+  onMouseMove(e);
+  pickAt([simPlane.getMesh(), ...simJumpers.map((j) => j.getMesh())]);
 });
 
 function onMouseMove(event) {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  // picking coordinates relative to the canvas (the docks take part of the window)
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - r.left) / r.width) * 2 - 1;
+  mouse.y = -((event.clientY - r.top) / r.height) * 2 + 1;
 
   if (tooltip) {
     // (tooltip.element as HTMLElement).style.left = `${event.clientX + 10}px`;
@@ -319,6 +349,28 @@ document
   .getElementById("start-align-jumprun")
   ?.addEventListener("click", handleStartAlignJumprun);
 
+/** Select (and follow) the plane/jumper under the mouse, if any. */
+function pickAt(objects: Array<THREE.Object3D | null>) {
+  raycaster.setFromCamera(mouse, camera);
+  const valid = objects.filter((o): o is THREE.Object3D => o != null);
+  if (valid.length === 0) return;
+  const hit = raycaster.intersectObjects(valid, true)[0];
+  if (!hit) return;
+  const picked = findSceneObjectFor(hit.object);
+  if (!picked) return;
+  const root =
+    picked.type === "plane"
+      ? simPlane.getMesh()
+      : simJumpers.find((j) => j.id === picked.id)?.getMesh() ?? hit.object;
+  cameraFocus(root, {
+    name:
+      picked.type === "plane"
+        ? "the plane"
+        : `Jumper ${(simJumpers.find((j) => j.id === picked.id)?.index ?? 0) + 1}`,
+  });
+  window.dispatchEvent(new CustomEvent("scene-object-picked", { detail: picked }));
+}
+
 function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
   if (
     !objects ||
@@ -348,18 +400,6 @@ function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
           if (key !== "label") html += `${key}: ${data[key]}<br>`;
         (tooltip.element as HTMLElement).innerHTML = html;
         (tooltip.element as HTMLElement).style.display = "block";
-      }
-
-      if (clickedThisFrame) {
-        console.log(followTarget, obj);
-
-        followTarget = obj;
-        renderPlaneLoad(simPlane);
-        const box = new THREE.Box3().setFromObject(obj);
-        const center = box.getCenter(new THREE.Vector3());
-        cameraOffset = new THREE.Vector3().subVectors(camera.position, center);
-
-        clickedThisFrame = false;
       }
 
       return;
@@ -474,49 +514,6 @@ function startPlaneEdit() {
 // Render plane load editor at startup
 (simPlane as any).planeLoad?.render();
 
-// load active objects into the panel
-const panelBody = document.querySelector("#objects-panel .panel-body");
-if (panelBody) (panelBody as HTMLElement).innerHTML = "";
-const planeEntry = document.createElement("div");
-planeEntry.className = "object-entry";
-planeEntry.innerHTML = `
-  <span>Plane</span>
-  <button class="focus-button" data-type="plane">👀</button>
-`;
-if (panelBody) (panelBody as HTMLElement).appendChild(planeEntry);
-
-simJumpers.forEach((jumper, i) => {
-  const jumperEntry = document.createElement("div");
-  jumperEntry.className = "object-entry";
-  jumperEntry.innerHTML = `
-    <span>Jumper ${i}</span>
-    <button class="focus-button" data-type="jumper" data-index="${i}">👀</button>
-  `;
-  if (panelBody) (panelBody as HTMLElement).appendChild(jumperEntry);
-});
-
-document.querySelectorAll(".focus-button").forEach((btn) =>
-  btn.addEventListener("click", (e) => {
-    const button = e.currentTarget as HTMLButtonElement;
-    const type = button.dataset.type;
-    const index = Number(button.dataset.index);
-
-    const objectToFollow =
-      type === "plane" ? simPlane.getMesh() : simJumpers[index].getMesh();
-    // follow behavior
-    if (followTarget === objectToFollow) {
-      // followTarget = null;
-      button.classList.remove("following");
-    } else {
-      followTarget = objectToFollow;
-      document
-        .querySelectorAll(".focus-button.following")
-        .forEach((b) => b.classList.remove("following"));
-      button.classList.add("following");
-    }
-  }),
-);
-
 /**
 controls.touches = {
 	ONE: THREE.TOUCH.ROTATE,
@@ -526,10 +523,9 @@ controls.touches = {
 controls.addEventListener("start", () => {
   // deprecate, as soon as the user clicks it is "panning"
   isUserControllingCamera = false;
+  if (followTarget) setFollowingLabel(null);
   followTarget = null;
-  document
-    .querySelectorAll(".focus-button.following")
-    .forEach((b) => b.classList.remove("following"));
+  followOffset = DEFAULT_FOLLOW_OFFSET.clone();
 });
 
 // use control.touches to disable following if user is panning (not rotating)
@@ -538,25 +534,101 @@ controls.addEventListener("end", () => {
 });
 
 let cameraOffset = new THREE.Vector3(10, 10, 10);
-const followButton = document.querySelector("#following-panel");
+const DEFAULT_FOLLOW_OFFSET = new THREE.Vector3(100, 100, 100);
+let followOffset = DEFAULT_FOLLOW_OFFSET.clone();
 const followLabel = document.querySelector("#following-label");
 
-followButton?.addEventListener("click", () => {
-  followTarget = null;
-  isUserControllingCamera = true;
-});
+document
+  .querySelector("#following-panel .panel-controls button")
+  ?.addEventListener("click", () => {
+    followTarget = null;
+    isUserControllingCamera = true;
+    setFollowingLabel(null);
+  });
 
+function setFollowingLabel(name: string | null) {
+  if (!followLabel) return;
+  followLabel.textContent = name
+    ? `Following ${name}.`
+    : "You're not following anything. Pick a jumper in Scene Objects.";
+}
+
+/** Map a picked mesh (or one of its children) back to the plane or a jumper. */
+function findSceneObjectFor(obj: THREE.Object3D): { type: "plane" | "jumper"; id: string } | null {
+  const planeMesh = simPlane.getMesh();
+  for (let o: THREE.Object3D | null = obj; o; o = o.parent) {
+    if (planeMesh && o === planeMesh) return { type: "plane", id: simPlane.id };
+    const j = simJumpers.find((x) => x.getMesh() === o);
+    if (j) return { type: "jumper", id: j.id };
+  }
+  return null;
+}
+
+/**
+ * Point the camera at an object. With `zoom`, it flies in close (offset chosen from
+ * the object's motion) and then follows; otherwise it follows from where it is now.
+ * Any manual orbit/zoom cancels it (see controls "start").
+ */
+function cameraFocus(
+  object: THREE.Object3D | null,
+  opts: { zoom?: boolean; offset?: THREE.Vector3; name?: string } = {},
+) {
+  if (!object) return;
+  const box = new THREE.Box3().setFromObject(object);
+  const center = box.getCenter(new THREE.Vector3());
+  if (opts.offset) followOffset = opts.offset.clone();
+  else if (opts.zoom) followOffset = new THREE.Vector3(20, 10, 20);
+  else followOffset = camera.position.clone().sub(center);
+  followTarget = object;
+  isUserControllingCamera = false;
+  setFollowingLabel(opts.name ?? null);
+}
+(window as any).cameraFocus = cameraFocus;
+
+// Selection highlight: a box around the selected plane/jumper
+let selectionHelper: THREE.BoxHelper | null = null;
+function setSelectedObject(object: THREE.Object3D | null) {
+  if (selectionHelper) {
+    scene.remove(selectionHelper);
+    selectionHelper.geometry.dispose();
+    (selectionHelper.material as THREE.Material).dispose();
+    selectionHelper = null;
+  }
+  if (!object) return;
+  selectionHelper = new THREE.BoxHelper(object, 0xffd700);
+  (selectionHelper.material as THREE.LineBasicMaterial).depthTest = false;
+  selectionHelper.renderOrder = 10;
+  scene.add(selectionHelper);
+}
+(window as any).setSelectedObject = setSelectedObject;
+
+// Follow: the camera moves with the target (no lag behind a falling jumper) and eases
+// toward the chosen offset at the same speed regardless of frame rate.
+const FOLLOW_EASE_S = 0.35;
+let lastFollowCenter: THREE.Vector3 | null = null;
+let lastFollowObj: THREE.Object3D | null = null;
+let lastFollowTime = performance.now();
 function updateCameraFollow() {
+  selectionHelper?.update();
+  const now = performance.now();
+  const dt = Math.min(0.25, (now - lastFollowTime) / 1000);
+  lastFollowTime = now;
   if (followTarget && !isUserControllingCamera) {
     const box = new THREE.Box3().setFromObject(followTarget);
     const center = box.getCenter(new THREE.Vector3());
+    if (lastFollowObj === followTarget && lastFollowCenter) {
+      camera.position.add(center.clone().sub(lastFollowCenter)); // carry along
+    }
+    lastFollowObj = followTarget;
+    lastFollowCenter = center.clone();
 
     controls.target.copy(center);
-    camera.position.lerp(
-      center.clone().add(new THREE.Vector3(100, 100, 100)),
-      0.05,
-    );
+    const alpha = 1 - Math.exp(-dt / FOLLOW_EASE_S);
+    camera.position.lerp(center.clone().add(followOffset), alpha);
     controls.update();
+  } else {
+    lastFollowObj = null;
+    lastFollowCenter = null;
   }
 }
 
@@ -571,6 +643,7 @@ export function recalculateSimulation() {
   simPlane.precalculate(300);
   jumpers.forEach((jumper) => jumper.precalculate(300));
   forceSceneUpdate = true;
+  notifyRecalculated();
 }
 setRecalculationHandler(recalculateSimulation);
 
@@ -657,6 +730,16 @@ systemsOK.then(() => {
 
   followTarget = simPlane.getMesh();
   isUserControllingCamera = false;
+  setFollowingLabel("the plane");
+
+  renderTimelineMarkers();
+  initializeSceneObjects({
+    plane: () => simPlane,
+    jumpers: () =>
+      Array.isArray((window as any).simJumpers)
+        ? ((window as any).simJumpers as SimJumper[])
+        : simJumpers,
+  });
 
   stlLoader.load(
     "fabs/skydiver_fix.stl",
@@ -827,16 +910,13 @@ systemsOK.then(() => {
 // === ANIMATION LOOP ===
 
 // === RESIZE HANDLER ===
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  (window as any).mapScene?.onResize();
-});
+// (sizing is handled by the ResizeObserver on #viewport above)
 
 loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
-initializePanelManager();
+initializeDock();
+initializeTimeline();
+initializeWindWidget(camera, controls);
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;

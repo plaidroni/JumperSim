@@ -1,0 +1,756 @@
+/* === Editor layout ===
+ * Viewport + side dock (left or right) + bottom panel + timeline, like a game-engine
+ * editor. Behaviour lives in src/js/editor/*. Spec: specs/editor-layout.md
+ */
+
+#editor {
+  --menu-h: 30px;
+  --side-w: 340px;
+  --side-split: 4px;
+  --bottom-h: 220px;
+  --bottom-split: 4px;
+  --timeline-h: 44px;
+  --dock-bg: #2c2c2c;
+  --dock-strip-bg: #1e1e1e;
+  --dock-border: #444;
+  --dock-text: #ccc;
+  --accent: #ffd700;
+
+  position: fixed;
+  inset: var(--menu-h) 0 0 0;
+  display: grid;
+  grid-template-rows: 1fr var(--bottom-split) var(--bottom-h) var(--timeline-h);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+  background: #111;
+}
+
+#editor[data-dock-side="right"] {
+  grid-template-columns: minmax(0, 1fr) var(--side-split) var(--side-w);
+  grid-template-areas:
+    "viewport vsplit side"
+    "hsplit   vsplit side"
+    "bottom   vsplit side"
+    "timeline timeline timeline";
+}
+
+#editor[data-dock-side="left"] {
+  grid-template-columns: var(--side-w) var(--side-split) minmax(0, 1fr);
+  grid-template-areas:
+    "side vsplit viewport"
+    "side vsplit hsplit"
+    "side vsplit bottom"
+    "timeline timeline timeline";
+}
+
+#viewport {
+  grid-area: viewport;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+#viewport > canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+#dock-side {
+  grid-area: side;
+}
+
+#dock-bottom {
+  grid-area: bottom;
+}
+
+#splitter-side {
+  grid-area: vsplit;
+  cursor: col-resize;
+}
+
+#splitter-bottom {
+  grid-area: hsplit;
+  cursor: row-resize;
+}
+
+#timeline {
+  grid-area: timeline;
+}
+
+#editor.side-closed {
+  --side-w: 0px;
+  --side-split: 0px;
+}
+
+#editor.bottom-closed {
+  --bottom-h: 0px;
+  --bottom-split: 0px;
+}
+
+#editor.side-closed #dock-side,
+#editor.side-closed #splitter-side,
+#editor.bottom-closed #dock-bottom,
+#editor.bottom-closed #splitter-bottom {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- docks */
+
+.dock {
+  background: var(--dock-bg);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dock-splitter {
+  background: var(--dock-strip-bg);
+  outline: none;
+  transition: background-color 0.12s ease;
+  touch-action: none;
+}
+
+.dock-splitter:hover,
+.dock-splitter:focus-visible,
+.dock-splitter.is-dragging {
+  background: var(--accent);
+}
+
+.dock-group {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.dock-side .dock-group {
+  flex: var(--group-flex, 1) 1 0;
+}
+
+.dock-bottom .dock-group {
+  flex: 1 1 auto;
+}
+
+.dock-group + .dock-group-splitter {
+  flex: 0 0 4px;
+}
+
+.dock-group-splitter {
+  flex: 0 0 4px;
+  cursor: row-resize;
+  background: var(--dock-strip-bg);
+  touch-action: none;
+}
+
+.dock-group-splitter:hover,
+.dock-group-splitter.is-dragging {
+  background: var(--accent);
+}
+
+.dock-tabstrip {
+  display: flex;
+  align-items: stretch;
+  background: var(--dock-strip-bg);
+  border-bottom: 1px solid var(--dock-border);
+  min-height: 28px;
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+.dock-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.dock-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dock-tab-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  border: none;
+  border-top: 2px solid transparent;
+  background: transparent;
+  color: var(--dock-text);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+}
+
+.dock-tab-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dock-tab-button[aria-selected="true"] {
+  background: var(--dock-bg);
+  border-top-color: var(--accent);
+  color: #fff;
+}
+
+.dock-tab-button:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.dock-tab-close {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.dock-tab-button:hover .dock-tab-close,
+.dock-tab-button[aria-selected="true"] .dock-tab-close {
+  opacity: 0.7;
+}
+
+.dock-tab-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dock-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  flex: 0 0 auto;
+}
+
+.dock-strip-btn {
+  border: none;
+  background: none;
+  color: #999;
+  font: inherit;
+  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.dock-strip-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dock-group-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: #555 transparent;
+  scrollbar-width: thin;
+  background: var(--dock-bg);
+}
+
+.dock-empty {
+  padding: 16px;
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+}
+
+/* tab contents (the old panels) flow inside the dock body */
+.dock-tab[hidden] {
+  display: none !important;
+}
+
+.dock-tab > .panel-body {
+  height: auto;
+  overflow: visible;
+  padding: 10px 12px 14px;
+  font-size: 13px;
+  width: auto;
+}
+
+.dock-tab input[type="number"],
+.dock-tab input[type="text"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------- drag & drop */
+
+.dock-drag-ghost {
+  position: fixed;
+  z-index: 20000;
+  pointer-events: none;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #fff;
+  background: var(--dock-bg);
+  border-top: 2px solid var(--accent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  opacity: 0.92;
+}
+
+.dock-drop-marker {
+  position: fixed;
+  z-index: 19999;
+  pointer-events: none;
+  width: 2px;
+  background: var(--accent);
+}
+
+.dock-drop-area {
+  position: fixed;
+  z-index: 19998;
+  pointer-events: none;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px dashed var(--accent);
+}
+
+body.dock-dragging,
+body.dock-dragging * {
+  cursor: grabbing !important;
+}
+
+/* ---------------------------------------------------------------- floating windows */
+
+#float-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.dock-float {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--dock-bg);
+  border: 1px solid var(--dock-border);
+  border-radius: 4px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  opacity: var(--float-opacity, 0.97);
+  min-width: 220px;
+  min-height: 140px;
+}
+
+.dock-float .dock-tabstrip {
+  cursor: move;
+  border-radius: 4px 4px 0 0;
+}
+
+.dock-float .dock-group {
+  flex: 1 1 auto;
+}
+
+.dock-float .dock-group-body {
+  border-radius: 0 0 4px 4px;
+}
+
+.dock-float-handle {
+  position: absolute;
+  z-index: 2;
+}
+
+.dock-float-handle[data-edge="n"],
+.dock-float-handle[data-edge="s"] {
+  left: 6px;
+  right: 6px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.dock-float-handle[data-edge="e"],
+.dock-float-handle[data-edge="w"] {
+  top: 6px;
+  bottom: 6px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.dock-float-handle[data-edge="n"] { top: -3px; }
+.dock-float-handle[data-edge="s"] { bottom: -3px; }
+.dock-float-handle[data-edge="e"] { right: -3px; }
+.dock-float-handle[data-edge="w"] { left: -3px; }
+
+.dock-float-handle[data-edge="ne"],
+.dock-float-handle[data-edge="nw"],
+.dock-float-handle[data-edge="se"],
+.dock-float-handle[data-edge="sw"] {
+  width: 12px;
+  height: 12px;
+}
+
+.dock-float-handle[data-edge="ne"] { top: -4px; right: -4px; cursor: nesw-resize; }
+.dock-float-handle[data-edge="sw"] { bottom: -4px; left: -4px; cursor: nesw-resize; }
+.dock-float-handle[data-edge="nw"] { top: -4px; left: -4px; cursor: nwse-resize; }
+.dock-float-handle[data-edge="se"] { bottom: -4px; right: -4px; cursor: nwse-resize; }
+
+/* ---------------------------------------------------------------- context menu */
+
+.dock-menu {
+  position: fixed;
+  z-index: 20001;
+  min-width: 180px;
+  padding: 4px 0;
+  background: #2d2d2d;
+  border: 1px solid var(--dock-border, #444);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+}
+
+.dock-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: #ddd;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dock-menu button:hover:not(:disabled),
+.dock-menu button:focus-visible {
+  background: #444;
+  color: #fff;
+  outline: none;
+}
+
+.dock-menu button:disabled {
+  color: #666;
+  cursor: default;
+}
+
+.dock-menu hr {
+  border: none;
+  height: 1px;
+  background: #444;
+  margin: 4px 0;
+}
+
+/* ---------------------------------------------------------------- viewport overlays */
+
+#viewport #compassContainer {
+  z-index: 5;
+  pointer-events: none;
+}
+
+#viewport #map-loader {
+  position: absolute;
+  z-index: 40;
+}
+
+#viewport .notification-container {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 60;
+}
+
+#viewport #map-attribution {
+  position: absolute;
+}
+
+/* ---------------------------------------------------------------- timeline */
+
+#timeline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--dock-strip-bg);
+  border-top: 1px solid var(--dock-border);
+  user-select: none;
+}
+
+.timeline-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.timeline-buttons button {
+  width: 30px;
+  height: 28px;
+  border: none;
+  border-radius: 3px;
+  background: #333;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.timeline-buttons button:hover {
+  background: #444;
+}
+
+.timeline-buttons #playPause {
+  background: #444;
+}
+
+.timeline-track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-track input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+  background: transparent;
+}
+
+.timeline-markers {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.timeline-marker {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  pointer-events: auto;
+  opacity: 0.85;
+}
+
+.timeline-marker[data-kind="exit"] { background: #ffffff; }
+.timeline-marker[data-kind="track"] { background: var(--accent); }
+.timeline-marker[data-kind="land"] { background: #888; }
+
+.timeline-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: #ddd;
+  white-space: nowrap;
+  min-width: 96px;
+  text-align: right;
+}
+
+#timeTotal {
+  color: #888;
+}
+
+.timeline-speed {
+  background: #333;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 3px;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* ---------------------------------------------------------------- Weather: wind widget */
+
+.wind-widget {
+  padding: 10px 12px 4px;
+  font-size: 12px;
+}
+
+.wind-widget-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+
+.wind-widget-head strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.wind-rows {
+  border: 1px solid var(--dock-border, #444);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.wind-row {
+  display: grid;
+  grid-template-columns: 1fr 28px 56px;
+  align-items: center;
+  padding: 3px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wind-row:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.wind-row .wind-h {
+  color: #ccc;
+}
+
+.wind-row .wind-s {
+  text-align: right;
+  color: #fff;
+}
+
+.wind-arrow {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
+  transform-origin: 50% 50%;
+}
+
+.wind-shear {
+  height: 3px;
+  background: #ff3b3b;
+  box-shadow: 0 0 8px 2px rgba(255, 50, 50, 0.65);
+  cursor: help;
+}
+
+.wind-empty {
+  padding: 8px;
+  color: #888;
+}
+
+/* ---------------------------------------------------------------- Scene Objects */
+
+.so-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--dock-border, #444);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.so-row {
+  display: grid;
+  grid-template-columns: 14px 22px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: #ddd;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.so-row:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.so-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.so-row[aria-selected="true"] {
+  background: rgba(255, 215, 0, 0.16);
+  color: #fff;
+}
+
+.so-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.so-num {
+  color: #888;
+  text-align: right;
+}
+
+.so-name small {
+  color: #999;
+  margin-left: 6px;
+}
+
+.so-status {
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.so-details h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.so-details dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
+.so-details dt {
+  color: #999;
+}
+
+.so-details dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.so-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.so-actions button {
+  background: #444;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.so-actions button:hover {
+  background: #555;
+}
+
+.so-actions button.primary {
+  background: var(--accent, #ffd700);
+  border-color: var(--accent, #ffd700);
+  color: #1e1e1e;
+  font-weight: 600;
+}
+
+.plane-load-editor tr.is-highlighted {
+  outline: 1px solid var(--accent, #ffd700);
+  background: rgba(255, 215, 0, 0.12);
+}

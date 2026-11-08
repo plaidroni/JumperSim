@@ -15,11 +15,11 @@
     <link rel="stylesheet" href="./src/css/tooltip.css" />
     <link rel="stylesheet" href="./src/css/loader.css" />
     <link rel="stylesheet" href="./src/css/menu.css" />
-    <link rel="stylesheet" href="./src/css/minimized-windows.css" />
     <link rel="stylesheet" href="./src/css/notification.css" />
     <link rel="stylesheet" href="./src/css/planeloadui.css" />
     <link rel="stylesheet" href="./src/css/mobile-blocker.css" />
     <link rel="stylesheet" href="./src/css/map-loader.css" />
+    <link rel="stylesheet" href="./src/css/editor.css" />
   </head>
   <body>
     <!-- Shown instead of the app on phones/tablets (see src/css/mobile-blocker.css) -->
@@ -49,28 +49,6 @@
           <button class="mobile-blocker-continue" id="mobile-blocker-continue" type="button">
             Continue anyway
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Map loading screen (src/js/ui/MapLoader.ts); fades out when the map is ready -->
-    <div
-      id="map-loader"
-      role="progressbar"
-      aria-label="Loading map"
-      aria-valuemin="0"
-      aria-valuemax="100"
-      aria-valuenow="0"
-      aria-busy="true"
-    >
-      <div class="map-loader-inner">
-        <img
-          class="map-loader-logo"
-          src="./src/img/jumpersim-logo-white.png"
-          alt="JumperSim"
-        />
-        <div class="map-loader-bar">
-          <div class="map-loader-fill" id="map-loader-fill"></div>
         </div>
       </div>
     </div>
@@ -158,62 +136,22 @@
                 checked
               />
             </div>
+            <hr>
+            <div class="dropdown-item" id="dock-side-left" data-dock-side="left">
+              <span>Dock Side: Left</span>
+              <input type="checkbox" />
+            </div>
+            <div class="dropdown-item" id="dock-side-right" data-dock-side="right">
+              <span>Dock Side: Right</span>
+              <input type="checkbox" />
+            </div>
           </div>
         </div>
 
         <div class="menu-item dropdown" id="window-submenu">
           <span>Window</span>
-          <div class="dropdown-menu">
-            <button class="dropdown-item" id="recenter-windows">
-              <span>Re-center Windows</span>
-            </button>
-            <button class="dropdown-item" id="minimize-windows">
-              <span>Minimize Windows</span>
-            </button>
-            <button class="dropdown-item" id="restore-windows">
-              <span>Restore Windows</span>
-            </button>
-            <hr>
-            <div class="dropdown-item" id="show-weatherdata">
-              <span>Weather</span>
-              <input type="checkbox" name="show-weatherdata" checked/>
-            </div>
-            <div class="dropdown-item" id="show-location">
-              <span>Location</span>
-              <input type="checkbox" name="show-location" checked/>
-            </div>
-            <div class="dropdown-item" id="show-playback">
-              <span>Playback Controls</span>
-              <input type="checkbox" name="show-playback" checked/>
-            </div>
-            <!-- <div class="dropdown-item" id="show-formation">
-              <span>Formation Settings</span>
-              <input type="checkbox" name="show-formation" checked/>
-            </div> -->
-            <div class="dropdown-item" id="show-plane">
-              <span>Plane Settings</span>
-              <input type="checkbox" name="show-plane" checked/>
-            </div>
-            <div class="dropdown-item" id="show-objects">
-              <span>Scene Objects</span>
-              <input type="checkbox" name="show-objects" checked/>
-            </div>
-            <div class="dropdown-item" id="show-sim">
-              <span>Jump Settings</span>
-              <input type="checkbox" name="show-sim" checked/>
-            </div>
-            <!-- <div class="dropdown-item" id="show-jumprun">
-              <span>Jump-Run Settings</span>
-              <input type="checkbox" name="show-jumprun" checked/>
-            </div> -->
-            <div class="dropdown-item" id="show-speed">
-              <span>Speed Settings</span>
-              <input type="checkbox" name="show-speed" checked/>
-            </div>
-            <div class="dropdown-item" id="show-following">
-              <span>Following</span>
-              <input type="checkbox" name="show-following" checked/>
-            </div>
+          <div class="dropdown-menu" id="window-menu">
+            <!-- filled in by src/js/editor/Dock.ts -->
           </div>
         </div>
         <div class="menu-item dropdown">
@@ -253,82 +191,7 @@
       </div>
     </div>
 
-    <div id="minimized-bar"></div>
 
-    <!-- compass -->
-    <div id="compassContainer" style="position: absolute; margin: 3rem">
-      <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
-
-    </div>
-
-    <div class="panel" id="location-panel">
-      <div class="panel-header">
-        <h2>Location</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <!-- <label for="dropzone-select">Choose a dropzone:</label> -->
-        <div class="panel-controls">
-          <div id="fetch-container">
-            <div id="dropzone-details">
-
-            </div>
-            <div id="map-layer-options">
-              <label><input type="checkbox" id="map-buildings-toggle" /> 3D buildings</label>
-              <label><input type="checkbox" id="map-wind-toggle" /> Wind arrows</label>
-              <label><input type="checkbox" id="map-grid-toggle" /> Grid</label>
-            </div>
-            <!-- <button id="fetchWeather">Fetch Weather</button> -->
-            <label>Model: Open-Mateo.com</label>
-            <div
-              id="fetchWeather-loader"
-              class="dot-carousel"
-              style="display: none"
-            ></div>
-          </div>
-        </div>
-        
-      </div>
-    </div>
-
-    <div class="panel" id="jump-settings-panel">
-      <div class="panel-header">
-        <h2>Jump Settings</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-          Jump Name:
-          <input
-            type="text"
-            id="jumpname"
-            placeholder="Enter jump name"
-            value="Untitled JumpSim"
-          />
-        </label>
-        
-        
-        <label>
-          Jump Height:
-          <input
-            type="number"
-            id="pullAltitude"
-            min="3000"
-            max="18500"
-            step="100"
-            value="12500"
-          />
-        </label>
-        <div class="panel-controls">
-          <button id="start-align-jumprun">Align Jumprun</button>
-        </div>
-      </div>
-    </div>
 
     <!-- deprecate this in favor of new jump-settings-panel -->
     <!-- <div class="panel" id="sim-panel">
@@ -365,170 +228,186 @@
       </div>
     </div> -->
 
-    <div class="panel" id="weatherdata-panel">
-      <div class="panel-header">
-        <h2>Weather</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        
-      </div>
-    </div>
-
-    <div class="panel" id="objects-panel">
-      <div class="panel-header">
-        <h2>Scene Objects</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label
-          >TODO: add current active jumpers and planes where you can view stats
-          and look at objects</label
-        >
-      </div>
-    </div>
-
-    <div class="panel" id="following-panel">
-      <div class="panel-header">
-        <h2>Following</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label id="following-label"
-          >You're not following anything.
-          <span id="hidden-message"></span> Check out the Scene Objects tab!</span>
-        </label>
-        <label id="following-id"></label>
-        <div class="panel-controls">
-          <button>Stop following</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel" id="speed-panel">
-      <div class="panel-header">
-        <h2>Speed Settings</h2>
-        <div class="panel-controls">
-          <button>-</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <label>
-          Plane Speed (knots):
-          <input
-            type="number"
-            id="planeSpeed"
-            min="50"
-            max="150"
-            step="1"
-            value="90"
-          />
-        </label>
-        <label>
-          Belly Jumper Speed (ft/s):
-          <input
-            type="number"
-            id="bellySpeed"
-            min="90"
-            max="150"
-            step="1"
-            value="130"
-          />
-        </label>
-        <label>
-          Freefly Jumper Speed (ft/s):
-          <input
-            type="number"
-            id="freeflySpeed"
-            min="100"
-            max="200"
-            step="1"
-            value="160"
-          />
-        </label>
-      </div>
-    </div>
-
     <div class="tooltip" id="info-tooltip"></div>
 
-    <div class="panel" id="playback-panel">
-      <div class="panel-header">
-        <h2>Playback Controls</h2>
-        <div class="panel-controls">
-          <button>–</button>
-          <button>×</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="panel-controls" id="playback-controls">
-          <button id="start">⏮</button>
-          <button id="rewind">⏴</button>
-          <button id="playPause">▶</button>
-          <button id="forward">⏵</button>
-          <button id="end">⏭</button>
-        </div>
+    <!-- Editor layout (src/js/editor): viewport, side dock, bottom panel, timeline -->
+    <div id="editor" data-dock-side="right">
+      <aside class="dock dock-side" id="dock-side" aria-label="Side dock"></aside>
+      <div class="dock-splitter" id="splitter-side" data-zone="side" role="separator" aria-orientation="vertical" aria-label="Resize side dock" tabindex="0"></div>
+      <main id="viewport">
+        <!-- compass -->
+        <div id="compassContainer" style="position: absolute; margin: 3rem">
+          <img src="./src/svg/compass.svg" alt="Compass" id="compass" />
 
-        <input
-          type="range"
-          id="scrubber"
-          min="0"
-          max="250"
-          value="0"
-          step="0.1"
-          style="flex: 1"
-        />
-        <span
-          id="timeLabel"
-          style="min-width: 60px; text-align: right; color: #fff"
-          >0.0s</span
+        </div>
+        <!-- Map loading screen (src/js/ui/MapLoader.ts); fades out when the map is ready -->
+        <div
+          id="map-loader"
+          role="progressbar"
+          aria-label="Loading map"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          aria-busy="true"
         >
-      </div>
+          <div class="map-loader-inner">
+            <img
+              class="map-loader-logo"
+              src="./src/img/jumpersim-logo-white.png"
+              alt="JumperSim"
+            />
+            <div class="map-loader-bar">
+              <div class="map-loader-fill" id="map-loader-fill"></div>
+            </div>
+          </div>
+        </div>
+        <div id="float-layer"></div>
+      </main>
+      <div class="dock-splitter" id="splitter-bottom" data-zone="bottom" role="separator" aria-orientation="horizontal" aria-label="Resize bottom panel" tabindex="0"></div>
+      <section class="dock dock-bottom" id="dock-bottom" aria-label="Bottom panel"></section>
+      <footer id="timeline" aria-label="Playback">
+        <div class="timeline-buttons" id="playback-controls">
+          <button id="start" title="Jump to start (Home)">⏮</button>
+          <button id="rewind" title="Back 1 s (←, Shift for 10 s)">⏴</button>
+          <button id="playPause" title="Play / pause (Space)">▶</button>
+          <button id="forward" title="Forward 1 s (→, Shift for 10 s)">⏵</button>
+          <button id="end" title="Jump to end (End)">⏭</button>
+        </div>
+        <div class="timeline-track">
+          <input type="range" id="scrubber" min="0" max="250" value="0" step="0.1" aria-label="Simulation time" />
+          <div class="timeline-markers" id="timeline-markers" aria-hidden="true"></div>
+        </div>
+        <div class="timeline-time"><span id="timeLabel">0.0s</span><span id="timeTotal"> / 250 s</span></div>
+        <select id="playback-speed" class="timeline-speed" title="Playback speed">
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+          <option value="4">4×</option>
+        </select>
+      </footer>
     </div>
 
-    <div class="panel" id="plane-panel">
-        <div class="panel-header">
-            <h2>Plane Settings</h2>
-            <div class="panel-controls">
-                <button>-</button>
-                <button>×</button>
-            </div>
-        </div>
-        <div class="panel-body">
-            <div class="mainselection">
-                <select class="weather-select-menu" id="plane-select">
-                    <option value="">-- Select a plane --</option>
-                    <option value="cessna-172">Cessna-172</option>
-                    <option value="skyvan">Skyvan</option>
-                    <option value="dc-9">DC-9</option>
-                    <option value="twin-otter">Twin Otter</option>
-                </select>
-            </div>
-            <div id="plane-status">No plane selected</div>
+    <!-- Tab contents; the dock moves each section into its group -->
+    <div id="dock-tab-store" hidden>
+      <section class="dock-tab" id="location-panel" data-tab-id="location" data-tab-title="Location">
+      <div class="panel-body">
+          <!-- <label for="dropzone-select">Choose a dropzone:</label> -->
+          <div class="panel-controls">
+            <div id="fetch-container">
+              <div id="dropzone-details">
 
-            <div class="panel-controls">
-              <button id="edit-plane-load" onclick="startPlaneEdit()">Edit Plane Load</button>
+              </div>
+              <div id="map-layer-options">
+                <label><input type="checkbox" id="map-buildings-toggle" /> 3D buildings</label>
+                <label><input type="checkbox" id="map-wind-toggle" /> Wind arrows</label>
+                <label><input type="checkbox" id="map-grid-toggle" /> Grid</label>
+              </div>
+              <!-- <button id="fetchWeather">Fetch Weather</button> -->
+              <label>Model: Open-Mateo.com</label>
+              <div
+                id="fetchWeather-loader"
+                class="dot-carousel"
+                style="display: none"
+              ></div>
             </div>
-            <div class="plane-load-editor">
-              <!-- Dynamic content will be rendered here by PlaneSettings.js -->
-            </div>
-            <div id="plane-summary">
-              <h3>Plane Summary</h3>
-              <p>Load Size: <span id="load-size">0</span></p>
-              <p>Speed: <span id="plane-speed">0</span> knots</p>
-              <p>Direction: <span id="plane-direction">N/A</span></p>
-            </div>
+          </div>
+        
         </div>
+      </section>
+      <section class="dock-tab" id="jump-settings-panel" data-tab-id="jump-settings" data-tab-title="Jump Settings">
+      <div class="panel-body">
+          <label>
+            Jump Name:
+            <input
+              type="text"
+              id="jumpname"
+              placeholder="Enter jump name"
+              value="Untitled JumpSim"
+            />
+          </label>
+        
+        
+          <label>
+            Jump Height:
+            <input
+              type="number"
+              id="pullAltitude"
+              min="3000"
+              max="18500"
+              step="100"
+              value="12500"
+            />
+          </label>
+          <label>
+            Plane Speed (knots):
+            <input
+              type="number"
+              id="planeSpeed"
+              min="50"
+              max="150"
+              step="1"
+              value="90"
+            />
+          </label>
+          <div class="panel-controls">
+            <button id="start-align-jumprun">Align Jumprun</button>
+          </div>
+        </div>
+      </section>
+      <section class="dock-tab" id="weatherdata-panel" data-tab-id="weatherdata" data-tab-title="Weather">
+      <div class="panel-body">
+        
+        </div>
+      </section>
+      <section class="dock-tab" id="objects-panel" data-tab-id="objects" data-tab-title="Scene Objects">
+      <div class="panel-body">
+          <label
+            >TODO: add current active jumpers and planes where you can view stats
+            and look at objects</label
+          >
+        </div>
+      </section>
+      <section class="dock-tab" id="following-panel" data-tab-id="following" data-tab-title="Following">
+      <div class="panel-body">
+          <label id="following-label"
+            >You're not following anything.
+            <span id="hidden-message"></span> Check out the Scene Objects tab!</span>
+          </label>
+          <label id="following-id"></label>
+          <div class="panel-controls">
+            <button>Stop following</button>
+          </div>
+        </div>
+      </section>
+      <section class="dock-tab" id="plane-panel" data-tab-id="plane" data-tab-title="Plane Settings">
+      <div class="panel-body">
+              <div class="mainselection">
+                  <select class="weather-select-menu" id="plane-select">
+                      <option value="">-- Select a plane --</option>
+                      <option value="cessna-172">Cessna-172</option>
+                      <option value="skyvan">Skyvan</option>
+                      <option value="dc-9">DC-9</option>
+                      <option value="twin-otter">Twin Otter</option>
+                  </select>
+              </div>
+              <div id="plane-status">No plane selected</div>
+
+              <div class="panel-controls">
+                <button id="edit-plane-load" onclick="startPlaneEdit()">Edit Plane Load</button>
+              </div>
+              <div class="plane-load-editor">
+                <!-- Dynamic content will be rendered here by PlaneSettings.js -->
+              </div>
+              <div id="plane-summary">
+                <h3>Plane Summary</h3>
+                <p>Load Size: <span id="load-size">0</span></p>
+                <p>Speed: <span id="plane-speed">0</span> knots</p>
+                <p>Direction: <span id="plane-direction">N/A</span></p>
+              </div>
+          </div>
+      </section>
     </div>
+
 
     <!-- <div class="panel" id="formation-panel">
       <div class="panel-header">

@@ -11,8 +11,7 @@
 (<any>window).startButton = document.getElementById("start");
 (<any>window).endButton = document.getElementById("end");
 (<any>window).playbackControlsEl = document.getElementById("playback-controls");
-const titlebar = document.getElementById("playback-titlebar");
-const playbackBody = document.getElementById("playback-body");
+(<any>window).playbackSpeed = 1; // set by the timeline speed selector
 
 (<any>window).updateScrubber = function (value) {
   (<any>window).currentTime = Math.max(
@@ -30,7 +29,9 @@ const playbackBody = document.getElementById("playback-body");
   (<any>window).playPauseButton.textContent = "⏸";
   (<any>window).playbackInterval = setInterval(() => {
     if ((<any>window).currentTime < (<any>window).maxTime) {
-      (<any>window).updateScrubber((<any>window).currentTime + 0.1);
+      (<any>window).updateScrubber(
+        (<any>window).currentTime + 0.1 * ((<any>window).playbackSpeed || 1)
+      );
     } else {
       (<any>window).pause();
     }
@@ -67,28 +68,10 @@ const playbackBody = document.getElementById("playback-body");
   setMaxTime: (time) => {
     (<any>window).maxTime = time;
     (<any>window).scrubber.max = time;
+    const total = document.getElementById("timeTotal");
+    if (total) total.textContent = ` / ${Math.round(time)} s`;
   },
   setCurrentTime: (<any>window).updateScrubber,
   pause: (<any>window).pause,
   play: (<any>window).play,
 };
-
-let isDragging = false;
-let offsetX = 0;
-let offsetY = 0;
-
-document.addEventListener("mousemove", (e) => {
-  if (isDragging) {
-    (<any>window).playbackControlsEl.style.left = `${e.clientX - offsetX}px`;
-    (<any>window).playbackControlsEl.style.top = `${e.clientY - offsetY}px`;
-  }
-});
-
-document.addEventListener("mouseup", () => {
-  isDragging = false;
-});
-
-// document.getElementById("minimize-playback").addEventListener("click", () => {
-//   playbackBody.style.display =
-//     playbackBody.style.display === "none" ? "flex" : "none";
-// });

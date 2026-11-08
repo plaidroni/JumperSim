@@ -41,7 +41,8 @@ export class NotificationManager {
     this.container = document.createElement("div");
     this.container.id = "notification-container";
     this.container.className = "notification-container";
-    document.body.appendChild(this.container);
+    // live inside the 3D view so they never cover the docks
+    (document.getElementById("viewport") ?? document.body).appendChild(this.container);
   }
 
   public show(message: string, options: NotificationOptions = {}): string {

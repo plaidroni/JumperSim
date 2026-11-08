@@ -19,6 +19,17 @@ export function onRecalculated(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
+/** Tell listeners the tracks changed (the registered handler calls this when it's done). */
+export function notifyRecalculated() {
+  listeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (err) {
+      console.error("onRecalculated listener failed", err);
+    }
+  });
+}
+
 /** Recalculate the simulation (merged with any other request in the same tick). */
 export function requestRecalculation(fallback?: () => void) {
   if (scheduled) return;
@@ -26,8 +37,10 @@ export function requestRecalculation(fallback?: () => void) {
   queueMicrotask(() => {
     scheduled = false;
     if (handler) handler();
-    else fallback?.();
-    listeners.forEach((fn) => fn());
+    else {
+      fallback?.();
+      notifyRecalculated();
+    }
   });
 }
 

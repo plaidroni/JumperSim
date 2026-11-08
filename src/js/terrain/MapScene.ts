@@ -121,7 +121,7 @@ export class MapScene {
 
     this.attributionEl = document.createElement("div");
     this.attributionEl.id = "map-attribution";
-    document.body.appendChild(this.attributionEl);
+    (document.getElementById("viewport") ?? document.body).appendChild(this.attributionEl);
 
     // Tiles must keep streaming before the sim's render loop starts (the sim waits
     // for the map to be ready), so run our own update loop until it takes over.

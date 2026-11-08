@@ -4,27 +4,19 @@ const consoleEl = document.getElementById("devConsole");
   separation: 2,
   pullAltitude: 1000,
   planeSpeed: 5,
-  bellySpeed: 55,
-  freeflySpeed: 75,
-  // deprecate
+  // jumper fall rates come from their body position (physics/BodyPositions.ts)
 };
 
 function updateVarsFromUI() {
-  (<any>window).devConsoleVars.separation = parseFloat(
-    document.getElementById("separation").value
-  );
-  (<any>window).devConsoleVars.pullAltitude = parseFloat(
-    document.getElementById("pullAltitude").value
-  );
-  (<any>window).devConsoleVars.planeSpeed = parseFloat(
-    document.getElementById("planeSpeed").value
-  );
-  (<any>window).devConsoleVars.bellySpeed = parseFloat(
-    document.getElementById("bellySpeed").value
-  );
-  (<any>window).devConsoleVars.freeflySpeed = parseFloat(
-    document.getElementById("freeflySpeed").value
-  );
+  // read each setting only if its input is on the page (some panels are disabled)
+  const read = (id: string, key: string) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    const v = el ? parseFloat(el.value) : NaN;
+    if (Number.isFinite(v)) (<any>window).devConsoleVars[key] = v;
+  };
+  read("separation", "separation");
+  read("pullAltitude", "pullAltitude");
+  read("planeSpeed", "planeSpeed");
 }
 
 document.querySelectorAll("input").forEach((input) => {

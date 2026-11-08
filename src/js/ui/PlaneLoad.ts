@@ -2,6 +2,7 @@ import { SimPlane, SimJumper } from "../classes/SimEntities";
 import { Formation } from "../classes/Formations";
 import { notificationManager } from "../classes/NotificationManager";
 import { requestRecalculation } from "../core/data/SimulationVariables";
+import { hasJumperExited, jumperStatus } from "../panels/jumperStatus";
 import {
   BODY_POSITIONS,
   BODY_POSITION_ORDER,
@@ -706,15 +707,9 @@ export class PlaneLoad {
     this.render();
   }
 
-  // Determine exit state via kinematics: if jumper has separated from plane by threshold
+  // Exit state via kinematics (shared with Scene Objects)
   private hasJumperExited(j: SimJumper): boolean {
-    const t = this.getSimulationTime();
-    const js = j.track.getInterpolatedSample(t);
-    const ps = this.plane.track.getInterpolatedSample(t);
-    if (!js || !ps) return t >= j.jumpTime; // fallback
-    const dist = js.position.distanceTo(ps.position);
-    // consider exited if > 2 meters away from plane position
-    return dist > 2;
+    return hasJumperExited(j, this.plane, this.getSimulationTime());
   }
 
   private renderTabs(container: HTMLElement) {
@@ -819,12 +814,18 @@ export class PlaneLoad {
   }
 
   private statusFor(j: SimJumper, t: number): string {
-    if (j.landTime !== null && t >= j.landTime) return "Landed";
-    if (!this.hasJumperExited(j)) return "In plane";
-    const position = normalizeBodyPosition(j.flyingStyle);
-    if (position === "wingsuit") return "Wingsuit flight";
-    if (j.trackStartTime !== null && t >= j.trackStartTime) return "Tracking";
-    return `Freefall · ${BODY_POSITIONS[position].label}`;
+    return jumperStatus(j, this.plane, t);
+  }
+
+  /** Scroll to a jumper's row and flash it. */
+  highlightJumper(id: string) {
+    const row = document.querySelector(
+      `#plane-panel .plane-load-editor tr[data-id="${id}"]`
+    ) as HTMLElement | null;
+    if (!row) return;
+    row.scrollIntoView({ block: "nearest" });
+    row.classList.add("is-highlighted");
+    window.setTimeout(() => row.classList.remove("is-highlighted"), 1600);
   }
 
   /** Fill the "Plane Summary" block from the plane the sim is actually flying. */

@@ -25,41 +25,8 @@ input[type="number"] {
   color: #ccc;
 }
 
-.panel {
-  position: fixed;
-  top: 200px;
-  left: 100px;
-  display: inline-block;
-  background-color: #2c2c2c;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #fff;
-  resize: both;
-  width: fit-content;
-  overflow: hidden;
-  z-index: 9999;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
-}
 
-.panel-header {
-  background-color: #1e1e1e;
-  padding: 4px 8px;
-  cursor: move;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-}
 
-.panel-header h2 {
-  font-size: 13px;
-  font-weight: normal;
-  margin: 0;
-  color: #ffd700;
-  flex: 1;
-}
 
 .panel-controls {
   display: flex;
