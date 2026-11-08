@@ -39,10 +39,13 @@ const renderer = new THREE.WebGLRenderer();
 const camera = new THREE.PerspectiveCamera(
   50,
   window.innerWidth / window.innerHeight,
-  0.1,
+  0.5, // was 0.1; a larger near plane avoids z-fighting on distant terrain
   100000,
 );
 const controls = new OrbitControls(camera, renderer.domElement);
+
+(window as any).simulationCamera = camera;
+(window as any).simulationRenderer = renderer;
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -278,9 +281,10 @@ async function handleStartAlignJumprun() {
 
   isAligningJumprun = true;
 
-  const mapPlane = (window as any).mapPlane
-    ? (window as any).mapPlane
-    : (window as any).gridHelper;
+  const mapPlane =
+    (window as any).mapScene?.getRaycastTarget() ??
+    (window as any).mapPlane ??
+    (window as any).gridHelper;
 
   if (!document.body.classList.contains("separation-game-active")) {
     notificationManager.info(
@@ -791,11 +795,7 @@ systemsOK.then(() => {
     // Update PlaneLoad UI every frame for dynamic values
     (simPlane as any).planeLoad?.updateRuntime?.();
 
-    // Update Mapbox canvas texture every frame
-    const mapboxRenderer = (window as any).mapboxRenderer;
-    if (mapboxRenderer) {
-      mapboxRenderer.updateCanvasTexture();
-    }
+    (window as any).mapScene?.update();
 
     renderer.render(scene, camera);
 
@@ -825,6 +825,7 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  (window as any).mapScene?.onResize();
 });
 
 loadDropzones(scene).catch(console.error);

@@ -8,6 +8,9 @@ interface ViteTypeOptions {
 
 interface ImportMetaEnv {
   readonly VITE_APP_TITLE: string;
+  readonly VITE_CESIUM_ION_TOKEN?: string;
+  readonly VITE_MAPBOX_TOKEN?: string;
+  readonly VITE_MAPBOX?: string;
   // more env variables...
 }
 

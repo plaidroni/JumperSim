@@ -25,6 +25,7 @@
   "dependencies": {
     "@react-three/fiber": "^9.2.0",
     "@types/three": "^0.178.1",
+    "3d-tiles-renderer": "^0.5.3",
     "mapbox-gl": "^3.13.0",
     "node": "^22.16.0",
     "openmeteo": "^1.2.0",

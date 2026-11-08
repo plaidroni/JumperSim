@@ -22,7 +22,11 @@ Scrubbable playback timeline with pause, rewind, and jump-to-time controls
 
 Unity-style developer console with draggable panels and live variable tuning
 
-Dynamic Mapbox satellite imagery centered on major USPA dropzones
+3D terrain (Cesium World Terrain) with a Mapbox Dark or Cesium satellite map style, streamed seamlessly for ~8 km around the selected dropzone
+
+3D buildings (Cesium OSM Buildings), toggleable from the Location panel
+
+Terrain-aware landing: jumpers land on the real ground height, with the DZ landing area at 0 ft
 
 Accurate flight models for DC-9, Skyvan, Twin Otter, and Cessna 172
 
@@ -53,11 +57,19 @@ Supports predictive modeling for potential canopy collisions in variable conditi
 ## APIs used
 
 - [OpenMeteo](https://open-meteo.com/) (for wind vectors)
-- [Mapbox](https://www.mapbox.com/) (Satellite view)
+- [Cesium Ion](https://ion.cesium.com/) (World Terrain, World Imagery, OSM Buildings)
+- [Mapbox](https://www.mapbox.com/) (Dark map style raster tiles)
 
 ## Installation
 
-**(DISCLAIMER: Your own Mapbox public API must be declared as `VITE_MAPBOX="..."` in root dir.)**
+Create a `.env` file in the project root with your tokens:
+
+```
+VITE_CESIUM_ION_TOKEN=your_cesium_ion_token
+VITE_MAPBOX_TOKEN=your_mapbox_public_token
+```
+
+The Cesium token is required for terrain and buildings (assets `1`, `2` and `96188`; all free on a community account). The Mapbox token is needed only for the "Dark (Mapbox)" map style; without it the map uses Cesium satellite imagery. If the Cesium token is missing or terrain fails to load, the sim falls back to the wireframe plane. See `.env.example` and `specs/map-terrain-buildings.md`.
 
 To install and start local server:
 

@@ -3,8 +3,9 @@ import mapboxgl from "mapbox-gl";
 
 // Load environment variables in development
 const env = import.meta.env;
-if (env.VITE_MAPBOX_TOKEN) {
-  mapboxgl.accessToken = env.VITE_MAPBOX_TOKEN;
+const mapboxToken = env.VITE_MAPBOX_TOKEN || env.VITE_MAPBOX;
+if (mapboxToken) {
+  mapboxgl.accessToken = mapboxToken;
 }
 
 export class MapboxCanvasRenderer {
@@ -26,7 +27,9 @@ export class MapboxCanvasRenderer {
       try {
         // Check for Mapbox token
         if (!mapboxgl.accessToken) {
-          console.warn("Mapbox token not set. Using fallback.");
+          console.warn(
+            "Mapbox token not set. Set VITE_MAPBOX_TOKEN, VITE_MAPBOX, or MAPBOX_TOKEN.",
+          );
           this.isReady = false;
           resolve();
           return;

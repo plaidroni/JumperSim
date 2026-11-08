@@ -1,13 +1,12 @@
 import { declareParams, fetchWeatherData } from "../apidata/OpenMateo";
 import { getCookie, setCookie } from "./Utils";
-import { loadEnv } from "vite";
 import * as THREE from "three";
 import { handleForeignRecalculation, signalMeshReady } from "./Scripts";
-import { HeightAxis } from "./ui/HeightAxis";
-import { finalization } from "process";
-import { MapboxCanvasRenderer } from "./MapboxCanvasRenderer";
+import { MapScene } from "./terrain/MapScene";
+import { initMapControls, readSavedMapOptions } from "./ui/MapControls";
 
-let mapboxRenderer: MapboxCanvasRenderer | null = null;
+let mapScene: MapScene | null = null;
+let firstMapLoad = true;
 
 export async function loadDropzones(scene: THREE.Scene) {
   const response = await fetch("/json/dropzones.json");
@@ -52,13 +51,6 @@ export async function loadDropzones(scene: THREE.Scene) {
     }
   });
 
-  function loadTexture(url: string): Promise<THREE.Texture> {
-    return new Promise((resolve, reject) => {
-      const loader = new THREE.TextureLoader();
-      loader.load(url, resolve, undefined, reject);
-    });
-  }
-
   async function triggerSelection(dropzones: any[], index: number) {
     console.log("loading selection");
     const dz = dropzones[index];
@@ -85,76 +77,30 @@ export async function loadDropzones(scene: THREE.Scene) {
     declareParams();
     fetchWeatherData();
 
-    const centerLat = dz.latitude;
-    const centerLon = dz.longitude;
-    const zoom = 14;
-    const planeSize = 4618;
-
-    // Dispose previous renderer if it exists
-    if (mapboxRenderer) {
-      mapboxRenderer.dispose();
-      mapboxRenderer = null;
+    if (!mapScene) {
+      mapScene = new MapScene(
+        scene,
+        (window as any).simulationCamera,
+        (window as any).simulationRenderer,
+        readSavedMapOptions(),
+      );
+      (window as any).mapScene = mapScene;
+      initMapControls(mapScene);
     }
 
-    const gridHelper = new THREE.GridHelper(planeSize, 16);
-    (window as any).gridHelper = gridHelper;
-    scene.add(gridHelper);
-
-    // Create and add the height axis
-    const heightAxis = new HeightAxis({
-      maxHeight: 5500, // ~18000 ft in meters
-      minHeight: 0,
-      majorInterval: 304.8, // ~1640 ft in meters
-    });
-    (window as any).heightAxis = heightAxis; // Store for later use
-
-    scene.add(heightAxis.getObject());
-
     try {
-      // Initialize Mapbox Canvas Renderer
-      mapboxRenderer = new MapboxCanvasRenderer();
-      await mapboxRenderer.initialize(centerLat, centerLon, zoom);
-
-      // Check if renderer initialized successfully
-      if (!mapboxRenderer.isInitialized()) {
-        throw new Error("Mapbox renderer failed to initialize");
-      }
-
-      const texture = mapboxRenderer.getTexture();
-      if (!texture) {
-        throw new Error("Failed to get texture from Mapbox renderer");
-      }
-
-      const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
-      let material = new THREE.MeshBasicMaterial({ map: texture });
-
-      const mapPlane = new THREE.Mesh(geometry, material);
-
-      (window as any).mapPlane = mapPlane;
-      (window as any).mapboxRenderer = mapboxRenderer;
-      mapPlane.rotation.x = -Math.PI / 2;
-
-      scene.add(mapPlane);
-      signalMeshReady();
+      await mapScene.load(dz);
     } catch (err) {
-      console.error("Map texture load failed. Falling back to wireframe.", err);
+      console.error("Map load failed:", err);
+    }
 
-      if (mapboxRenderer) {
-        mapboxRenderer.dispose();
-        mapboxRenderer = null;
-      }
-
-      const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
-
-      const material = new THREE.MeshBasicMaterial({
-        wireframe: true,
-      });
-
-      const mapPlane = new THREE.Mesh(geometry, material);
-      (window as any).mapPlane = mapPlane;
-      mapPlane.rotation.x = -Math.PI / 2;
-      scene.add(mapPlane);
+    if (firstMapLoad) {
+      // the sim waits for this before its first precalculation
+      firstMapLoad = false;
       signalMeshReady();
+    } else {
+      // the ground under the jumpers changed, so rerun the physics
+      handleForeignRecalculation();
     }
   }
 }

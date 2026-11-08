@@ -1,3 +1,4 @@
+import { getGroundHeight } from "../terrain/GroundHeight";
 import * as THREE from "three";
 import { SimPlane } from "./SimEntities";
 import { Formation } from "./Formations";
@@ -184,7 +185,10 @@ export class Jumper {
           .add(this.plane.vector.clone().multiplyScalar(this.jumpTime))
           .add(totalFall),
       );
-      this.position.y = Math.max(0, this.position.y);
+      this.position.y = Math.max(
+        getGroundHeight(this.position.x, this.position.z),
+        this.position.y,
+      );
     }
 
     this.mesh.position.copy(this.position);

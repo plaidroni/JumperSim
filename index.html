@@ -4,10 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JumperSim</title>
-    <link
-      rel="stylesheet"
-      href="https://api.mapbox.com/mapbox-gl-js/v3.13.0/mapbox-gl.css"
-    />
     <link rel="stylesheet" href="./src/css/devconsole.css" />
     <link rel="stylesheet" href="./src/css/tooltip.css" />
     <link rel="stylesheet" href="./src/css/playback-controls.css" />
@@ -19,7 +15,6 @@
     <link rel="stylesheet" href="./src/css/separation-game.css" />
   </head>
   <body>
-    <div id="mapbox-offscreen" style="width:512px;height:512px;position:absolute;left:-9999px;"></div>
     <div id="menu">
       <div id="logocontainer"></div>
       <div id="menu-items">
@@ -191,6 +186,12 @@
             <option value="">-- Select a dropzone --</option>
         </select>
         </div>
+        <div class="mainselection map-style-selection">
+          <select class="weather-select-menu" id="map-style-select" title="Map style">
+            <option value="mapbox-dark">Dark (Mapbox)</option>
+            <option value="cesium">Satellite (Cesium)</option>
+          </select>
+        </div>
         <!-- <div class="weather-select-menu">
           <select id="dropzone-select">
           <option value="">-- Select a dropzone --</option>
@@ -222,6 +223,10 @@
           <div id="fetch-container">
             <div id="dropzone-details">
 
+            </div>
+            <div id="map-layer-options">
+              <label><input type="checkbox" id="map-buildings-toggle" /> 3D buildings</label>
+              <label><input type="checkbox" id="map-grid-toggle" /> Grid</label>
             </div>
             <!-- <button id="fetchWeather">Fetch Weather</button> -->
             <label>Model: Open-Mateo.com</label>

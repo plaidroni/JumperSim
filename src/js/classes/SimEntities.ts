@@ -4,6 +4,7 @@ import { KinematicTrack } from "../Kinematics";
 import { convertWeatherSnapshotToWindLayers } from "../Utils";
 import { clamp } from "three/src/Three.TSL.js";
 import { Formation } from "./Formations"; // add this import
+import { getGroundHeight } from "../terrain/GroundHeight";
 
 const v_grav = new THREE.Vector3(0, -9.81, 0);
 const drag_air = 0.2;
@@ -329,8 +330,9 @@ export class SimJumper extends Jumper {
           } catch {}
         }
 
-        if (currentPosition.y < 0) {
-          currentPosition.y = 0;
+        const groundY = getGroundHeight(currentPosition.x, currentPosition.z);
+        if (currentPosition.y < groundY) {
+          currentPosition.y = groundY;
           this.velocity.set(0, 0, 0);
           this.hasLanded = true;
         }
