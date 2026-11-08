@@ -521,6 +521,8 @@ controls.touches = {
 } */
 // set up camera controls
 controls.addEventListener("start", () => {
+  // leaving "Top view": re-enable picking/hover once the user moves the camera
+  isEditingPlane = false;
   // deprecate, as soon as the user clicks it is "panning"
   isUserControllingCamera = false;
   if (followTarget) setFollowingLabel(null);

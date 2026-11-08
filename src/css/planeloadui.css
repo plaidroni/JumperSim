@@ -113,3 +113,213 @@ body {
 .plane-load-editor td[data-role="fall-cell"] {
   font-variant-numeric: tabular-nums;
 }
+
+/* === Plane Settings layout (compact) === */
+.plane-settings.panel-body {
+  padding: 8px 12px 10px;
+}
+
+.ps-header,
+.ps-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.ps-header {
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.ps-toolbar {
+  margin-bottom: 6px;
+}
+
+.ps-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.ps-label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ps-unit {
+  font-size: 12px;
+  color: #999;
+}
+
+.ps-status {
+  font-size: 12px;
+  color: #bbb;
+}
+
+.ps-status.is-error {
+  color: #ff8a80;
+}
+
+.ps-stats {
+  display: inline-flex;
+  gap: 14px;
+  margin: 0;
+}
+
+.ps-stats > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.ps-stats dt {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ps-stats dd {
+  margin: 0;
+  font-size: 13px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.plane-settings .ps-select,
+.plane-settings .ps-input {
+  background: #333;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12px;
+  height: 24px;
+  padding: 0 6px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.plane-settings .ps-input:focus,
+.plane-settings .ps-select:focus {
+  outline: none;
+  border-color: #ffd700;
+}
+
+.plane-settings .ps-input-narrow {
+  width: 60px;
+}
+
+.plane-settings .ps-button,
+.plane-settings .ps-chip,
+.plane-settings .ps-mini {
+  background: #3a3a3a;
+  color: #fff;
+  border: 1px solid #4a4a4a;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.plane-settings .ps-button {
+  height: 24px;
+  padding: 0 10px;
+}
+
+.plane-settings .ps-button:hover,
+.plane-settings .ps-chip:hover,
+.plane-settings .ps-mini:hover:not(:disabled) {
+  background: #4a4a4a;
+}
+
+.plane-settings .ps-chip {
+  height: 22px;
+  min-width: 54px;
+  padding: 0 8px;
+}
+
+.plane-settings .ps-chip.is-on {
+  background: #1f7a4a;
+  border-color: #2a9d5f;
+}
+
+.plane-settings .ps-mini {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.plane-settings .ps-mini:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ps-header #edit-plane-load {
+  margin-left: auto;
+}
+
+.ps-toolbar .plane-load-save-wrap {
+  margin-left: auto;
+}
+
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ps-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 6px;
+  border-bottom: 1px solid #444;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: #2c2c2c;
+  z-index: 1;
+}
+
+.ps-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid #353535;
+  white-space: nowrap;
+}
+
+.ps-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ps-table td .ps-input:not(.ps-input-narrow) {
+  width: 100%;
+  min-width: 90px;
+}
+
+.ps-order {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ps-order span {
+  min-width: 1.6em;
+  text-align: right;
+  color: #bbb;
+}
+
+.ps-table input[type="checkbox"] {
+  accent-color: #ffd700;
+  margin: 0;
+}

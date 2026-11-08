@@ -24,6 +24,9 @@ export function hasJumperExited(j: SimJumper, plane: SimPlane, t = simTime()): b
 export function jumperStatus(j: SimJumper, plane: SimPlane, t = simTime()): string {
   if (j.landTime !== null && t >= j.landTime) return "Landed";
   if (!hasJumperExited(j, plane, t)) return "In plane";
+  if (j.formationStatus && j.formationEndTime !== null && t < j.formationEndTime) {
+    return j.formationStatus;
+  }
   const position = normalizeBodyPosition(j.flyingStyle);
   if (position === "wingsuit") return "Wingsuit flight";
   if (j.trackStartTime !== null && t >= j.trackStartTime) return "Tracking";

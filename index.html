@@ -361,9 +361,6 @@
         </div>
       </section>
       <section class="dock-tab" id="weatherdata-panel" data-tab-id="weatherdata" data-tab-title="Weather">
-      <div class="panel-body">
-        
-        </div>
       </section>
       <section class="dock-tab" id="objects-panel" data-tab-id="objects" data-tab-title="Scene Objects">
       <div class="panel-body">
@@ -386,31 +383,29 @@
         </div>
       </section>
       <section class="dock-tab" id="plane-panel" data-tab-id="plane" data-tab-title="Plane Settings">
-      <div class="panel-body">
-              <div class="mainselection">
-                  <select class="weather-select-menu" id="plane-select">
-                      <option value="">-- Select a plane --</option>
-                      <option value="cessna-172">Cessna-172</option>
-                      <option value="skyvan">Skyvan</option>
-                      <option value="dc-9">DC-9</option>
-                      <option value="twin-otter">Twin Otter</option>
-                  </select>
-              </div>
-              <div id="plane-status">No plane selected</div>
-
-              <div class="panel-controls">
-                <button id="edit-plane-load" onclick="startPlaneEdit()">Edit Plane Load</button>
-              </div>
-              <div class="plane-load-editor">
-                <!-- Dynamic content will be rendered here by PlaneSettings.js -->
-              </div>
-              <div id="plane-summary">
-                <h3>Plane Summary</h3>
-                <p>Load Size: <span id="load-size">0</span></p>
-                <p>Speed: <span id="plane-speed">0</span> knots</p>
-                <p>Direction: <span id="plane-direction">N/A</span></p>
-              </div>
+        <div class="panel-body plane-settings">
+          <div class="ps-header">
+            <label class="ps-field">
+              <span class="ps-label">Aircraft</span>
+              <select class="ps-select" id="plane-select">
+                <option value="twin-otter">Twin Otter</option>
+                <option value="skyvan">Skyvan</option>
+                <option value="cessna-172">Cessna-172</option>
+                <option value="dc-9">DC-9</option>
+              </select>
+            </label>
+            <span id="plane-status" class="ps-status" role="status" hidden></span>
+            <dl class="ps-stats">
+              <div><dt>Speed</dt><dd><span id="plane-speed">0</span> kt</dd></div>
+              <div><dt>Heading</dt><dd id="plane-direction">N/A</dd></div>
+              <div><dt>Load</dt><dd><span id="load-size">0</span> jumpers</dd></div>
+            </dl>
+            <button type="button" class="ps-button" id="edit-plane-load" onclick="startPlaneEdit()" title="Look straight down on the plane. Orbit the camera to leave.">Top view</button>
           </div>
+          <div class="plane-load-editor">
+            <!-- load toolbar + jumper table, rendered by src/js/ui/PlaneLoad.ts -->
+          </div>
+        </div>
       </section>
     </div>
 

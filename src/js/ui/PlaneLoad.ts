@@ -10,6 +10,12 @@ import {
   TRACK_START_FT,
   normalizeBodyPosition,
 } from "../physics/BodyPositions";
+import {
+  FORMATION_SHAPES,
+  FORMATION_SHAPE_ORDER,
+  FormationShapeId,
+  getFormationShape,
+} from "../physics/FormationShapes";
 
 const M_TO_FT = 3.28084;
 const NOT_SIMULATED_HINT =
@@ -308,16 +314,17 @@ export class PlaneLoad {
     const wrap = document.createElement("div");
     // Formation toolbar: import + selector
     const toolbar = document.createElement("div");
-    toolbar.style.display = "flex";
-    toolbar.style.gap = "8px";
-    toolbar.style.alignItems = "center";
-    toolbar.style.margin = "4px 0 8px";
+    toolbar.className = "ps-toolbar";
 
     const importBtn = document.createElement("button");
-    importBtn.textContent = "Import Formation (.jump)";
+    importBtn.type = "button";
+    importBtn.className = "ps-button";
+    importBtn.textContent = "Import .jump";
+    importBtn.title = "Import a formation from a .jump file";
     importBtn.addEventListener("click", () => this.openFormationImport());
 
     const formSel = document.createElement("select");
+    formSel.className = "ps-select";
     const formations = this.plane.formations || [];
     if (formations.length === 0) {
       const opt = document.createElement("option");
@@ -339,18 +346,18 @@ export class PlaneLoad {
       this.render();
     });
 
-    // Jump interval editor
-    const intervalWrap = document.createElement("div");
-    intervalWrap.style.display = "inline-flex";
-    intervalWrap.style.alignItems = "center";
-    intervalWrap.style.gap = "4px";
-    const intervalLabel = document.createElement("label");
-    intervalLabel.textContent = "Interval (s)";
+    // Exit interval editor
+    const intervalWrap = document.createElement("label");
+    intervalWrap.className = "ps-field";
+    intervalWrap.title = "Seconds between exits (linked groups exit together)";
+    const intervalLabel = document.createElement("span");
+    intervalLabel.className = "ps-label";
+    intervalLabel.textContent = "Exit interval";
     const intervalInput = document.createElement("input");
     intervalInput.type = "number";
+    intervalInput.className = "ps-input ps-input-narrow";
     intervalInput.min = "0";
     intervalInput.step = "0.5";
-    intervalInput.style.width = "6em";
     intervalInput.value = String(this.jumpIntervalSeconds);
     intervalInput.addEventListener("change", () => {
       const v = Number(intervalInput.value);
@@ -362,8 +369,20 @@ export class PlaneLoad {
       this.markDirty();
       this.render();
     });
+    const intervalUnit = document.createElement("span");
+    intervalUnit.className = "ps-unit";
+    intervalUnit.textContent = "s";
     intervalWrap.appendChild(intervalLabel);
     intervalWrap.appendChild(intervalInput);
+    intervalWrap.appendChild(intervalUnit);
+
+    const formWrap = document.createElement("label");
+    formWrap.className = "ps-field";
+    const formLabel = document.createElement("span");
+    formLabel.className = "ps-label";
+    formLabel.textContent = "Formation";
+    formWrap.appendChild(formLabel);
+    formWrap.appendChild(formSel);
 
     // Save applies all panel edits to the sim
     const saveWrap = document.createElement("div");
@@ -380,14 +399,40 @@ export class PlaneLoad {
     saveWrap.appendChild(dirtyNote);
     saveWrap.appendChild(saveBtn);
 
-    toolbar.appendChild(importBtn);
-    toolbar.appendChild(formSel);
+    // What linked groups fly between exit and breakoff
+    const shapeWrap = document.createElement("label");
+    shapeWrap.className = "ps-field";
+    const shapeLabel = document.createElement("span");
+    shapeLabel.className = "ps-label";
+    shapeLabel.textContent = "Linked groups";
+    const shapeSel = document.createElement("select");
+    shapeSel.className = "ps-select";
+    const currentShape = getFormationShape(this.plane.linkedFormation);
+    FORMATION_SHAPE_ORDER.forEach((id) => {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = FORMATION_SHAPES[id].label;
+      o.title = FORMATION_SHAPES[id].description;
+      if (id === currentShape.id) o.selected = true;
+      shapeSel.appendChild(o);
+    });
+    shapeWrap.title = currentShape.description;
+    shapeSel.addEventListener("change", () => {
+      this.plane.linkedFormation = shapeSel.value as FormationShapeId;
+      shapeWrap.title = getFormationShape(shapeSel.value).description;
+      this.markDirty();
+    });
+    shapeWrap.appendChild(shapeLabel);
+    shapeWrap.appendChild(shapeSel);
+
     toolbar.appendChild(intervalWrap);
+    toolbar.appendChild(shapeWrap);
+    toolbar.appendChild(formWrap);
+    toolbar.appendChild(importBtn);
     toolbar.appendChild(saveWrap);
     wrap.appendChild(toolbar);
     const table = document.createElement("table");
-    table.style.width = "100%";
-    table.style.borderCollapse = "collapse";
+    table.className = "ps-table";
     const thead = document.createElement("thead");
     thead.innerHTML = `<tr>
       <th style="text-align:left">#</th>
@@ -412,25 +457,22 @@ export class PlaneLoad {
       const tr = document.createElement("tr");
       tr.draggable = false;
       tr.dataset.id = j.id;
-      tr.style.borderBottom = "1px solid #444";
 
       // Up/Down controls + index display (1-based)
       const tdIdx = document.createElement("td");
-      tdIdx.style.display = "flex";
-      tdIdx.style.alignItems = "center";
-      tdIdx.style.gap = "4px";
+      tdIdx.className = "ps-order";
 
       const upBtn = document.createElement("button");
       upBtn.textContent = "▲";
       upBtn.title = "Move up";
-      upBtn.style.padding = "0 4px";
+      upBtn.className = "ps-mini";
       upBtn.disabled = i === 0;
       upBtn.addEventListener("click", () => this.moveUp(j));
 
       const downBtn = document.createElement("button");
       downBtn.textContent = "▼";
       downBtn.title = "Move down";
-      downBtn.style.padding = "0 4px";
+      downBtn.className = "ps-mini";
       downBtn.disabled = i === list.length - 1;
       downBtn.addEventListener("click", () => this.moveDown(j));
 
@@ -447,6 +489,8 @@ export class PlaneLoad {
       const tdName = document.createElement("td");
       const name = document.createElement("input");
       name.type = "text";
+      name.className = "ps-input";
+      name.placeholder = `Jumper ${i + 1}`;
       name.value = (j as any).name || "";
       name.addEventListener("input", () => ((j as any).name = name.value));
       tdName.appendChild(name);
@@ -477,7 +521,7 @@ export class PlaneLoad {
       const tdW = document.createElement("td");
       const w = document.createElement("input");
       w.type = "number";
-      w.style.width = "5em";
+      w.className = "ps-input ps-input-narrow";
       w.value = String((j as any).weight ?? 80);
       w.addEventListener("input", () => {
         const v = Number(w.value);
@@ -490,7 +534,7 @@ export class PlaneLoad {
       const tdC = document.createElement("td");
       const c = document.createElement("input");
       c.type = "number";
-      c.style.width = "5em";
+      c.className = "ps-input ps-input-narrow";
       c.value = String(j.canopySize ?? 190);
       c.title = NOT_SIMULATED_HINT;
       c.addEventListener("input", () => {
@@ -503,7 +547,7 @@ export class PlaneLoad {
       const tdD = document.createElement("td");
       const d = document.createElement("input");
       d.type = "number";
-      d.style.width = "5em";
+      d.className = "ps-input ps-input-narrow";
       d.value = String(j.deployDelay ?? 7);
       d.title = NOT_SIMULATED_HINT;
       d.addEventListener("input", () => {
@@ -518,7 +562,7 @@ export class PlaneLoad {
       const linked = document.createElement("button");
       const setLinkedStyle = () => {
         linked.textContent = j.linked ? "Linked" : "Solo";
-        linked.style.background = j.linked ? "#2d7" : "#333";
+        linked.className = j.linked ? "ps-chip is-on" : "ps-chip";
       };
       setLinkedStyle();
       linked.addEventListener("click", () => {
@@ -712,21 +756,6 @@ export class PlaneLoad {
     return hasJumperExited(j, this.plane, this.getSimulationTime());
   }
 
-  private renderTabs(container: HTMLElement) {
-    // Single tab header (Organizer)
-    const tabs = document.createElement("div");
-    tabs.style.display = "flex";
-    tabs.style.gap = "8px";
-    tabs.style.marginBottom = "8px";
-    const org = document.createElement("span");
-    org.textContent = "Organizer";
-    org.style.background = "#555";
-    org.style.padding = "4px 8px";
-    org.style.borderRadius = "4px";
-    tabs.appendChild(org);
-    container.appendChild(tabs);
-  }
-
   render() {
     this.refreshJumpers();
     // group formations first, then others.
@@ -754,16 +783,7 @@ export class PlaneLoad {
     const container = panel as HTMLElement;
     container.innerHTML = "";
 
-    this.renderTabs(container);
-
-    const content = document.createElement("div");
-    content.style.display = "grid";
-    content.style.gridTemplateColumns = "1fr";
-    content.style.gap = "12px";
-
-    content.appendChild(this.buildOrganizer());
-
-    container.appendChild(content);
+    container.appendChild(this.buildOrganizer());
     this.updateSaveState();
     this.updatePlaneSummary();
 
@@ -851,6 +871,7 @@ export class PlaneLoad {
   /** Body position dropdown for a jumper. */
   private buildPositionSelect(j: SimJumper, onChange?: () => void): HTMLSelectElement {
     const sel = document.createElement("select");
+    sel.className = "ps-select";
     const current = normalizeBodyPosition(j.flyingStyle);
     BODY_POSITION_ORDER.forEach((pos) => {
       const o = document.createElement("option");

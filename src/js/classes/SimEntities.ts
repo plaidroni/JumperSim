@@ -14,6 +14,18 @@ import {
   TRACK_START_FT,
   normalizeBodyPosition,
 } from "../physics/BodyPositions";
+import {
+  DEFAULT_FORMATION_SHAPE,
+  FORMATION_DOCK_S,
+  FormationShapeId,
+} from "../physics/FormationShapes";
+import {
+  GroupPath,
+  formationPath,
+  formationPlanFor,
+  samplePath,
+  smoothstep,
+} from "../physics/FormationFlight";
 
 const v_grav = new THREE.Vector3(0, -9.81, 0);
 const drag_air = 0.2;
@@ -25,6 +37,8 @@ export class SimPlane extends Plane {
   track: KinematicTrack;
   formations: Formation[] = [];
   jumpers: SimJumper[] = [];
+  /** What linked groups fly between exit and breakoff (Plane Settings). */
+  linkedFormation: FormationShapeId = DEFAULT_FORMATION_SHAPE;
   // UI state holder, assigned at runtime to avoid circular imports
   planeLoad?: any;
 
@@ -97,6 +111,10 @@ export class SimJumper extends Jumper {
   trackStartTime: number | null = null;
   /** Sim time the jumper landed (null if not within the precalculated window). */
   landTime: number | null = null;
+  /** Sim time the jumper's formation breaks off (null when flying solo). */
+  formationEndTime: number | null = null;
+  /** Status text while in formation, e.g. "In round". */
+  formationStatus: string | null = null;
 
   constructor(
     index: number,
@@ -232,6 +250,36 @@ export class SimJumper extends Jumper {
       ? planeSampleAtJump.velocity.clone()
       : this.plane.vector.clone();
 
+    // Formation flying (linked groups): follow the group's shared path, closing into
+    // this jumper's slot after exit, until breakoff. Then track radially outward.
+    const formation = formationPlanFor(this, this.plane as SimPlane);
+    let groupPath: GroupPath | null = null;
+    let slot: THREE.Vector3 | null = null;
+    const exitOffset = this.origin.clone().setY(0);
+    let facing: THREE.Quaternion | null = null;
+    this.formationEndTime = null;
+    this.formationStatus = null;
+    if (formation) {
+      slot = formation.plan.slots[formation.slotIndex].clone();
+      groupPath = formationPath(
+        formation.plan,
+        this.plane as SimPlane,
+        windProfile,
+        step,
+        duration,
+        trackingStartAltitudeM
+      );
+      this.formationEndTime = groupPath.endTime;
+      this.formationStatus = formation.plan.shape.statusLabel || null;
+      if (slot.lengthSq() > 1e-6) {
+        trackingDir.copy(slot).setY(0).normalize(); // breakoff: straight out from the centre
+        facing = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 1, 0),
+          Math.atan2(-slot.x, -slot.z) // face the centre
+        );
+      }
+    }
+
     for (let t = 0; t <= duration; t += step) {
       const simTime = t;
 
@@ -247,7 +295,14 @@ export class SimJumper extends Jumper {
         this.hasJumped = true;
         timeSinceJump = simTime - this.jumpTime;
 
-        if (this.hasLanded) {
+        if (groupPath && slot && simTime < groupPath.endTime) {
+          // in formation: centre of the group + this jumper's slot (eased in after exit)
+          const g = samplePath(groupPath, simTime);
+          const dock = smoothstep((simTime - this.jumpTime) / FORMATION_DOCK_S);
+          currentPosition = g.position.clone().add(exitOffset.clone().lerp(slot, dock));
+          this.velocity = g.velocity.clone();
+          if (facing) this.angle.copy(facing);
+        } else if (this.hasLanded) {
           // stay put on the ground
           this.velocity.set(0, 0, 0);
         } else {

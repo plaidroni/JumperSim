@@ -50,7 +50,7 @@ export function handlePlaneSelection(
   currentPlane = selectedPlane;
   const config = planeConfigs[selectedPlane];
   console.log(config.name);
-  updateStatus(`Loading ${config.name}...`);
+  updateStatus("Loading…");
 
   // remve existing plane
   if (planeMesh && scene) {
@@ -94,29 +94,30 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
         simPlane.setMesh(planeMesh);
         scene.add(planeMesh);
 
-        updateStatus(
-          `${config.name} loaded successfully (${meshes.length} components)`
-        );
+        updateStatus(""); // loaded: nothing to say
         simPlane.precalculate(300);
       }
     },
     function (xhr) {
       const progress = Math.round((xhr.loaded / xhr.total) * 100);
-      updateStatus(`Loading ${config.name}... ${progress}%`);
+      updateStatus(
+        Number.isFinite(progress) ? `Loading… ${progress}%` : "Loading…"
+      );
     },
     function (error) {
       console.error("Error loading plane:", error);
-      updateStatus(`Error loading ${config.name}`);
+      updateStatus(`Couldn't load the ${config.name} model`, true);
     }
   );
 }
 
-// replace with notification system
-function updateStatus(message) {
-  const statusElement = document.getElementById("plane-status");
-  if (statusElement) {
-    statusElement.textContent = message;
-  }
+// Small inline status next to the aircraft picker: only shown while loading or on error
+function updateStatus(message: string, isError = false) {
+  const el = document.getElementById("plane-status");
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = !message;
+  el.classList.toggle("is-error", isError);
 }
 
 function getCurrentPlane() {

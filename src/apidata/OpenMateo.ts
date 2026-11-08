@@ -284,52 +284,8 @@ async function fetchWeatherData() {
     // loader.style.display = "none";
     // fetchButton.style.display = "inline-block";
 
-    // weatherSnapshotLog is missing if the fetch failed; start the sim without wind
-    const snapshot = (<any>window).weatherSnapshotLog?.[0];
-    if (snapshot) populateWeatherPanel(snapshot);
+    // the Weather tab's wind widget (panels/WindWidget.ts) redraws on "weather-updated"
     signalWeatherReady();
-  }
-}
-
-function populateWeatherPanel(snapshot: WeatherSnapshot) {
-  const panelBody = document.querySelector("#weatherdata-panel .panel-body");
-  if (!panelBody) return;
-
-  panelBody.innerHTML = "";
-
-  const toKnots = (mph: string) => {
-    const number = parseFloat(mph);
-    return Math.round(number / 1.15078);
-  };
-
-  const formatCell = (label: string, dirDeg: string, speedMph: string) => {
-    const speedKnots = toKnots(speedMph);
-    return `${label}: ${dirDeg.replace("°", "°")} at ${speedKnots} kts`;
-  };
-
-  const pressureToLabel: Record<string, string> = {
-    "10m": "Surface",
-    "1000hPa": "300 ft",
-    "975hPa": "1200 ft",
-    "950hPa": "2000 ft",
-    "925hPa": "2500 ft",
-    "900hPa": "3300 ft",
-    "850hPa": "5000 ft",
-    "800hPa": "6500 ft",
-    "700hPa": "10000 ft",
-    "600hPa": "14000 ft",
-    "500hPa": "18000 ft",
-  };
-
-  for (const level of Object.keys(snapshot.windSpeeds)) {
-    const label = pressureToLabel[level] || level;
-    const direction = snapshot.windDirections[level] || "—";
-    const speed = snapshot.windSpeeds[level] || "0 mph";
-
-    const cell = document.createElement("div");
-    cell.className = "weather-datapoint-cell";
-    cell.textContent = formatCell(label, direction, speed);
-    panelBody.appendChild(cell);
   }
 }
 
