@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="./src/css/mobile-blocker.css" />
     <link rel="stylesheet" href="./src/css/map-loader.css" />
     <link rel="stylesheet" href="./src/css/editor.css" />
+    <link rel="stylesheet" href="./src/css/planner.css" />
   </head>
   <body>
     <!-- Shown instead of the app on phones/tablets (see src/css/mobile-blocker.css) -->
@@ -141,6 +142,10 @@
                 type="checkbox"
                 checked
               />
+            </div>
+            <div class="dropdown-item" id="open-planner">
+              <span>Dropzone Planner</span>
+              <kbd>P</kbd>
             </div>
             <hr>
             <div class="dropdown-item" id="dock-side-left" data-dock-side="left">
@@ -295,6 +300,9 @@
 
     <!-- Tab contents; the dock moves each section into its group -->
     <div id="dock-tab-store" hidden>
+      <section class="dock-tab" id="dropzone-panel" data-tab-id="dropzone" data-tab-title="Dropzone">
+        <div class="panel-body" id="dropzone-panel-body"></div>
+      </section>
       <section class="dock-tab" id="location-panel" data-tab-id="location" data-tab-title="Location">
       <div class="panel-body">
           <!-- <label for="dropzone-select">Choose a dropzone:</label> -->

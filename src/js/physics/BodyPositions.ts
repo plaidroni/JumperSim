@@ -8,7 +8,7 @@
  * Heavier jumpers fall faster, lighter ones slower, as in real life.
  */
 
-export type BodyPosition = "belly" | "sitfly" | "headdown" | "wingsuit";
+export type BodyPosition = "belly" | "sitfly" | "headdown" | "tracking" | "wingsuit";
 
 export interface BodyPositionSpec {
   label: string;
@@ -18,17 +18,24 @@ export interface BodyPositionSpec {
   glideRatio: number;
   /** Whether the jumper can switch to a track at breakoff. */
   canTrack: boolean;
+  /** Glides (tracks or flies a suit) for the whole jump rather than falling straight. */
+  glidesFromExit: boolean;
   /** Fall rate (mph) for an 80 kg jumper, the value the area was tuned to. */
   refFallRateMph: number;
 }
 
 export const BODY_POSITIONS: Record<BodyPosition, BodyPositionSpec> = {
-  belly: { label: "Belly", dragAreaM2: 0.445, glideRatio: 0, canTrack: true, refFallRateMph: 120 },
-  sitfly: { label: "Sit fly", dragAreaM2: 0.267, glideRatio: 0, canTrack: true, refFallRateMph: 155 },
-  headdown: { label: "Head down", dragAreaM2: 0.222, glideRatio: 0, canTrack: true, refFallRateMph: 170 },
+  belly: { label: "Belly", dragAreaM2: 0.445, glideRatio: 0, canTrack: true, glidesFromExit: false, refFallRateMph: 120 },
+  sitfly: { label: "Sit fly", dragAreaM2: 0.267, glideRatio: 0, canTrack: true, glidesFromExit: false, refFallRateMph: 155 },
+  headdown: { label: "Head down", dragAreaM2: 0.222, glideRatio: 0, canTrack: true, glidesFromExit: false, refFallRateMph: 170 },
+  // a tracking jump: flat track from shortly after exit to pull (same numbers as TRACK_SPEC)
+  tracking: { label: "Tracking", dragAreaM2: 0.71, glideRatio: 1.0, canTrack: false, glidesFromExit: true, refFallRateMph: 95 },
   // vertical drag area only; the suit's lift is modelled by the glide ratio
-  wingsuit: { label: "Wingsuit", dragAreaM2: 2.12, glideRatio: 2.5, canTrack: false, refFallRateMph: 55 },
+  wingsuit: { label: "Wingsuit", dragAreaM2: 2.12, glideRatio: 2.5, canTrack: false, glidesFromExit: true, refFallRateMph: 55 },
 };
+
+/** Seconds of plain freefall after exit before a tracking jumper starts to track. */
+export const TRACKING_EXIT_DELAY_S = 3;
 
 /** Flat track at breakoff: body extended for more area and forward drive. */
 export const TRACK_SPEC = {
@@ -46,7 +53,7 @@ export const GLIDE_TAU_S = 2.0;
 export const AIR_DENSITY = 1.225;
 export const DRAG_COEFFICIENT = 1.0;
 
-export const BODY_POSITION_ORDER: BodyPosition[] = ["belly", "sitfly", "headdown", "wingsuit"];
+export const BODY_POSITION_ORDER: BodyPosition[] = ["belly", "sitfly", "headdown", "tracking", "wingsuit"];
 
 /** Map older / free-form style names onto a supported body position. */
 export function normalizeBodyPosition(style: unknown): BodyPosition {
@@ -61,8 +68,11 @@ export function normalizeBodyPosition(style: unknown): BodyPosition {
       return "headdown";
     case "wingsuit":
       return "wingsuit";
+    case "tracking":
+    case "track":
+      return "tracking";
     default:
-      return "belly"; // includes the old "tracking" style (now a toggle)
+      return "belly";
   }
 }
 

@@ -50,6 +50,7 @@ export const MAX_SIDE_GROUPS = 2;
 /** Where each known tab goes by default. */
 export const DEFAULT_SLOTS: Record<string, { zone: ZoneId; group: number }> = {
   location: { zone: "side", group: 0 },
+  dropzone: { zone: "side", group: 0 },
   "jump-settings": { zone: "side", group: 0 },
   weatherdata: { zone: "side", group: 1 },
   objects: { zone: "side", group: 1 },
@@ -65,7 +66,7 @@ export function defaultLayout(narrow = false): LayoutState {
       size: SIDE_LIMITS.def,
       open: !narrow,
       groups: [
-        { tabs: ["location", "jump-settings"], active: "location", split: 0.55 },
+        { tabs: ["location", "dropzone", "jump-settings"], active: "location", split: 0.55 },
         { tabs: ["weatherdata", "objects", "following"], active: "weatherdata", split: 0.45 },
       ],
     },

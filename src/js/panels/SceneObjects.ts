@@ -219,6 +219,36 @@ export function initializeSceneObjects(src: Sources) {
             (j.landTime !== null ? ` · Lands ${j.landTime.toFixed(1)} s` : ""),
         ],
         [
+          "Slot",
+          j.roundSlot
+            ? `Round · Slot ${j.roundSlot}${j.breakoffDistanceM ? ` · tracks to ${Math.round(j.breakoffDistanceM)} m` : ""}`
+            : j.flockSlotLabel
+              ? `Wingsuit flock · ${j.flockSlotLabel}`
+              : j.freefallRoute
+                ? `${j.freefallRoute.name} · Lane ${j.freefallRoute.lane > 0 ? "+" : ""}${j.freefallRoute.lane}`
+                : "–",
+        ],
+        [
+          "Landing",
+          !j.landingOutcome
+            ? "–"
+            : j.landingOutcome.kind === "hazard"
+              ? `⚠ ${j.landingOutcome.name}`
+              : j.landingOutcome.kind === "lz"
+                ? `${j.landingOutcome.name}${j.canopyAlternate ? " (alternate)" : ""}`
+                : "Out",
+        ],
+        [
+          "At pull",
+          j.pullSeparation ? `Nearest jumper ${Math.round(j.pullSeparation.distanceM)} m` : "–",
+        ],
+        [
+          "Danger zones",
+          j.hazardEvents?.length
+            ? j.hazardEvents.map((e) => `${e.name} ${e.start.toFixed(0)}–${e.end.toFixed(0)} s (${Math.round(e.minHeightFt)} ft)`).join(", ")
+            : "None",
+        ],
+        [
           "Opening",
           j.deployment && j.openAltitudeM !== null
             ? `${fmtFt(j.openAltitudeM)} open · ${j.openingPeakG.toFixed(1)} g peak`

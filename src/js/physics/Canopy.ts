@@ -18,7 +18,7 @@ export const LB_PER_KG = 2.20462;
 export const SQFT_PER_M2 = 10.7639;
 /** Rig, jumpsuit, helmet etc. added to body weight for exit weight. */
 export const GEAR_KG = 11;
-export const DEFAULT_PULL_FT = 3500;
+export const DEFAULT_PULL_FT = 4500;
 
 export const CANOPY = {
   /** Glide ratio of a modern 9-cell in full flight (horizontal ÷ vertical). */

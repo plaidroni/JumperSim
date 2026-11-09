@@ -17,6 +17,24 @@ import {
   getFormationShape,
 } from "../physics/FormationShapes";
 import {
+  buildsRounds,
+  flockMembers,
+  flockPlanFor,
+  flockSettingsOf,
+  isWingsuiter,
+  orderBySlot,
+  roundMembers,
+  roundSettingsOf,
+} from "../physics/FormationFlight";
+import {
+  FLOCK_EXIT_GAP_S,
+  FLOCK_LAYOUTS,
+  FLOCK_LAYOUT_ORDER,
+  flockSlotLabel,
+} from "../physics/FlockShapes";
+import { MIN_DEPLOY_SEPARATION_M } from "../physics/FormationShapes";
+import { defaultFreefallPattern, getDropzonePlan, onPlanChanged } from "../dropzone/DropzonePlan";
+import {
   DEFAULT_PULL_FT,
   canopyPerformance,
   exitWeightKg,
@@ -80,6 +98,13 @@ export class PlaneLoad {
     this.plane = plane;
     this.layout = layout || TwinOtterLayout;
     this.refreshJumpers();
+    // pattern names / defaults show in the Pattern column
+    onPlanChanged((_p, live) => {
+      if (live) return;
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae && ae.closest?.("#plane-panel") && /INPUT|SELECT/.test(ae.tagName)) return;
+      queueMicrotask(() => this.render());
+    });
   }
 
   refreshJumpers() {
@@ -131,11 +156,16 @@ export class PlaneLoad {
     if (linkedGroup.length) groups.push(linkedGroup);
     after.forEach((j) => groups.push([j]));
 
-    // Assign group-based jump times (same time for all in a group)
+    // Assign group-based jump times: belly, freefly and tracking members leave
+    // together; linked wingsuiters follow one second apart, base (slot 1) first.
     let tIndex = 0;
     groups.forEach((g) => {
       const t = tIndex * baseInterval;
-      g.forEach((j) => (j.jumpTime = t));
+      const suits = orderBySlot(g.filter((j) => g.length > 1 && isWingsuiter(j)));
+      g.forEach((j) => {
+        const k = suits.indexOf(j);
+        j.jumpTime = k >= 0 ? t + k * FLOCK_EXIT_GAP_S : t;
+      });
       tIndex += 1;
     });
   }
@@ -435,6 +465,16 @@ export class PlaneLoad {
     });
     shapeWrap.appendChild(shapeLabel);
     shapeWrap.appendChild(shapeSel);
+    const gear = document.createElement("button");
+    gear.type = "button";
+    gear.className = "ps-btn ps-gear";
+    gear.textContent = "⚙";
+    gear.title = "Round, wingsuit flock and separation settings";
+    gear.addEventListener("click", (e) => {
+      e.preventDefault();
+      this.openFormationSettings(gear);
+    });
+    shapeWrap.appendChild(gear);
 
     toolbar.appendChild(intervalWrap);
     toolbar.appendChild(shapeWrap);
@@ -455,6 +495,8 @@ export class PlaneLoad {
       <th style="text-align:right" title="${WL_HINT}">WL</th>
       <th style="text-align:left" title="Height above the dropzone where the pilot chute is thrown">Pull (ft)</th>
       <th style="text-align:left">Linked</th>
+      <th style="text-align:left" title="Round slot, wingsuit flock slot, or lane on a freefall pattern">Slot</th>
+      <th style="text-align:left" title="Freefall pattern flown by tracking jumpers and wingsuiters (Dropzone Planner)">Pattern</th>
       <th style="text-align:left">Formation</th>
       <th style="text-align:left">Status</th>
       <th style="text-align:right" title="Height above the dropzone">Alt (ft)</th>
@@ -517,8 +559,9 @@ export class PlaneLoad {
         track.checked = canTrack && j.tracking;
         track.disabled = !canTrack;
         track.title = canTrack
-          ? `Break off at ${TRACK_START_FT.toLocaleString()} ft and track away`
-          : "Wingsuits glide the whole way down";
+          ? `Break off at ${TRACK_START_FT.toLocaleString()} ft (rounds: their breakoff altitude) and track away`
+          : "Tracks the whole jump";
+        if (!canTrack) track.checked = true;
       };
       syncTrack();
       track.addEventListener("change", () => {
@@ -590,10 +633,19 @@ export class PlaneLoad {
       linked.addEventListener("click", () => {
         j.linked = !j.linked;
         setLinkedStyle();
+        this.normalizeJumpTimes();
         this.markDirty();
+        queueMicrotask(() => this.render());
       });
       tdLinked.appendChild(linked);
       tr.appendChild(tdLinked);
+
+      const tdSlot = document.createElement("td");
+      tdSlot.appendChild(this.buildSlotCell(j));
+      tr.appendChild(tdSlot);
+      const tdPat = document.createElement("td");
+      tdPat.appendChild(this.buildPatternCell(j));
+      tr.appendChild(tdPat);
 
       const tdF = document.createElement("td");
       const fIdx =
@@ -709,6 +761,185 @@ export class PlaneLoad {
   }
 
   // Import a .jump formation file and attach to plane
+  /** Round slot / flock slot / lane picker for one jumper (§9 of the planner spec). */
+  private buildSlotCell(j: SimJumper): HTMLElement {
+    const none = () => {
+      const s = document.createElement("span");
+      s.className = "plane-load-muted";
+      s.textContent = "–";
+      return s;
+    };
+    const sel = document.createElement("select");
+    sel.className = "ps-select ps-select-narrow";
+    const pos = normalizeBodyPosition(j.flyingStyle);
+    const swapInto = (members: SimJumper[], slot: number) => {
+      const ordered = orderBySlot(members);
+      const mine = ordered.indexOf(j) + 1;
+      // freeze everyone's current slot, then swap the two
+      ordered.forEach((m, k) => ((m as any).formationSlot = k + 1));
+      const other = ordered[slot - 1];
+      if (other && other !== j) (other as any).formationSlot = mine;
+      (j as any).formationSlot = slot;
+      this.normalizeJumpTimes();
+      this.markDirty();
+      this.render();
+    };
+    if (j.linked && buildsRounds(j) && getFormationShape(this.plane.linkedFormation).id !== "none") {
+      const members = roundMembers(j, this.plane);
+      if (members.length < 2) return none();
+      const mine = members.indexOf(j) + 1;
+      members.forEach((_, k) => {
+        const o = document.createElement("option");
+        o.value = String(k + 1);
+        o.textContent = `${k + 1}`;
+        o.selected = k + 1 === mine;
+        sel.appendChild(o);
+      });
+      sel.title = "Slot on the ring (1 is on the jumprun side, then clockwise). Picking a taken slot swaps.";
+      sel.addEventListener("change", () => swapInto(members, Number(sel.value)));
+      return sel;
+    }
+    if (j.linked && pos === "wingsuit") {
+      const members = flockMembers(j, this.plane);
+      if (members.length < 2) return none();
+      const settings = flockSettingsOf(this.plane);
+      const mine = members.indexOf(j);
+      members.forEach((_, k) => {
+        const o = document.createElement("option");
+        o.value = String(k + 1);
+        o.textContent = `${k + 1} · ${flockSlotLabel(settings, k)}`;
+        o.selected = k === mine;
+        sel.appendChild(o);
+      });
+      sel.title = "Flock slot: 1 is the base (flies the pattern); picking a taken slot swaps. Wingsuits exit 1 s apart in slot order.";
+      sel.addEventListener("change", () => swapInto(members, Number(sel.value)));
+      return sel;
+    }
+    if (pos === "wingsuit" || pos === "tracking") {
+      const auto = j.freefallRoute ? j.freefallRoute.lane : null;
+      const fmt = (n: number) => `Lane ${n > 0 ? "+" : ""}${n}`;
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = auto === null ? "Auto" : `Auto (${fmt(auto)})`;
+      sel.appendChild(o);
+      for (const n of [0, 1, -1, 2, -2, 3, -3]) {
+        const oo = document.createElement("option");
+        oo.value = String(n);
+        oo.textContent = fmt(n);
+        sel.appendChild(oo);
+      }
+      const cur = (j as any).laneIndex;
+      sel.value = Number.isInteger(cur) ? String(cur) : "";
+      sel.title = "Parallel lane on the freefall pattern (+ = right of the direction of flight)";
+      sel.addEventListener("change", () => {
+        (j as any).laneIndex = sel.value === "" ? undefined : Number(sel.value);
+        this.markDirty();
+      });
+      return sel;
+    }
+    return none();
+  }
+
+  /** Freefall pattern picker for tracking jumpers and wingsuiters. */
+  private buildPatternCell(j: SimJumper): HTMLElement {
+    const pos = normalizeBodyPosition(j.flyingStyle);
+    if (pos !== "wingsuit" && pos !== "tracking") {
+      const s = document.createElement("span");
+      s.className = "plane-load-muted";
+      s.textContent = "–";
+      return s;
+    }
+    const follower = (() => {
+      const f = flockPlanFor(j, this.plane);
+      return f && f.slotIndex > 0;
+    })();
+    if (follower) {
+      const s = document.createElement("span");
+      s.className = "plane-load-muted";
+      s.textContent = "Follows base";
+      s.title = "Flock followers hold their slot off the base, who flies the pattern";
+      return s;
+    }
+    const plan = getDropzonePlan();
+    const ofKind = plan.freefallPatterns.filter((f) => f.kind === pos);
+    const def = defaultFreefallPattern(pos, plan);
+    const sel = document.createElement("select");
+    sel.className = "ps-select";
+    const add = (v: string, t: string) => {
+      const o = document.createElement("option");
+      o.value = v;
+      o.textContent = t;
+      sel.appendChild(o);
+    };
+    add("", def ? `Default (${def.name})` : "Default (none drawn)");
+    add("none", "None");
+    ofKind.forEach((f) => add(f.id, f.name));
+    sel.value = (j as any).freefallPatternId ?? "";
+    sel.title = "Draw patterns in the Dropzone Planner (P)";
+    sel.addEventListener("change", () => {
+      (j as any).freefallPatternId = sel.value || undefined;
+      this.markDirty();
+    });
+    return sel;
+  }
+
+  /** ⚙ popover next to the Linked groups select: round and wingsuit flock settings. */
+  private openFormationSettings(anchor: HTMLElement) {
+    document.querySelector(".ps-popover")?.remove();
+    const plane: any = this.plane;
+    const round = roundSettingsOf(this.plane);
+    const flock = flockSettingsOf(this.plane);
+    const pop = document.createElement("div");
+    pop.className = "ps-popover";
+    pop.innerHTML = `
+      <h4>Round</h4>
+      <label title="Distance from the round's centre to every slot">Slot radius (m)<input type="text" data-r="slotRadiusM" value="${round.slotRadiusM}" placeholder="auto"></label>
+      <label>Breakoff altitude (ft)<input type="number" step="100" data-r="breakoffFt" value="${round.breakoffFt}"></label>
+      <label title="How far from the breakoff centre each member tracks before waving off">Breakoff distance (m)<input type="text" data-r="breakoffDistanceM" value="${round.breakoffDistanceM}" placeholder="auto"></label>
+      <h4>Wingsuit flock</h4>
+      <label>Layout<select data-f="layout">${FLOCK_LAYOUT_ORDER.map((id) => `<option value="${id}"${id === flock.layout ? " selected" : ""}>${FLOCK_LAYOUTS[id].label}</option>`).join("")}</select></label>
+      <label>Spacing (m)<input type="number" step="1" min="2" data-f="spacingM" value="${flock.spacingM}"></label>
+      <label title="Each row flies this much lower than the one ahead">Stack (m)<input type="number" step="1" min="0" data-f="stackM" value="${flock.stackM}"></label>
+      <label>Flock breakoff (ft)<input type="number" step="100" data-f="breakoffFt" value="${flock.breakoffFt}"></label>
+      <h4>Separation</h4>
+      <label title="Warn when two jumpers are closer than this at pull">Min at pull (m)<input type="number" step="10" min="0" data-sep value="${plane.minDeploySeparationM ?? MIN_DEPLOY_SEPARATION_M}"></label>`;
+    document.body.appendChild(pop);
+    const r = anchor.getBoundingClientRect();
+    pop.style.left = `${Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left))}px`;
+    pop.style.top = `${Math.max(8, r.top - pop.offsetHeight - 6)}px`;
+    pop.querySelectorAll<HTMLInputElement>("[data-r]").forEach((el) =>
+      el.addEventListener("change", () => {
+        const k = el.dataset.r!;
+        const raw = el.value.trim().toLowerCase();
+        const v = raw === "" || raw === "auto" ? "auto" : Number(raw);
+        if (v !== "auto" && (!Number.isFinite(v) || v <= 0)) return;
+        plane.roundSettings = { ...roundSettingsOf(this.plane), [k]: k === "breakoffFt" ? Number(raw) || 4500 : v };
+        this.markDirty();
+      }),
+    );
+    pop.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-f]").forEach((el) =>
+      el.addEventListener("change", () => {
+        const k = el.dataset.f!;
+        const v = k === "layout" ? el.value : Number(el.value);
+        if (typeof v === "number" && !Number.isFinite(v)) return;
+        plane.flockSettings = { ...flockSettingsOf(this.plane), [k]: v };
+        this.markDirty();
+      }),
+    );
+    pop.querySelector<HTMLInputElement>("[data-sep]")?.addEventListener("change", (e) => {
+      const v = Number((e.target as HTMLInputElement).value);
+      if (Number.isFinite(v) && v >= 0) plane.minDeploySeparationM = v;
+      this.markDirty();
+    });
+    const close = (e: MouseEvent) => {
+      if (!pop.contains(e.target as Node) && e.target !== anchor) {
+        pop.remove();
+        document.removeEventListener("mousedown", close, true);
+      }
+    };
+    setTimeout(() => document.addEventListener("mousedown", close, true), 0);
+  }
+
   private openFormationImport() {
     const input = document.createElement("input");
     input.type = "file";
@@ -914,7 +1145,9 @@ export class PlaneLoad {
     sel.addEventListener("change", () => {
       j.setBodyPosition(sel.value);
       onChange?.();
+      this.normalizeJumpTimes();
       this.markDirty();
+      queueMicrotask(() => this.render()); // slot / pattern cells depend on the position
     });
     return sel;
   }

@@ -1,3 +1,4 @@
+import { getSeparationWarnings } from "../physics/Separation";
 import { onRecalculated } from "../core/data/SimulationVariables";
 
 /**
@@ -55,7 +56,7 @@ function setupSpeed() {
   });
 }
 
-/** Ticks on the scrubber: exits (white), track starts (gold), pulls (blue), landings (grey). */
+/** Ticks on the scrubber: exits (white), track starts (gold), pulls (blue), landings (grey), danger zones (red), separation (orange). */
 export function renderTimelineMarkers() {
   const box = document.getElementById("timeline-markers");
   if (!box) return;
@@ -81,8 +82,11 @@ export function renderTimelineMarkers() {
       add(j.jumpTime, "exit", `${name}: exit`);
       add(j.trackStartTime, "track", `${name}: starts tracking`);
       add(j.deployment?.pullTime, "pull", `${name}: pulls`);
-      add(j.landTime, "land", `${name}: lands`);
+      add(j.landTime, j.landingOutcome?.kind === "hazard" ? "hazard" : "land",
+        j.landingOutcome?.kind === "hazard" ? `${name}: lands in ${j.landingOutcome.name}` : `${name}: lands`);
+      (j.hazardEvents ?? []).forEach((e: any) => add(e.start, "hazard", `${name}: over ${e.name} below its ceiling`));
     });
+  getSeparationWarnings().forEach((s) => add(s.time, "separation", s.text));
 }
 
 let initialized = false;

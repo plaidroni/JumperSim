@@ -20,7 +20,42 @@ export interface FormationShape {
    * `forward` is the horizontal jumprun direction (unit vector), so slot 0 can be
    * placed consistently relative to the aircraft.
    */
-  slots(n: number, forward: THREE.Vector3): THREE.Vector3[] | null;
+  slots(n: number, forward: THREE.Vector3, opts?: { radiusM?: number | "auto" }): THREE.Vector3[] | null;
+}
+
+export interface RoundSettings {
+  /** Distance from the round's centre to every slot; "auto" = ROUND_SPACING_M between neighbours. */
+  slotRadiusM: number | "auto";
+  /** Breakoff altitude (ft above the DZ). */
+  breakoffFt: number;
+  /** How far from the breakoff centre each member tracks to; "auto" = neighbours MIN_DEPLOY_SEPARATION_M apart. */
+  breakoffDistanceM: number | "auto";
+}
+
+export const DEFAULT_ROUND_SETTINGS: RoundSettings = {
+  slotRadiusM: "auto",
+  breakoffFt: 4500,
+  breakoffDistanceM: "auto",
+};
+
+/** Separation (m) jumpers want between each other at pull. */
+export const MIN_DEPLOY_SEPARATION_M = 150;
+
+export function autoRoundRadius(n: number): number {
+  return Math.max(ROUND_MIN_RADIUS_M, (n * ROUND_SPACING_M) / (2 * Math.PI));
+}
+
+export function roundRadius(n: number, settings?: Partial<RoundSettings>): number {
+  const r = settings?.slotRadiusM;
+  return typeof r === "number" && r > 0 ? r : autoRoundRadius(n);
+}
+
+/** Track-out distance from the breakoff centre so neighbours end up `minSep` apart. */
+export function breakoffDistance(n: number, settings: Partial<RoundSettings> | undefined, minSep: number): number {
+  const d = settings?.breakoffDistanceM;
+  if (typeof d === "number" && d > 0) return d;
+  if (n < 2) return minSep;
+  return Math.max(minSep, minSep / (2 * Math.sin(Math.PI / n)));
 }
 
 /** Centre-to-centre spacing around a round (arm's-length grips). */
@@ -36,9 +71,9 @@ export const FORMATION_SHAPES: Record<FormationShapeId, FormationShape> = {
     label: "Round",
     statusLabel: "In round",
     description: "Members hold a ring, facing the centre, until breakoff, then track straight out.",
-    slots(n, forward) {
+    slots(n, forward, opts) {
       if (n < 2) return null;
-      const radius = Math.max(ROUND_MIN_RADIUS_M, (n * ROUND_SPACING_M) / (2 * Math.PI));
+      const radius = roundRadius(n, { slotRadiusM: opts?.radiusM ?? "auto" });
       // slot 0 sits on the jumprun side; the rest go round clockwise from above
       const base = Math.atan2(forward.x, forward.z);
       return Array.from({ length: n }, (_, k) => {

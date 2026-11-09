@@ -238,6 +238,23 @@ export class MapScene {
     if (this.buildings && this.options.buildings) this.buildings.update();
   }
 
+  /** Render the map for another camera (the planner's top-down view) and back. */
+  setActiveCamera(camera: THREE.Camera) {
+    if (camera === this.camera) return;
+    const prev = this.camera;
+    this.camera = camera;
+    for (const tiles of [this.terrain, this.buildings]) {
+      if (!tiles) continue;
+      tiles.setCamera(camera);
+      tiles.deleteCamera(prev);
+      tiles.setResolutionFromRenderer(camera, this.renderer);
+    }
+  }
+
+  get imagery(): ImageryKey {
+    return this.options.imagery;
+  }
+
   onResize() {
     this.terrain?.setResolutionFromRenderer(this.camera, this.renderer);
     this.buildings?.setResolutionFromRenderer(this.camera, this.renderer);

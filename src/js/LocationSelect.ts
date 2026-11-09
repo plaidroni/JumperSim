@@ -1,3 +1,4 @@
+import { loadPlanForDropzone } from "./dropzone/DropzonePlan";
 import { declareParams, fetchWeatherData } from "../apidata/OpenMateo";
 import { getCookie, setCookie } from "./Utils";
 import * as THREE from "three";
@@ -60,6 +61,7 @@ export async function loadDropzones(scene: THREE.Scene) {
     console.log("loading selection");
     const dz = dropzones[index];
     (window as any).selectedDropzone = dz;
+    loadPlanForDropzone(dz);
     console.log("Selected DZ:", dz);
 
     // check for default jumprun

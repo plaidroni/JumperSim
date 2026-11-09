@@ -38,6 +38,11 @@ import { renderPlaneLoad } from "./ui/PlaneSettings";
 import { PlaneLoad } from "./ui/PlaneLoad";
 import { SIM_DURATION_S, updateSimWindow } from "./physics/SimWindow";
 import { updateCanopyRigs } from "./visuals/CanopyRig";
+import { precalculateJumpers } from "./classes/SimEntities";
+import { getDropzonePlan } from "./dropzone/DropzonePlan";
+import { applyJumprun } from "./dropzone/Jumprun";
+import { currentWindProfile } from "./wind/WindProfile";
+import { initializePlanner, type Planner } from "./dropzone/PlannerView";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -137,6 +142,7 @@ let isEditingPlane = false;
 // === EVENT LISTENERS ===
 
 let isAligningJumprun: Boolean = false;
+let planner: Planner | null = null;
 let alignPoints: THREE.Vector3[] = [];
 let alignArrow: THREE.ArrowHelper | null = null;
 
@@ -151,7 +157,7 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   if (!pressAt || e.button !== 0) return;
   const moved = Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y);
   pressAt = null;
-  if (moved > 4 || isEditingPlane || isAligningJumprun) return;
+  if (moved > 4 || isEditingPlane || isAligningJumprun || planner?.active) return;
   onMouseMove(e);
   pickAt([simPlane.getMesh(), ...simJumpers.map((j) => j.getMesh())]);
 });
@@ -302,6 +308,11 @@ function collectTwoAlignPoints(
 }
 
 async function handleStartAlignJumprun() {
+  // the jumprun is set in the Dropzone Planner now
+  if (planner) {
+    planner.enter("jumprun");
+    return;
+  }
   // the two points where we will find the angle between
   // init
   console.log("Starting jumprun alignment...");
@@ -331,6 +342,8 @@ async function handleStartAlignJumprun() {
 }
 
 function drawAlignArrow() {
+  // the jumprun is drawn by the plan overlays (dropzone/PlanOverlays.ts) now
+  return;
   if (alignArrow) {
     scene.remove(alignArrow);
     alignArrow = null;
@@ -493,6 +506,10 @@ try {
 
 // TODO: move into menubar with refactor
 function startPlaneEdit() {
+  if (planner) {
+    planner.enter("jumprun");
+    return;
+  }
   followTarget = null;
   StartEditPlane(
     simPlane.getMesh()!,
@@ -641,13 +658,26 @@ export function recalculateSimulation() {
   const jumpers: SimJumper[] = Array.isArray((window as any).simJumpers)
     ? (window as any).simJumpers
     : simJumpers;
+  const jr = getDropzonePlan().jumprun;
+  if (jr) applyJumprun(jr, simPlane, currentWindProfile());
   simPlane.precalculate(SIM_DURATION_S);
-  jumpers.forEach((jumper) => jumper.precalculate(SIM_DURATION_S));
+  precalculateJumpers(jumpers, SIM_DURATION_S);
   updateSimWindow(jumpers);
   forceSceneUpdate = true;
   notifyRecalculated();
 }
 setRecalculationHandler(recalculateSimulation);
+
+/** Back to the dropzone's default jumprun (dropzones.json), or straight along +X. */
+(window as any).resetJumprunToDefault = () => {
+  const pts = (window as any).defaultJumprunPoints;
+  simPlane.initialPosition.set(0, simPlane.initialPosition.y, 0);
+  simPlane.position.copy(simPlane.initialPosition);
+  if (pts && pts.length === 2) {
+    simPlane.changeDirection(new THREE.Vector3().subVectors(pts[1], pts[0]).setY(0));
+  }
+  recalculateSimulation();
+};
 
 // This function can be used to handle recalculations from external sources
 export function handleForeignRecalculation() {
@@ -702,7 +732,11 @@ systemsOK.then(() => {
   });
 
   const defaultPoints = (window as any).defaultJumprunPoints;
-  if (defaultPoints && defaultPoints.length === 2) {
+  const planJumprun = getDropzonePlan().jumprun;
+  if (planJumprun) {
+    applyJumprun(planJumprun, simPlane, currentWindProfile());
+    alignPoints = [simPlane.initialPosition.clone()];
+  } else if (defaultPoints && defaultPoints.length === 2) {
     console.log("defaultPoints:", defaultPoints);
     alignPoints = [defaultPoints[0], defaultPoints[1]];
     drawAlignArrow();
@@ -724,11 +758,8 @@ systemsOK.then(() => {
 
   // start initial precalculation for jumpers
   simPlane.precalculate(SIM_DURATION_S);
-
-  simJumpers.forEach((jumper) => {
-    jumper.precalculate(SIM_DURATION_S);
-    scene.add(jumper.getMesh());
-  });
+  precalculateJumpers(simJumpers, SIM_DURATION_S);
+  simJumpers.forEach((jumper) => scene.add(jumper.getMesh()));
   updateSimWindow(simJumpers);
 
   followTarget = simPlane.getMesh();
@@ -881,7 +912,7 @@ systemsOK.then(() => {
       updateFromPrecalc(simulationTime);
       lastSimTime = simulationTime;
     }
-    controls.update();
+    if (!planner?.active) controls.update();
 
     updateTrajectoryLines(lines, simulationTime);
 
@@ -890,7 +921,8 @@ systemsOK.then(() => {
 
     (window as any).mapScene?.update();
 
-    renderer.render(scene, camera);
+    planner?.update(simulationTime);
+    renderer.render(scene, planner?.active ? planner.camera : camera);
 
     camera.getWorldDirection(dir);
     sph.setFromVector3(dir);
@@ -900,11 +932,12 @@ systemsOK.then(() => {
         THREE.MathUtils.radToDeg(sph.theta) - 180
       }deg)`;
     }
-    checkHoverIntersect([
-      simPlane.getMesh(),
-      ...simJumpers.map((j) => j.getMesh()),
-    ] as Array<THREE.Object3D | null>);
-    updateCameraFollow();
+    if (!planner?.active)
+      checkHoverIntersect([
+        simPlane.getMesh(),
+        ...simJumpers.map((j) => j.getMesh()),
+      ] as Array<THREE.Object3D | null>);
+    if (!planner?.active) updateCameraFollow();
   });
 });
 /**
@@ -920,6 +953,15 @@ loadDropzones(scene).catch(console.error);
 initializePlaneManager(scene, simPlane);
 initializeDock();
 initializeTimeline();
+planner = initializePlanner({
+  scene,
+  renderer,
+  perspective: camera,
+  controls,
+  viewport: viewportEl as HTMLElement,
+  plane: () => simPlane,
+  jumpers: () => ((window as any).simJumpers as SimJumper[]) ?? simJumpers,
+});
 initializeWindWidget(camera, controls);
 
 // Global access to notification system for use across the application

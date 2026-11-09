@@ -8,7 +8,18 @@ import {
   DRAG_COEFFICIENT,
   normalizeBodyPosition,
 } from "./BodyPositions";
-import { FormationShape, getFormationShape } from "./FormationShapes";
+import {
+  DEFAULT_ROUND_SETTINGS,
+  FormationShape,
+  RoundSettings,
+  getFormationShape,
+} from "./FormationShapes";
+import {
+  DEFAULT_FLOCK_SETTINGS,
+  FlockSettings,
+  FlockSlot,
+  flockSlot,
+} from "./FlockShapes";
 
 /**
  * Linked jumpers who exit together fly as one formation until breakoff. The group
@@ -35,17 +46,67 @@ export interface GroupPath {
 
 const SAME_EXIT_S = 0.05;
 
-function allJumpers(plane: SimPlane): SimJumper[] {
+export function allJumpers(plane: SimPlane): SimJumper[] {
   const w = window as any;
   if (Array.isArray(w.simJumpers) && w.simJumpers.length) return w.simJumpers;
   return plane.jumpers || [];
 }
 
 /** Which formation a jumper belongs to: its imported formation, else the shared linked group. */
-function groupKey(j: SimJumper, plane: SimPlane): string {
+export function groupKey(j: SimJumper, plane: SimPlane): string {
   const formations: any[] = plane.formations || [];
   const i = formations.findIndex((f) => f?.getAllJumpers?.().includes(j));
   return i >= 0 ? `formation:${i}` : "linked";
+}
+
+/** Body positions that build rounds (wingsuits fly flocks, trackers fly lanes). */
+export function buildsRounds(j: SimJumper): boolean {
+  const p = normalizeBodyPosition(j.flyingStyle);
+  return p === "belly" || p === "sitfly" || p === "headdown";
+}
+
+export function isWingsuiter(j: SimJumper): boolean {
+  return normalizeBodyPosition(j.flyingStyle) === "wingsuit";
+}
+
+/**
+ * Order group members by slot: anyone with a valid `formationSlot` (1-based) takes it,
+ * the rest fill the free slots in exit order (plane index).
+ */
+export function orderBySlot(members: SimJumper[]): SimJumper[] {
+  const byIndex = [...members].sort((a, b) => a.index - b.index);
+  const n = byIndex.length;
+  const out: (SimJumper | null)[] = new Array(n).fill(null);
+  const rest: SimJumper[] = [];
+  for (const m of byIndex) {
+    const s = Number((m as any).formationSlot);
+    if (Number.isInteger(s) && s >= 1 && s <= n && !out[s - 1]) out[s - 1] = m;
+    else rest.push(m);
+  }
+  for (let i = 0; i < n; i++) if (!out[i]) out[i] = rest.shift()!;
+  return out as SimJumper[];
+}
+
+export function roundSettingsOf(plane: SimPlane): RoundSettings {
+  return { ...DEFAULT_ROUND_SETTINGS, ...((plane as any).roundSettings || {}) };
+}
+
+export function flockSettingsOf(plane: SimPlane): FlockSettings {
+  return { ...DEFAULT_FLOCK_SETTINGS, ...((plane as any).flockSettings || {}) };
+}
+
+/** Linked round builders who exit with `j` in the same group. */
+export function roundMembers(j: SimJumper, plane: SimPlane): SimJumper[] {
+  const key = groupKey(j, plane);
+  return orderBySlot(
+    allJumpers(plane).filter(
+      (m) =>
+        m.linked &&
+        buildsRounds(m) &&
+        Math.abs(m.jumpTime - j.jumpTime) < SAME_EXIT_S &&
+        groupKey(m, plane) === key,
+    ),
+  );
 }
 
 /** The formation this jumper flies in, with its slot, or null if it flies solo. */
@@ -53,29 +114,45 @@ export function formationPlanFor(
   j: SimJumper,
   plane: SimPlane,
 ): { plan: FormationPlan; slotIndex: number } | null {
-  if (!j.linked) return null;
-  if (normalizeBodyPosition(j.flyingStyle) === "wingsuit") return null;
+  if (!j.linked || !buildsRounds(j)) return null;
   const key = groupKey(j, plane);
-  const members = allJumpers(plane)
-    .filter(
-      (m) =>
-        m.linked &&
-        normalizeBodyPosition(m.flyingStyle) !== "wingsuit" &&
-        Math.abs(m.jumpTime - j.jumpTime) < SAME_EXIT_S &&
-        groupKey(m, plane) === key,
-    )
-    .sort((a, b) => a.index - b.index);
+  const members = roundMembers(j, plane);
   const shape = getFormationShape((plane as any).linkedFormation);
   const forward = new THREE.Vector3(plane.direction.x, 0, plane.direction.z);
   if (forward.lengthSq() < 1e-9) forward.set(0, 0, -1);
   forward.normalize();
-  const slots = shape.slots(members.length, forward);
+  const slots = shape.slots(members.length, forward, { radiusM: roundSettingsOf(plane).slotRadiusM });
   const slotIndex = members.indexOf(j);
   if (!slots || slotIndex < 0) return null;
   return {
     plan: { key, shape, members, slots, startTime: Math.min(...members.map((m) => m.jumpTime)) },
     slotIndex,
   };
+}
+
+/** Linked wingsuiters in `j`'s group, base (slot 1) first. */
+export function flockMembers(j: SimJumper, plane: SimPlane): SimJumper[] {
+  const key = groupKey(j, plane);
+  return orderBySlot(allJumpers(plane).filter((m) => m.linked && isWingsuiter(m) && groupKey(m, plane) === key));
+}
+
+export interface FlockPlan {
+  members: SimJumper[];
+  slotIndex: number;
+  base: SimJumper;
+  slot: FlockSlot;
+  settings: FlockSettings;
+}
+
+/** The flock this wingsuiter flies in, or null when flying solo. */
+export function flockPlanFor(j: SimJumper, plane: SimPlane): FlockPlan | null {
+  if (!j.linked || !isWingsuiter(j)) return null;
+  const members = flockMembers(j, plane);
+  if (members.length < 2) return null;
+  const slotIndex = members.indexOf(j);
+  if (slotIndex < 0) return null;
+  const settings = flockSettingsOf(plane);
+  return { members, slotIndex, base: members[0], slot: flockSlot(settings, slotIndex), settings };
 }
 
 // The path is the same for every member, so compute it once per recalculation.

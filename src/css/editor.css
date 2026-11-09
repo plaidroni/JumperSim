@@ -545,6 +545,8 @@ body.dock-dragging * {
 .timeline-marker[data-kind="track"] { background: var(--accent); }
 .timeline-marker[data-kind="pull"] { background: #4fa3ff; }
 .timeline-marker[data-kind="land"] { background: #888; }
+.timeline-marker[data-kind="hazard"] { background: #ff3b30; }
+.timeline-marker[data-kind="separation"] { background: #ff9500; }
 
 .timeline-time {
   font-variant-numeric: tabular-nums;

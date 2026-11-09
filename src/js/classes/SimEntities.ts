@@ -21,11 +21,23 @@ import {
 } from "../physics/FormationShapes";
 import {
   GroupPath,
+
+  flockPlanFor,
   formationPath,
   formationPlanFor,
+  roundSettingsOf,
   samplePath,
   smoothstep,
 } from "../physics/FormationFlight";
+import { breakoffDistance, MIN_DEPLOY_SEPARATION_M } from "../physics/FormationShapes";
+import { FLOCK_DOCK_S, fanAngleDeg, flockSlotLabel } from "../physics/FlockShapes";
+import { TRACKING_EXIT_DELAY_S } from "../physics/BodyPositions";
+import { getPlanContext, invalidatePlanContext } from "../dropzone/PlanContext";
+import { CanopyGuidance, type CanopyPhase } from "../physics/CanopyGuidance";
+import { FreefallGuidance } from "../physics/FreefallGuidance";
+import { hazardAt, landingZoneAt, zoneAt } from "../physics/Hazards";
+import { rotateHeading } from "../physics/Steering";
+import { computeSeparation } from "../physics/Separation";
 import {
   CANOPY,
   CanopyPerformance,
@@ -140,6 +152,26 @@ export class SimJumper extends Jumper {
   openingPeakG = 0;
   /** Height (m above the DZ) at full open. */
   openAltitudeM: number | null = null;
+  /** Canopy navigation phase changes ({ t, phase }), in time order. */
+  canopyPhases: { t: number; phase: CanopyPhase }[] = [];
+  /** Alternate LZ name when the primary pattern couldn't be reached. */
+  canopyAlternate: string | null = null;
+  /** Danger-zone violations under canopy. */
+  hazardEvents: { zoneId: string; name: string; start: number; end: number; minHeightFt: number }[] = [];
+  landingOutcome: { kind: "lz" | "out" | "hazard"; name?: string; id?: string } | null = null;
+  /** Freefall pattern being flown (name), lane, leg start times and leg count. */
+  freefallRoute: { name: string; lane: number; legTimes: number[]; legCount: number; kind: string } | null = null;
+  deployOutsideArea = false;
+  /** Round: 1-based slot, breakoff distance (m) and when the member stopped tracking. */
+  roundSlot: number | null = null;
+  breakoffDistanceM: number | null = null;
+  breakoffHoldTime: number | null = null;
+  /** Flock: slot label ("Base", "R1"…), and when it broke off. */
+  flockSlotLabel: string | null = null;
+  flockDockedTime: number | null = null;
+  flockBreakoffTime: number | null = null;
+  /** Nearest other jumper at this jumper's pull (from Separation.ts). */
+  pullSeparation: { distanceM: number; otherId: string } | null = null;
 
   constructor(
     index: number,
@@ -305,6 +337,66 @@ export class SimJumper extends Jumper {
       }
     }
 
+    // ----- dropzone plan: patterns, lanes, zones -----
+    const pctx = getPlanContext(this.plane as SimPlane, windProfile);
+    const glidesFromExit = spec.glidesFromExit;
+    const isTrackingJump = position === "tracking";
+    const roundSettings = roundSettingsOf(this.plane as SimPlane);
+    this.roundSlot = formation ? formation.slotIndex + 1 : null;
+    this.breakoffDistanceM = null;
+    this.breakoffHoldTime = null;
+    let breakoffCentre: THREE.Vector3 | null = null;
+    let breakoffHeld = false;
+    if (formation && groupPath) {
+      const last = groupPath.positions[groupPath.positions.length - 1];
+      breakoffCentre = last.clone();
+      this.breakoffDistanceM = breakoffDistance(
+        formation.plan.members.length,
+        roundSettings,
+        (this.plane as any).minDeploySeparationM ?? MIN_DEPLOY_SEPARATION_M
+      );
+    }
+
+    // wingsuit flocks: the base flies the pattern, followers hold a slot off the base
+    const flock = isWingsuit ? flockPlanFor(this, this.plane as SimPlane) : null;
+    const flockBase = flock && flock.slotIndex > 0 ? flock.base : null;
+    this.flockSlotLabel = flock ? flockSlotLabel(flock.settings, flock.slotIndex) : null;
+    this.flockDockedTime = null;
+    this.flockBreakoffTime = null;
+    const flockBreakoffY = flock ? feetToMeters(flock.settings.breakoffFt) : -Infinity;
+    const flockEnd = flockBase
+      ? Math.min(
+          flockBase.flockBreakoffTime ?? Infinity,
+          flockBase.deployment?.pullTime ?? Infinity,
+          flockBase.landTime ?? Infinity
+        )
+      : -Infinity;
+    let flockExitOffset: THREE.Vector3 | null = null;
+
+    // freefall pattern (trackers, wingsuit bases and solo wingsuiters)
+    let ffGuidance: FreefallGuidance | null = null;
+    this.freefallRoute = null;
+    this.deployOutsideArea = false;
+    if (glidesFromExit && !flockBase) {
+      const r = pctx.routeFor(this);
+      if (r) {
+        ffGuidance = new FreefallGuidance(r.route, isWingsuit ? "wingsuit" : "tracking");
+        this.freefallRoute = {
+          name: r.route.pattern.name,
+          lane: r.lane,
+          legTimes: ffGuidance.legStartTimes,
+          legCount: ffGuidance.legCount,
+          kind: r.route.pattern.kind,
+        };
+        // head for the first leg from exit rather than perpendicular to jumprun
+        const first = r.route.legs[0];
+        if (first) {
+          const d = new THREE.Vector3(first.point.x - currentPosition.x, 0, first.point.z - currentPosition.z);
+          if (d.lengthSq() > 1) trackingDir.copy(d.normalize());
+        }
+      }
+    }
+
     // ----- deployment + canopy -----
     const pullAltM = feetToMeters(this.pullAltitudeFt ?? DEFAULT_PULL_FT);
     const exitKg = exitWeightKg(this.weight, this.extraWeight);
@@ -331,34 +423,31 @@ export class SimJumper extends Jumper {
         ? surfaceWind.clone().negate().normalize()
         : jumpRunDir.clone();
     const landingCross = new THREE.Vector3(-landingHeading.z, 0, landingHeading.x);
-    const landingTarget = landingCross
-      .clone()
-      .multiplyScalar(((this.index % 5) - 2) * 12)
-      .addScaledVector(landingHeading, Math.floor(this.index / 5) * 15);
+    const planAim = pctx.aimFor(this);
+    const landingTarget = planAim
+      ? new THREE.Vector3(planAim.x, 0, planAim.z)
+      : landingCross
+          .clone()
+          .multiplyScalar(((this.index % 5) - 2) * 12)
+          .addScaledVector(landingHeading, Math.floor(this.index / 5) * 15);
 
     this.angle.copy(headingQuaternion(jumpRunDir));
 
-    /** Air heading that steers this canopy through its landing pattern. */
-    const desiredHeading = (pos: THREE.Vector3, wind: THREE.Vector3) => {
-      const h = Math.max(0, pos.y - getGroundHeight(landingTarget.x, landingTarget.z));
-      // ground speed on final and the distance it covers from this height
-      const finalGround = Math.max(0.5, perf.horizontalMs + wind.dot(landingHeading));
-      const R = (h / perf.verticalMs) * finalGround;
-      // aim at the point on the final approach line for this height
-      const aim = landingTarget.clone().addScaledVector(landingHeading, -R);
-      const toAim = aim.sub(pos).setY(0);
-      const dist = toAim.length();
-      if (dist < 25 + 0.1 * R) return landingHeading.clone(); // on final / holding
-      toAim.divideScalar(dist);
-      // crab: cancel the crosswind so the ground track points at the aim point
-      const crossWind = wind.clone().setY(0).addScaledVector(toAim, -wind.dot(toAim));
-      const c = crossWind.length();
-      if (c >= perf.horizontalMs) return toAim;
-      return toAim
-        .multiplyScalar(Math.sqrt(perf.horizontalMs ** 2 - c * c))
-        .sub(crossWind)
-        .normalize();
-    };
+    const canopyNav = new CanopyGuidance({
+      perf,
+      pattern: planAim ? pctx.patternAt(planAim) : null,
+      aim: { x: landingTarget.x, z: landingTarget.z },
+      landingHeading,
+      zones: pctx.zones,
+      lzs: pctx.lzs,
+      windAt: (y: number) => windVectorAt(y).setY(0),
+    });
+    this.canopyPhases = [];
+    this.canopyAlternate = null;
+    this.hazardEvents = [];
+    this.landingOutcome = null;
+    let openHazard: SimJumper["hazardEvents"][number] | null = null;
+    let navHeading: THREE.Vector3 | null = null;
 
     // Freefall and the opening are sampled every step; settled canopy flight and
     // time in the plane every 0.1 s (the tracks interpolate between samples).
@@ -389,7 +478,29 @@ export class SimJumper extends Jumper {
           currentPosition = g.position.clone().add(exitOffset.clone().lerp(slot, dock));
           this.velocity = g.velocity.clone();
           if (facing) this.angle.copy(facing);
+        } else if (flockBase && flock && simTime < flockEnd) {
+          // flock: hold this slot off the base (eased in after this jumper's own exit)
+          const b = flockBase.track.getInterpolatedSample(simTime);
+          if (b) {
+            const h = poseHeading(b.angle);
+            const right = new THREE.Vector3(-h.z, 0, h.x);
+            const slotOffset = right
+              .multiplyScalar(flock.slot.across)
+              .addScaledVector(h, -flock.slot.behind)
+              .add(new THREE.Vector3(0, -flock.slot.below, 0));
+            if (!flockExitOffset) flockExitOffset = currentPosition.clone().sub(b.position);
+            const dock = smoothstep((simTime - this.jumpTime) / FLOCK_DOCK_S);
+            if (dock >= 1 && this.flockDockedTime === null) this.flockDockedTime = simTime;
+            currentPosition = b.position.clone().add(flockExitOffset!.clone().lerp(slotOffset, dock));
+            this.velocity = b.velocity.clone();
+            this.angle.copy(b.angle);
+          }
         } else {
+          if (flockBase && flock && this.flockBreakoffTime === null) {
+            // flock breakoff: fan away from the base line
+            this.flockBreakoffTime = simTime;
+            trackingDir.copy(rotateHeading(poseHeading(this.angle), fanAngleDeg(flock.slot)));
+          }
           const wind = windVectorAt(currentPosition.y);
 
           // Pull: the deployment sequence starts and tracking stops
@@ -398,17 +509,51 @@ export class SimJumper extends Jumper {
             this.deployment = deploy;
             pullPose.copy(this.angle);
             poseHeading(this.angle, heading);
+            if (ffGuidance) {
+              const legs = ffGuidance.route.legs;
+              const last = legs[legs.length - 1];
+              const radius = ffGuidance.route.pattern.deployRadiusM ?? 150;
+              if (last && Math.hypot(currentPosition.x - last.point.x, currentPosition.z - last.point.z) > radius)
+                this.deployOutsideArea = true;
+            }
           }
           const phase = phaseAt(deploy, simTime);
 
           if (phase.phase === "freefall") {
-            // Break off and track below TRACK_START_FT (if this jumper tracks)
-            if (tracks && !trackingStarted && currentPosition.y <= trackingStartAltitudeM) {
+            // the flock base marks when the flock breaks off
+            if (flock && flock.slotIndex === 0 && this.flockBreakoffTime === null && currentPosition.y <= flockBreakoffY)
+              this.flockBreakoffTime = simTime;
+            // Tracking jump: track from shortly after exit
+            if (isTrackingJump && !trackingStarted && simTime - this.jumpTime >= TRACKING_EXIT_DELAY_S) {
               trackingStarted = true;
               this.trackStartTime = simTime;
             }
+            // Break off and track below the breakoff altitude (if this jumper tracks)
+            const breakoffY = formation ? feetToMeters(roundSettings.breakoffFt) : trackingStartAltitudeM;
+            if (tracks && !trackingStarted && !breakoffHeld && currentPosition.y <= breakoffY) {
+              trackingStarted = true;
+              this.trackStartTime = simTime;
+            }
+            // round members stop tracking at their breakoff slot and wave off
+            if (
+              trackingStarted &&
+              !isTrackingJump &&
+              breakoffCentre &&
+              this.breakoffDistanceM !== null &&
+              Math.hypot(currentPosition.x - breakoffCentre.x, currentPosition.z - breakoffCentre.z) >=
+                this.breakoffDistanceM
+            ) {
+              trackingStarted = false;
+              breakoffHeld = true;
+              this.breakoffHoldTime = simTime;
+            }
             const gliding = isWingsuit || trackingStarted;
-            const A = trackingStarted ? TRACK_SPEC.dragAreaM2 : spec.dragAreaM2;
+            if (gliding && ffGuidance) ffGuidance.step(simTime, step, currentPosition, this.velocity.y, wind, trackingDir);
+            const A = trackingStarted
+              ? TRACK_SPEC.dragAreaM2
+              : breakoffHeld || isTrackingJump
+                ? BODY_POSITIONS.belly.dragAreaM2
+                : spec.dragAreaM2;
             const k = 0.5 * Cd * rho0 * A; // drag = k·v²
 
             if (!gliding) {
@@ -431,7 +576,11 @@ export class SimJumper extends Jumper {
               const ay = -g + (k * vy * vy * (vy < 0 ? 1 : -1)) / mass;
               this.velocity.y += ay * step;
 
-              const glide = isWingsuit ? spec.glideRatio : TRACK_SPEC.glideRatio;
+              const glide = ffGuidance
+                ? ffGuidance.glide
+                : isWingsuit
+                  ? spec.glideRatio
+                  : TRACK_SPEC.glideRatio;
               const horizSpeed = Math.abs(this.velocity.y) * glide;
               const targetX = trackingDir.x * horizSpeed + wind.x;
               const targetZ = trackingDir.z * horizSpeed + wind.z;
@@ -471,7 +620,25 @@ export class SimJumper extends Jumper {
             // Canopy flight: wing loading sets the airspeed, glide ratio splits it
             // into forward and down; the wind carries the whole thing.
             if (this.openAltitudeM === null) this.openAltitudeM = currentPosition.y;
-            turnToward(heading, desiredHeading(currentPosition, wind), maxTurn);
+            const prevPhase = canopyNav.phase;
+            // navigation decisions every 0.1 s; the turn itself runs every step
+            if (!navHeading || i % coarseEvery === 0) navHeading = canopyNav.desired(currentPosition, wind, simTime);
+            turnToward(heading, navHeading, maxTurn);
+            if (!this.canopyPhases.length || canopyNav.phase !== prevPhase || this.canopyPhases[this.canopyPhases.length - 1].phase !== canopyNav.phase)
+              this.canopyPhases.push({ t: simTime, phase: canopyNav.phase });
+            if (canopyNav.alternate) this.canopyAlternate = canopyNav.alternate.lz.name;
+            // danger zones below their ceiling (checked every 0.1 s)
+            if (i % coarseEvery === 0 && pctx.zones.length) {
+              const agl = currentPosition.y - getGroundHeight(currentPosition.x, currentPosition.z);
+              const hz = hazardAt(pctx.zones, currentPosition.x, currentPosition.z, agl);
+              if (hz && openHazard && openHazard.zoneId === hz.zone.id) {
+                openHazard.end = simTime;
+                openHazard.minHeightFt = Math.min(openHazard.minHeightFt, agl / 0.3048);
+              } else if (hz) {
+                openHazard = { zoneId: hz.zone.id, name: hz.zone.name, start: simTime, end: simTime, minHeightFt: agl / 0.3048 };
+                this.hazardEvents.push(openHazard);
+              } else openHazard = null;
+            }
 
             const groundY = getGroundHeight(currentPosition.x, currentPosition.z);
             const flare = smoothstep((6 - (currentPosition.y - groundY)) / 6);
@@ -494,6 +661,15 @@ export class SimJumper extends Jumper {
             this.velocity.set(0, 0, 0);
             this.hasLanded = true;
             this.landTime = simTime;
+            const hz = zoneAt(pctx.zones, currentPosition.x, currentPosition.z);
+            const lz = landingZoneAt(pctx.lzs, currentPosition.x, currentPosition.z);
+            this.landingOutcome = hz
+              ? { kind: "hazard", name: hz.zone.name, id: hz.zone.id }
+              : lz
+                ? { kind: "lz", name: lz.lz.name, id: lz.lz.id }
+                : pctx.lzs.length
+                  ? { kind: "out" }
+                  : null;
           }
         }
       }
@@ -510,6 +686,22 @@ export class SimJumper extends Jumper {
     }
     if (this.debugArrow) (this.debugArrow as any).visible = false;
   }
+}
+
+/**
+ * Precalculate a whole load: flock followers last (they follow their base's track),
+ * then the separation check at pull.
+ */
+export function precalculateJumpers(jumpers: SimJumper[], duration: number) {
+  invalidatePlanContext();
+  const plane = jumpers[0]?.plane as SimPlane | undefined;
+  const isFollower = (j: SimJumper) => {
+    const f = plane ? flockPlanFor(j, plane) : null;
+    return !!f && f.slotIndex > 0;
+  };
+  const ordered = [...jumpers].sort((a, b) => Number(isFollower(a)) - Number(isFollower(b)));
+  ordered.forEach((j) => j.precalculate(duration));
+  computeSeparation(jumpers, (plane as any)?.minDeploySeparationM ?? MIN_DEPLOY_SEPARATION_M);
 }
 
 export function createDefaultSimJumpers(
