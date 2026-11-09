@@ -55,7 +55,7 @@ function setupSpeed() {
   });
 }
 
-/** Ticks on the scrubber: exits (white), track starts (gold), landings (grey). */
+/** Ticks on the scrubber: exits (white), track starts (gold), pulls (blue), landings (grey). */
 export function renderTimelineMarkers() {
   const box = document.getElementById("timeline-markers");
   if (!box) return;
@@ -80,6 +80,7 @@ export function renderTimelineMarkers() {
       const name = j.name || `Jumper ${j.index + 1}`;
       add(j.jumpTime, "exit", `${name}: exit`);
       add(j.trackStartTime, "track", `${name}: starts tracking`);
+      add(j.deployment?.pullTime, "pull", `${name}: pulls`);
       add(j.landTime, "land", `${name}: lands`);
     });
 }

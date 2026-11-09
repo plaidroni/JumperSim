@@ -1,5 +1,6 @@
 import type { SimJumper, SimPlane } from "../classes/SimEntities";
 import { BODY_POSITIONS, normalizeBodyPosition } from "../physics/BodyPositions";
+import { phaseAt } from "../physics/Canopy";
 
 /** Shared jumper telemetry for Plane Settings and Scene Objects. */
 
@@ -26,6 +27,14 @@ export function jumperStatus(j: SimJumper, plane: SimPlane, t = simTime()): stri
   if (!hasJumperExited(j, plane, t)) return "In plane";
   if (j.formationStatus && j.formationEndTime !== null && t < j.formationEndTime) {
     return j.formationStatus;
+  }
+  const { phase } = phaseAt(j.deployment, t);
+  if (phase === "pilot-chute") return "Pilot chute out";
+  if (phase === "bag") return "Bag out";
+  if (phase === "canopy") {
+    if (j.deployment && t < j.deployment.openTime) return "Canopy inflating";
+    const wl = j.canopyPerf?.wingLoading;
+    return wl ? `Under canopy · WL ${wl.toFixed(2)}` : "Under canopy";
   }
   const position = normalizeBodyPosition(j.flyingStyle);
   if (position === "wingsuit") return "Wingsuit flight";

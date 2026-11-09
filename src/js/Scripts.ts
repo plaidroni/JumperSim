@@ -36,6 +36,8 @@ import {
 import { StartEditPlane } from "./ui/PlaneEdit";
 import { renderPlaneLoad } from "./ui/PlaneSettings";
 import { PlaneLoad } from "./ui/PlaneLoad";
+import { SIM_DURATION_S, updateSimWindow } from "./physics/SimWindow";
+import { updateCanopyRigs } from "./visuals/CanopyRig";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -325,10 +327,7 @@ async function handleStartAlignJumprun() {
   drawAlignArrow();
   isAligningJumprun = false;
   alignPlaneToJumprun(simPlane, p1, p2);
-  askForRefresh(() => {
-    simPlane.precalculate(300);
-    simJumpers.forEach((j) => j.precalculate(300));
-  }, true);
+  askForRefresh(() => recalculateSimulation(), true);
 }
 
 function drawAlignArrow() {
@@ -642,8 +641,9 @@ export function recalculateSimulation() {
   const jumpers: SimJumper[] = Array.isArray((window as any).simJumpers)
     ? (window as any).simJumpers
     : simJumpers;
-  simPlane.precalculate(300);
-  jumpers.forEach((jumper) => jumper.precalculate(300));
+  simPlane.precalculate(SIM_DURATION_S);
+  jumpers.forEach((jumper) => jumper.precalculate(SIM_DURATION_S));
+  updateSimWindow(jumpers);
   forceSceneUpdate = true;
   notifyRecalculated();
 }
@@ -723,12 +723,13 @@ systemsOK.then(() => {
   }
 
   // start initial precalculation for jumpers
-  simPlane.precalculate(300);
+  simPlane.precalculate(SIM_DURATION_S);
 
   simJumpers.forEach((jumper) => {
-    jumper.precalculate(300);
+    jumper.precalculate(SIM_DURATION_S);
     scene.add(jumper.getMesh());
   });
+  updateSimWindow(simJumpers);
 
   followTarget = simPlane.getMesh();
   isUserControllingCamera = false;
@@ -855,6 +856,7 @@ systemsOK.then(() => {
         )}, ${jumper.angle.z.toFixed(1)}) deg`,
       };
     });
+    updateCanopyRigs(scene, simJumpers, time);
   }
 
   const lines = simJumpers.map(createDynamicTrajectoryLine);

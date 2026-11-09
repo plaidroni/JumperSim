@@ -16,10 +16,15 @@ import {
   FormationShapeId,
   getFormationShape,
 } from "../physics/FormationShapes";
+import {
+  DEFAULT_PULL_FT,
+  canopyPerformance,
+  exitWeightKg,
+} from "../physics/Canopy";
 
 const M_TO_FT = 3.28084;
-const NOT_SIMULATED_HINT =
-  "Saved with the jumper. Deployment and canopy flight aren't simulated yet.";
+const WL_HINT =
+  "Wing loading (lb/ft²): exit weight (body + extra + gear) ÷ canopy area. Higher = faster canopy.";
 
 export type PlaneLayout = {
   // rows, each element is number of seats in that row, left-to-right; -1 can represent aisle or door spacing, but we will simplify
@@ -275,18 +280,24 @@ export class PlaneLoad {
     canopy.value = String(j.canopySize ?? 190);
     canopy.addEventListener(
       "input",
-      () => (j.canopySize = Number(canopy.value))
+      () => {
+        const v = Number(canopy.value);
+        if (Number.isFinite(v) && v > 0) j.canopySize = v;
+        this.markDirty();
+      }
     );
     addRow("Canopy (sqft)", canopy);
 
-    const deploy = document.createElement("input");
-    deploy.type = "number";
-    deploy.value = String(j.deployDelay ?? 7);
-    deploy.addEventListener(
-      "input",
-      () => (j.deployDelay = Number(deploy.value))
-    );
-    addRow("Deploy Delay (s)", deploy);
+    const pull = document.createElement("input");
+    pull.type = "number";
+    pull.step = "100";
+    pull.value = String(j.pullAltitudeFt ?? DEFAULT_PULL_FT);
+    pull.addEventListener("input", () => {
+      const v = Number(pull.value);
+      if (Number.isFinite(v) && v > 0) j.pullAltitudeFt = v;
+      this.markDirty();
+    });
+    addRow("Pull Altitude (ft)", pull);
 
     const indexInput = document.createElement("input");
     indexInput.type = "number";
@@ -440,8 +451,9 @@ export class PlaneLoad {
       <th style="text-align:left" title="Freefall body position (sets the drag area)">Position</th>
       <th style="text-align:left" title="Break off at ${TRACK_START_FT.toLocaleString()} ft and track away">Track</th>
       <th style="text-align:left">Wt (kg)</th>
-      <th style="text-align:left" class="plane-load-muted" title="${NOT_SIMULATED_HINT}">Canopy*</th>
-      <th style="text-align:left" class="plane-load-muted" title="${NOT_SIMULATED_HINT}">Deploy(s)*</th>
+      <th style="text-align:left" title="Canopy size (sq ft)">Canopy</th>
+      <th style="text-align:right" title="${WL_HINT}">WL</th>
+      <th style="text-align:left" title="Height above the dropzone where the pilot chute is thrown">Pull (ft)</th>
       <th style="text-align:left">Linked</th>
       <th style="text-align:left">Formation</th>
       <th style="text-align:left">Status</th>
@@ -526,6 +538,7 @@ export class PlaneLoad {
       w.addEventListener("input", () => {
         const v = Number(w.value);
         if (Number.isFinite(v) && v > 0) (j as any).weight = v;
+        this.updateRow(tr, j);
         this.markDirty();
       });
       tdW.appendChild(w);
@@ -536,22 +549,31 @@ export class PlaneLoad {
       c.type = "number";
       c.className = "ps-input ps-input-narrow";
       c.value = String(j.canopySize ?? 190);
-      c.title = NOT_SIMULATED_HINT;
+      c.title = "Canopy size (sq ft)";
       c.addEventListener("input", () => {
-        j.canopySize = Number(c.value);
+        const v = Number(c.value);
+        if (Number.isFinite(v) && v > 0) j.canopySize = v;
+        this.updateRow(tr, j);
         this.markDirty();
       });
       tdC.appendChild(c);
       tr.appendChild(tdC);
 
+      const tdWL = document.createElement("td");
+      tdWL.dataset.role = "wl-cell";
+      tdWL.style.textAlign = "right";
+      tr.appendChild(tdWL);
+
       const tdD = document.createElement("td");
       const d = document.createElement("input");
       d.type = "number";
+      d.step = "100";
       d.className = "ps-input ps-input-narrow";
-      d.value = String(j.deployDelay ?? 7);
-      d.title = NOT_SIMULATED_HINT;
+      d.value = String(j.pullAltitudeFt ?? DEFAULT_PULL_FT);
+      d.title = "Pull altitude (ft above the dropzone)";
       d.addEventListener("input", () => {
-        j.deployDelay = Number(d.value);
+        const v = Number(d.value);
+        if (Number.isFinite(v) && v > 0) j.pullAltitudeFt = v;
         this.markDirty();
       });
       tdD.appendChild(d);
@@ -823,6 +845,13 @@ export class PlaneLoad {
       if (cell && cell.textContent !== text) cell.textContent = text;
     };
     set("status-cell", this.statusFor(j, t));
+    const perf = canopyPerformance(exitWeightKg(j.weight, j.extraWeight), j.canopySize);
+    set("wl-cell", perf.wingLoading.toFixed(2));
+    const wlCell = row.querySelector('td[data-role="wl-cell"]') as HTMLElement | null;
+    const wlTitle =
+      `${WL_HINT}\nCanopy: ${Math.round(perf.horizontalMs * MS_TO_MPH)} mph forward, ` +
+      `${Math.round(perf.verticalMs * MS_TO_MPH)} mph down (glide ${perf.glideRatio}:1)`;
+    if (wlCell && wlCell.title !== wlTitle) wlCell.title = wlTitle;
     if (!sample) {
       set("alt-cell", "–");
       set("fall-cell", "–");

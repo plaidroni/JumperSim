@@ -543,6 +543,7 @@ body.dock-dragging * {
 
 .timeline-marker[data-kind="exit"] { background: #ffffff; }
 .timeline-marker[data-kind="track"] { background: var(--accent); }
+.timeline-marker[data-kind="pull"] { background: #4fa3ff; }
 .timeline-marker[data-kind="land"] { background: #888; }
 
 .timeline-time {

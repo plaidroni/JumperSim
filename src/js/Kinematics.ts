@@ -51,10 +51,15 @@ export class KinematicTrack {
     if (time >= this.samples[this.samples.length - 1].time)
       return this.samples[this.samples.length - 1];
 
-    let i = 0;
-    while (i < this.samples.length - 1 && this.samples[i + 1].time < time) {
-      i++;
+    // binary search: samples are time-ordered but not evenly spaced
+    let lo = 0;
+    let hi = this.samples.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (this.samples[mid].time < time) lo = mid;
+      else hi = mid;
     }
+    const i = lo;
 
     const a = this.samples[i];
     const b = this.samples[i + 1];

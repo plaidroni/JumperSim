@@ -1,3 +1,4 @@
+import { DEFAULT_PULL_FT } from "../physics/Canopy";
 import { getGroundHeight } from "../terrain/GroundHeight";
 import * as THREE from "three";
 import { SimPlane } from "./SimEntities";
@@ -119,6 +120,8 @@ export class Jumper {
   flyingStyle: FlyingStyle;
   /** Break off and track at TRACK_START_FT (ignored for wingsuits). */
   tracking: boolean = true;
+  /** Height above the DZ (ft) where the jumper throws the pilot chute. */
+  pullAltitudeFt: number = DEFAULT_PULL_FT;
 
   constructor(
     index: number,
@@ -218,6 +221,7 @@ export class Jumper {
       linked: this.linked,
       flyingStyle: this.flyingStyle,
       tracking: this.tracking,
+      pullAltitudeFt: this.pullAltitudeFt,
       weight: this.weight,
       extraWeight: this.extraWeight,
       surfaceArea: this.surfaceArea,

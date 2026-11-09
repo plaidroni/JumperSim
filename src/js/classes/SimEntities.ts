@@ -26,6 +26,23 @@ import {
   samplePath,
   smoothstep,
 } from "../physics/FormationFlight";
+import {
+  CANOPY,
+  CanopyPerformance,
+  DEFAULT_PULL_FT,
+  DEPLOY,
+  DeploymentTimes,
+  NAV,
+  SQFT_PER_M2,
+  canopyPerformance,
+  canopyPose,
+  deploymentTimes,
+  exitWeightKg,
+  headingQuaternion,
+  phaseAt,
+  poseHeading,
+  turnToward,
+} from "../physics/Canopy";
 
 const v_grav = new THREE.Vector3(0, -9.81, 0);
 const drag_air = 0.2;
@@ -115,6 +132,14 @@ export class SimJumper extends Jumper {
   formationEndTime: number | null = null;
   /** Status text while in formation, e.g. "In round". */
   formationStatus: string | null = null;
+  /** Pull → bag → line stretch → open times (null if they never pull). Set by precalculate. */
+  deployment: DeploymentTimes | null = null;
+  /** Steady canopy flight numbers for this jumper's exit weight and canopy. */
+  canopyPerf: CanopyPerformance | null = null;
+  /** Peak deceleration during the opening, in g. */
+  openingPeakG = 0;
+  /** Height (m above the DZ) at full open. */
+  openAltitudeM: number | null = null;
 
   constructor(
     index: number,
@@ -280,10 +305,72 @@ export class SimJumper extends Jumper {
       }
     }
 
-    for (let t = 0; t <= duration; t += step) {
-      const simTime = t;
+    // ----- deployment + canopy -----
+    const pullAltM = feetToMeters(this.pullAltitudeFt ?? DEFAULT_PULL_FT);
+    const exitKg = exitWeightKg(this.weight, this.extraWeight);
+    const perf = canopyPerformance(exitKg, this.canopySize);
+    const fullCanopyDragArea = CANOPY.resultantCoeff * (this.canopySize / SQFT_PER_M2);
+    // everyone deploys flat and stable (a wingsuit's lift is gone once it pitches up)
+    const deployBodyArea = BODY_POSITIONS.belly.dragAreaM2;
+    const surgeBlend = 1 - Math.exp(-step / DEPLOY.surgeTauS);
+    const maxTurn = THREE.MathUtils.degToRad(NAV.turnRateDegS) * step;
+    this.canopyPerf = perf;
+    this.deployment = null;
+    this.openingPeakG = 0;
+    this.openAltitudeM = null;
+    let deploy: DeploymentTimes | null = null;
+    const heading = jumpRunDir.clone();
+    const pullPose = new THREE.Quaternion();
+    const openPose = new THREE.Quaternion();
+
+    // Landing pattern: final is flown into the surface wind (or along jump run when
+    // calm); each jumper gets their own spot in a small grid around the DZ target.
+    const surfaceWind = windVectorAt(10).setY(0);
+    const landingHeading =
+      surfaceWind.length() > NAV.minWindForFinalMs
+        ? surfaceWind.clone().negate().normalize()
+        : jumpRunDir.clone();
+    const landingCross = new THREE.Vector3(-landingHeading.z, 0, landingHeading.x);
+    const landingTarget = landingCross
+      .clone()
+      .multiplyScalar(((this.index % 5) - 2) * 12)
+      .addScaledVector(landingHeading, Math.floor(this.index / 5) * 15);
+
+    this.angle.copy(headingQuaternion(jumpRunDir));
+
+    /** Air heading that steers this canopy through its landing pattern. */
+    const desiredHeading = (pos: THREE.Vector3, wind: THREE.Vector3) => {
+      const h = Math.max(0, pos.y - getGroundHeight(landingTarget.x, landingTarget.z));
+      // ground speed on final and the distance it covers from this height
+      const finalGround = Math.max(0.5, perf.horizontalMs + wind.dot(landingHeading));
+      const R = (h / perf.verticalMs) * finalGround;
+      // aim at the point on the final approach line for this height
+      const aim = landingTarget.clone().addScaledVector(landingHeading, -R);
+      const toAim = aim.sub(pos).setY(0);
+      const dist = toAim.length();
+      if (dist < 25 + 0.1 * R) return landingHeading.clone(); // on final / holding
+      toAim.divideScalar(dist);
+      // crab: cancel the crosswind so the ground track points at the aim point
+      const crossWind = wind.clone().setY(0).addScaledVector(toAim, -wind.dot(toAim));
+      const c = crossWind.length();
+      if (c >= perf.horizontalMs) return toAim;
+      return toAim
+        .multiplyScalar(Math.sqrt(perf.horizontalMs ** 2 - c * c))
+        .sub(crossWind)
+        .normalize();
+    };
+
+    // Freefall and the opening are sampled every step; settled canopy flight and
+    // time in the plane every 0.1 s (the tracks interpolate between samples).
+    const coarseEvery = Math.max(1, Math.round(0.1 / step));
+    const steps = Math.floor(duration / step + 1e-9);
+
+    for (let i = 0; i <= steps; i++) {
+      const simTime = i * step;
+      let coarse = false;
 
       if (simTime < this.jumpTime) {
+        coarse = true;
         const sample = (this.plane as SimPlane).track.getInterpolatedSample(
           simTime
         );
@@ -302,67 +389,101 @@ export class SimJumper extends Jumper {
           currentPosition = g.position.clone().add(exitOffset.clone().lerp(slot, dock));
           this.velocity = g.velocity.clone();
           if (facing) this.angle.copy(facing);
-        } else if (this.hasLanded) {
-          // stay put on the ground
-          this.velocity.set(0, 0, 0);
         } else {
           const wind = windVectorAt(currentPosition.y);
 
-          // Break off and track below TRACK_START_FT (if this jumper tracks)
-          if (tracks && !trackingStarted && currentPosition.y <= trackingStartAltitudeM) {
-            trackingStarted = true;
-            this.trackStartTime = simTime;
+          // Pull: the deployment sequence starts and tracking stops
+          if (!deploy && currentPosition.y <= pullAltM) {
+            deploy = deploymentTimes(simTime);
+            this.deployment = deploy;
+            pullPose.copy(this.angle);
+            poseHeading(this.angle, heading);
           }
-          const gliding = isWingsuit || trackingStarted;
-          const A = trackingStarted ? TRACK_SPEC.dragAreaM2 : spec.dragAreaM2;
-          const k = 0.5 * Cd * rho0 * A; // drag = k·v²
+          const phase = phaseAt(deploy, simTime);
 
-          if (!gliding) {
-            // Plain freefall: drag opposes the full air-relative velocity, so the exit
-            // throw bleeds off naturally while the jumper drifts with the wind.
-            const relativeVelocity = this.velocity.clone().sub(wind);
-            const speed = relativeVelocity.length();
-            const drag = relativeVelocity
-              .clone()
-              .normalize()
-              .multiplyScalar(-k * speed * speed);
-            const acceleration = drag
-              .divideScalar(mass)
-              .add(new THREE.Vector3(0, -g, 0));
-            this.velocity.add(acceleration.multiplyScalar(step));
+          if (phase.phase === "freefall") {
+            // Break off and track below TRACK_START_FT (if this jumper tracks)
+            if (tracks && !trackingStarted && currentPosition.y <= trackingStartAltitudeM) {
+              trackingStarted = true;
+              this.trackStartTime = simTime;
+            }
+            const gliding = isWingsuit || trackingStarted;
+            const A = trackingStarted ? TRACK_SPEC.dragAreaM2 : spec.dragAreaM2;
+            const k = 0.5 * Cd * rho0 * A; // drag = k·v²
+
+            if (!gliding) {
+              // Plain freefall: drag opposes the full air-relative velocity, so the exit
+              // throw bleeds off naturally while the jumper drifts with the wind.
+              const relativeVelocity = this.velocity.clone().sub(wind);
+              const speed = relativeVelocity.length();
+              const drag = relativeVelocity
+                .clone()
+                .normalize()
+                .multiplyScalar(-k * speed * speed);
+              const acceleration = drag
+                .divideScalar(mass)
+                .add(new THREE.Vector3(0, -g, 0));
+              this.velocity.add(acceleration.multiplyScalar(step));
+            } else {
+              // Gliding (track or wingsuit): drag sets the fall rate from the vertical
+              // speed, and the body converts it into forward speed at the glide ratio.
+              const vy = this.velocity.y;
+              const ay = -g + (k * vy * vy * (vy < 0 ? 1 : -1)) / mass;
+              this.velocity.y += ay * step;
+
+              const glide = isWingsuit ? spec.glideRatio : TRACK_SPEC.glideRatio;
+              const horizSpeed = Math.abs(this.velocity.y) * glide;
+              const targetX = trackingDir.x * horizSpeed + wind.x;
+              const targetZ = trackingDir.z * horizSpeed + wind.z;
+              // ease into the new horizontal speed rather than snapping to it
+              this.velocity.x += (targetX - this.velocity.x) * glideBlend;
+              this.velocity.z += (targetZ - this.velocity.z) * glideBlend;
+              // head along the glide direction
+              this.angle.slerp(headingQuaternion(trackingDir), glideBlend);
+            }
+          } else if (phase.phase !== "canopy" || simTime < deploy!.openTime) {
+            // Pilot chute → bag → inflation: the body plus whatever is out behind it,
+            // as plain drag against the air-relative velocity.
+            const sincePull = simTime - deploy!.pullTime;
+            let A =
+              deployBodyArea +
+              DEPLOY.pilotChuteDragAreaM2 * Math.min(1, sincePull / 0.4);
+            if (phase.phase !== "pilot-chute") A += DEPLOY.bagDragAreaM2;
+            if (phase.phase === "canopy") {
+              // snivel: the canopy's area grows slowly at first, then bangs open
+              A += fullCanopyDragArea * Math.pow(phase.progress, 2.4);
+            }
+            const rel = this.velocity.clone().sub(wind);
+            const speed = rel.length();
+            const drag = rel.multiplyScalar(-0.5 * Cd * rho0 * A * speed);
+            const dragG = drag.length() / exitKg / g;
+            if (dragG > this.openingPeakG) this.openingPeakG = dragG;
+            this.velocity.addScaledVector(
+              drag.divideScalar(exitKg).add(v_grav),
+              step
+            );
+            if (phase.phase === "canopy") {
+              // swing from flat to hanging under the wing as it inflates
+              canopyPose(heading, openPose);
+              this.angle.copy(pullPose).slerp(openPose, smoothstep(phase.progress));
+            }
           } else {
-            // Gliding (track or wingsuit): drag sets the fall rate from the vertical
-            // speed, and the body converts it into forward speed at the glide ratio.
-            const vy = this.velocity.y;
-            const ay = -g + (k * vy * vy * (vy < 0 ? 1 : -1)) / mass;
-            this.velocity.y += ay * step;
+            // Canopy flight: wing loading sets the airspeed, glide ratio splits it
+            // into forward and down; the wind carries the whole thing.
+            if (this.openAltitudeM === null) this.openAltitudeM = currentPosition.y;
+            turnToward(heading, desiredHeading(currentPosition, wind), maxTurn);
 
-            const glide = isWingsuit ? spec.glideRatio : TRACK_SPEC.glideRatio;
-            const horizSpeed = Math.abs(this.velocity.y) * glide;
-            const targetX = trackingDir.x * horizSpeed + wind.x;
-            const targetZ = trackingDir.z * horizSpeed + wind.z;
-            // ease into the new horizontal speed rather than snapping to it
-            this.velocity.x += (targetX - this.velocity.x) * glideBlend;
-            this.velocity.z += (targetZ - this.velocity.z) * glideBlend;
-
-            // Debug arrow: intended glide direction (on the jumper mesh)
-            try {
-              const length = THREE.MathUtils.clamp(horizSpeed, 1, 8);
-              if (!this.debugArrow) {
-                this.debugArrow = new THREE.ArrowHelper(
-                  trackingDir.clone(),
-                  new THREE.Vector3(0, 0, 0),
-                  length,
-                  this.debugArrowColor
-                );
-                this.getMesh()?.add(this.debugArrow);
-              } else {
-                this.debugArrow.setDirection(trackingDir.clone());
-                this.debugArrow.setLength(length, length * 0.2, length * 0.2);
-                this.debugArrow.position.set(0, 0, 0);
-                (this.debugArrow as any).visible = true;
-              }
-            } catch {}
+            const groundY = getGroundHeight(currentPosition.x, currentPosition.z);
+            const flare = smoothstep((6 - (currentPosition.y - groundY)) / 6);
+            const target = heading
+              .clone()
+              .multiplyScalar(perf.horizontalMs * (1 - 0.55 * flare))
+              .setY(-perf.verticalMs * (1 - 0.75 * flare))
+              .add(new THREE.Vector3(wind.x, 0, wind.z));
+            // surge into steady flight after opening (and on every turn)
+            this.velocity.lerp(target, surgeBlend);
+            canopyPose(heading, this.angle);
+            coarse = simTime > deploy!.openTime + 3 * DEPLOY.surgeTauS && flare === 0;
           }
 
           currentPosition.add(this.velocity.clone().multiplyScalar(step));
@@ -377,13 +498,17 @@ export class SimJumper extends Jumper {
         }
       }
 
-      this.track.addSample(
-        simTime,
-        currentPosition.clone(),
-        this.velocity.clone(),
-        this.angle.clone()
-      );
+      if (!coarse || i % coarseEvery === 0 || this.hasLanded) {
+        this.track.addSample(
+          simTime,
+          currentPosition.clone(),
+          this.velocity.clone(),
+          this.angle.clone()
+        );
+      }
+      if (this.hasLanded) break; // the track holds its last sample from here on
     }
+    if (this.debugArrow) (this.debugArrow as any).visible = false;
   }
 }
 

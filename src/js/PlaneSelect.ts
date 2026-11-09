@@ -1,3 +1,4 @@
+import { SIM_DURATION_S } from "./physics/SimWindow";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SimPlane } from "./classes/SimEntities";
@@ -95,7 +96,7 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
         scene.add(planeMesh);
 
         updateStatus(""); // loaded: nothing to say
-        simPlane.precalculate(300);
+        simPlane.precalculate(SIM_DURATION_S);
       }
     },
     function (xhr) {

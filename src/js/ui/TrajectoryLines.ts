@@ -62,6 +62,14 @@ export function updateTrajectoryLines(
       targetSamples++;
     }
 
+    // tracks change length when the jump is recalculated: grow the buffer to fit
+    if ((line.geometry.attributes.position.array as Float32Array).length < samples.length * 3) {
+      line.geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(samples.length * 3), 3)
+      );
+    }
+
     // update the positions to new buffer target
     const buffer = line.geometry.attributes.position.array as Float32Array;
     for (let i = 0; i < targetSamples; i++) {

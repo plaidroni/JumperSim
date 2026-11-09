@@ -205,10 +205,24 @@ export function initializeSceneObjects(src: Sources) {
         ],
         ["Weight", `${Math.round(j.weight)} kg (+${Math.round(j.extraWeight || 0)})`],
         [
+          "Canopy",
+          `${Math.round(j.canopySize)} sq ft` +
+            (j.canopyPerf
+              ? ` · WL ${j.canopyPerf.wingLoading.toFixed(2)} · ${Math.round(j.canopyPerf.horizontalMs * MS_TO_MPH)}/${Math.round(j.canopyPerf.verticalMs * MS_TO_MPH)} mph`
+              : ""),
+        ],
+        [
           "Exit",
           `${j.jumpTime.toFixed(1)} s` +
             (j.trackStartTime !== null ? ` · Tracks ${j.trackStartTime.toFixed(1)} s` : "") +
+            (j.deployment ? ` · Pulls ${j.deployment.pullTime.toFixed(1)} s` : "") +
             (j.landTime !== null ? ` · Lands ${j.landTime.toFixed(1)} s` : ""),
+        ],
+        [
+          "Opening",
+          j.deployment && j.openAltitudeM !== null
+            ? `${fmtFt(j.openAltitudeM)} open · ${j.openingPeakG.toFixed(1)} g peak`
+            : "–",
         ],
         ["Nearest", nearest(j, t)],
       ];
