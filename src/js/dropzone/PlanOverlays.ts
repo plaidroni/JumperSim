@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { SimJumper, SimPlane } from "../classes/SimEntities";
-import { DANGER_KINDS, primaryLandingZone, type DropzonePlan } from "./DropzonePlan";
+import { DANGER_KINDS, mainLandingZone, type DropzonePlan } from "./DropzonePlan";
 import { enToXZ, FT, offsetPolyline, polygonCentroid, type XZ } from "./geometry";
 import {
   flyCanopyPattern,
@@ -218,28 +218,15 @@ export class PlanOverlays {
     const lift = planner ? 5 : 2;
 
     // ---------------------------------------------------------------- landing zones
+    const mainLz = mainLandingZone(plan);
     if (layers.lz) {
       for (const lz of plan.landingZones) {
         if (lz.polygon.length < 3) continue;
         const pts = lz.polygon.map(enToXZ);
         g.add(fill(pts, COLORS.lz, lz.id === i.selectedId ? 0.35 : 0.2));
         g.add(line(pts.map((p) => ground(p, lift)), lineMat(COLORS.lz), true));
-        const t = lz.target ? enToXZ(lz.target) : polygonCentroid(pts);
-        const ring: THREE.Vector3[] = [];
-        for (let k = 0; k <= 24; k++) {
-          const a = (k / 24) * Math.PI * 2;
-          ring.push(ground({ x: t.x + Math.cos(a) * 8, z: t.z + Math.sin(a) * 8 }, lift));
-        }
-        g.add(line(ring, lineMat(COLORS.lz)));
-        if (lz.spreadM > 0) {
-          const sp: THREE.Vector3[] = [];
-          for (let k = 0; k <= 48; k++) {
-            const a = (k / 48) * Math.PI * 2;
-            sp.push(ground({ x: t.x + Math.cos(a) * lz.spreadM, z: t.z + Math.sin(a) * lz.spreadM }, lift));
-          }
-          g.add(line(sp, lineMat(COLORS.lz, 0.5, true)));
-        }
-        this.label(`${lz.primary ? "★ " : ""}${lz.name}`, ground(polygonCentroid(pts), lift + 1), "#7dffa8", 16);
+        const isMain = mainLz?.id === lz.id;
+        this.label(`${isMain ? "Main · " : ""}${lz.name}`, ground(polygonCentroid(pts), lift + 1), "#7dffa8", 16);
       }
     }
 
@@ -260,13 +247,24 @@ export class PlanOverlays {
 
     // ---------------------------------------------------------------- canopy pattern
     this.flown = null;
-    const lz = primaryLandingZone(plan);
-    if (layers.canopy && plan.canopyPattern && lz) {
-      const T = lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ));
+    if (layers.canopy && plan.canopyPattern) {
       const landingWind = i.wind.length ? meanWind(i.wind, 0, 250 * FT) : null;
-      const flown = flyCanopyPattern(plan.canopyPattern, T, landingWind);
+      const flown = flyCanopyPattern(plan.canopyPattern, landingWind);
       this.flown = flown;
-      const drawn = [...plan.canopyPattern.points.map(enToXZ), T];
+      const drawn = plan.canopyPattern.points.map(enToXZ);
+      const T = drawn[3];
+      // touchdown the user picked, and the spread around it
+      const tRing: THREE.Vector3[] = [];
+      const sp: THREE.Vector3[] = [];
+      for (let k = 0; k <= 48; k++) {
+        const a = (k / 48) * Math.PI * 2;
+        tRing.push(ground({ x: T.x + Math.cos(a) * 6, z: T.z + Math.sin(a) * 6 }, lift + 1));
+        const r = plan.canopyPattern.spreadM ?? 30;
+        sp.push(ground({ x: T.x + Math.cos(a) * r, z: T.z + Math.sin(a) * r }, lift + 1));
+      }
+      g.add(line(tRing, lineMat(COLORS.canopy)));
+      g.add(line(sp, lineMat(COLORS.canopy, 0.45, true)));
+      this.label("Touchdown", ground(T, lift + 1), "#ffe27a", 14);
       // mirror image of the drawn pattern (always shown faint so both can be checked)
       const f = { x: T.x - drawn[2].x, z: T.z - drawn[2].z };
       const fl = Math.hypot(f.x, f.z) || 1;

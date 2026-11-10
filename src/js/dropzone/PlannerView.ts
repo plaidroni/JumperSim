@@ -8,7 +8,8 @@ import {
   getDropzonePlan,
   newId,
   onPlanChanged,
-  primaryLandingZone,
+  planReferencePoint,
+  DEFAULT_SPREAD_M,
   redo,
   snapshotPlan,
   undo,
@@ -23,7 +24,6 @@ import {
   FT,
   headingDegOf,
   pointInPolygon,
-  polygonCentroid,
   xzToEN,
   type EN,
   type XZ,
@@ -96,7 +96,7 @@ const TOOL_HINTS: Record<PlannerTool, string> = {
   jumprun: "Drag the green start to move · drag the arrowhead to rotate (Shift: 5° steps, Alt: about the middle) · drag the line to slide · ←/→ rotate · R reverses",
   lz: "Click to add corners · click the first corner, double-click or press Enter to close",
   danger: "",
-  canopy: "Click 3 points: downwind start (1,000 ft) → turn to base (500 ft) → turn to final (250 ft). Final runs to the LZ target.",
+  canopy: "Click 4 points: downwind start (1,000 ft) → turn to base (500 ft) → turn to final (250 ft) → touchdown",
   tracking: "Click waypoints from the jumprun out · Enter or double-click to finish (last point = deploy area)",
   wingsuit: "Click waypoints from the jumprun out · Enter or double-click to finish (last point = deploy area)",
 };
@@ -229,8 +229,7 @@ export function initializePlanner(d: Deps): Planner {
       if (b.dataset.zoom === "fit") fitPlan();
       else {
         viewW = Number(b.dataset.zoom);
-        const lz = primaryLandingZone(getDropzonePlan());
-        if (lz) center = lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ));
+        center = enToXZ(planReferencePoint(getDropzonePlan()));
       }
     }),
   );
@@ -274,7 +273,23 @@ export function initializePlanner(d: Deps): Planner {
       rebuild();
     });
   }
-  document.getElementById("open-planner")?.addEventListener("click", () => toggle());
+  document.getElementById("open-planner")?.addEventListener("click", () => enter());
+
+  // Planning always happens in the top-down view: showing the Dropzone tab or working
+  // in it enters the planner.
+  window.addEventListener("tab-shown", (e: any) => {
+    if (e.detail?.tab === "dropzone" && !active) enter();
+  });
+  document.getElementById("dropzone-panel-body")?.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (active) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('[data-act="planner"]')) return; // that button toggles on its own
+      enter();
+    },
+    { capture: true },
+  );
 
   // ---------------------------------------------------------------- camera
   const vw = () => Math.max(1, vp.clientWidth);
@@ -397,10 +412,6 @@ export function initializePlanner(d: Deps): Planner {
         hs.push({ p: { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 }, kind: "mid", index: i });
       }
     }
-    if (sel.kind === "lz") {
-      const lz = plan.landingZones.find((z) => z.id === sel.id);
-      if (lz?.target) hs.push({ p: enToXZ(lz.target), kind: "target", index: 0 });
-    }
     return hs;
   }
 
@@ -432,9 +443,7 @@ export function initializePlanner(d: Deps): Planner {
         if (distToPolyline(pts, w.x, w.z) < tol) return { kind: "freefall", id: f.id };
       }
     if (layers.canopy && plan.canopyPattern) {
-      const lz = primaryLandingZone(plan);
       const pts = plan.canopyPattern.points.map(enToXZ);
-      if (lz) pts.push(lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ)));
       if (distToPolyline(pts, w.x, w.z) < tol) return { kind: "canopy", id: "canopy" };
     }
     if (layers.danger)
@@ -627,12 +636,13 @@ export function initializePlanner(d: Deps): Planner {
 
   function readout(w: XZ) {
     const el = hud.querySelector(".planner-readout") as HTMLElement;
-    const lz = primaryLandingZone(getDropzonePlan());
-    const t = lz ? (lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ))) : { x: 0, z: 0 };
+    const plan = getDropzonePlan();
+    const t = enToXZ(planReferencePoint(plan));
+    const lz = plan.canopyPattern ? "touchdown" : plan.landingZones.length ? "LZ" : "DZ";
     const dist = Math.hypot(w.x - t.x, w.z - t.z);
     const brg = headingDegOf(w.x - t.x, w.z - t.z);
     const elev = getGroundHeight(w.x, w.z);
-    el.textContent = `${dist >= 1000 ? (dist / 1000).toFixed(2) + " km" : Math.round(dist) + " m"} at ${Math.round(brg)}° from ${lz ? "target" : "DZ"} · ground ${elev >= 0 ? "+" : ""}${Math.round(elev / FT)} ft`;
+    el.textContent = `${dist >= 1000 ? (dist / 1000).toFixed(2) + " km" : Math.round(dist) + " m"} at ${Math.round(brg)}° from ${lz} · ground ${elev >= 0 ? "+" : ""}${Math.round(elev / FT)} ft`;
   }
 
   // ---------------------------------------------------------------- enter / exit
@@ -663,9 +673,9 @@ export function initializePlanner(d: Deps): Planner {
       document.body.classList.add("planner-active");
       bar.hidden = hint.hidden = hud.hidden = false;
       planBtn.hidden = true;
-      const lz = primaryLandingZone(getDropzonePlan());
-      if (lz) {
-        center = lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ));
+      const plan = getDropzonePlan();
+      if (plan.canopyPattern || plan.landingZones.length) {
+        center = enToXZ(planReferencePoint(plan));
         viewW = 1800;
       } else fitPlan();
       updateCamera();
@@ -676,6 +686,15 @@ export function initializePlanner(d: Deps): Planner {
     rebuild();
     emit();
     (window as any).dock?.open?.("dropzone");
+    // show the top-down view straight away, even before the render loop's next frame
+    // (or before it has started while the map is still loading)
+    updateCamera();
+    update(0);
+    try {
+      d.renderer.render(d.scene, camera);
+    } catch {
+      /* first frame can fail before the scene is ready; the loop will draw it */
+    }
   }
 
   function exit() {
@@ -740,17 +759,8 @@ export function initializePlanner(d: Deps): Planner {
     const plan = getDropzonePlan();
     if (tool === "lz" && pts.length >= 3) {
       const id = newId("lz");
-      const c = polygonCentroid(drawing);
       updatePlan((p) => {
-        const first = !p.landingZones.some((z) => z.primary);
-        p.landingZones.push({
-          id,
-          name: first ? "Main LZ" : `LZ ${p.landingZones.length + 1}`,
-          primary: first,
-          polygon: pts,
-          target: xzToEN(c.x, c.z),
-          spreadM: 40,
-        });
+        p.landingZones.push({ id, name: `LZ ${p.landingZones.length + 1}`, polygon: pts });
       });
       drawing = [];
       setTool("select");
@@ -816,16 +826,13 @@ export function initializePlanner(d: Deps): Planner {
 
   function addPoint(w: XZ, dbl = false) {
     if (tool === "canopy") {
-      if (!primaryLandingZone(getDropzonePlan())) {
-        (window as any).notificationManager?.warning?.("Draw a landing zone first: final runs to its target.");
-        return;
-      }
       drawing.push(w);
-      if (drawing.length === 3) {
-        const pts = drawing.map((p) => xzToEN(p.x, p.z)) as [EN, EN, EN];
+      if (drawing.length === 4) {
+        const pts = drawing.map((p) => xzToEN(p.x, p.z)) as [EN, EN, EN, EN];
         updatePlan((p) => {
           p.canopyPattern = {
             points: pts,
+            spreadM: p.canopyPattern?.spreadM ?? DEFAULT_SPREAD_M,
             legAltitudesFt: p.canopyPattern?.legAltitudesFt ?? [...DEFAULT_LEG_ALTS],
             orientation: p.canopyPattern?.orientation ?? "flip",
             calmThresholdKt: p.canopyPattern?.calmThresholdKt ?? 3,
@@ -943,7 +950,6 @@ export function initializePlanner(d: Deps): Planner {
         if (sel.kind === "lz") {
           const z = p.landingZones.find((x) => x.id === sel.id)!;
           z.polygon = orig.polygon.map(mv);
-          z.target = mv(orig.target);
         } else if (sel.kind === "danger") {
           const z = p.dangerZones.find((x) => x.id === sel.id)!;
           z.shape.points = orig.shape.points.map(mv);
@@ -994,11 +1000,7 @@ export function initializePlanner(d: Deps): Planner {
     const sel = selection;
     if (!sel) return;
     updatePlan((p) => {
-      if (sel.kind === "lz") {
-        const wasPrimary = p.landingZones.find((z) => z.id === sel.id)?.primary;
-        p.landingZones = p.landingZones.filter((z) => z.id !== sel.id);
-        if (wasPrimary && p.landingZones[0]) p.landingZones[0].primary = true;
-      }
+      if (sel.kind === "lz") p.landingZones = p.landingZones.filter((z) => z.id !== sel.id);
       if (sel.kind === "danger") p.dangerZones = p.dangerZones.filter((z) => z.id !== sel.id);
       if (sel.kind === "canopy") p.canopyPattern = null;
       if (sel.kind === "freefall") {

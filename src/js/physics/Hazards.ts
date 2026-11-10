@@ -5,7 +5,6 @@ import {
   enToXZ,
   FT,
   pointInPolygon,
-  polygonCentroid,
   type XZ,
 } from "../dropzone/geometry";
 import { getGroundHeight } from "../terrain/GroundHeight";
@@ -28,7 +27,8 @@ export interface ResolvedZone {
 export interface ResolvedLZ {
   lz: LandingZone;
   pts: XZ[];
-  target: XZ;
+  /** Contains the landing pattern's touchdown. */
+  main: boolean;
 }
 
 export function resolveZones(plan: DropzonePlan | null): ResolvedZone[] {
@@ -52,14 +52,14 @@ export function resolveZones(plan: DropzonePlan | null): ResolvedZone[] {
 
 export function resolveLandingZones(plan: DropzonePlan | null): ResolvedLZ[] {
   if (!plan) return [];
+  const t = plan.canopyPattern ? enToXZ(plan.canopyPattern.points[3]) : null;
   return plan.landingZones
     .filter((lz) => lz.polygon.length >= 3)
     .map((lz) => {
       const pts = lz.polygon.map(enToXZ);
-      const target = lz.target ? enToXZ(lz.target) : polygonCentroid(pts);
-      return { lz, pts, target };
+      return { lz, pts, main: !!t && pointInPolygon(pts, t.x, t.z) };
     })
-    .sort((a, b) => Number(b.lz.primary) - Number(a.lz.primary));
+    .sort((a, b) => Number(b.main) - Number(a.main));
 }
 
 export function zoneContains(rz: ResolvedZone, x: number, z: number): boolean {

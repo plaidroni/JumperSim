@@ -11,6 +11,33 @@ import {
 
 /** Creates the image overlay draped over the terrain for a given map style. */
 export function createImageryOverlay(key: ImageryKey) {
+  return guardOverlay(buildOverlay(key));
+}
+
+/**
+ * 3d-tiles-renderer 0.5.x can report a tile's visibility to an overlay before that
+ * overlay has worked out the tile's image region (range is still null while a newly
+ * added overlay is loading, e.g. right after switching map style). The overlay then
+ * throws inside the tiles update and that exception stops the app's render loop.
+ * Skip those early calls: the plugin marks the region visible itself once it is ready.
+ */
+function guardOverlay<T extends object>(overlay: T): T {
+  const o = overlay as any;
+  const orig = o.setRegionVisible?.bind(o);
+  if (!orig) return overlay;
+  o.setRegionVisible = (range: any, ...rest: any[]) => {
+    if (!range) return;
+    try {
+      return orig(range, ...rest);
+    } catch (err) {
+      // a region hidden more times than shown: harmless, never worth stopping the map
+      console.debug("Imagery overlay region bookkeeping skipped", err);
+    }
+  };
+  return overlay;
+}
+
+function buildOverlay(key: ImageryKey) {
   switch (key) {
     case "mapbox-dark":
       return new XYZTilesOverlay({

@@ -893,7 +893,22 @@ systemsOK.then(() => {
   const lines = simJumpers.map(createDynamicTrajectoryLine);
   lines.forEach((l) => scene.add(l));
 
+  // Three.js stops the animation loop for good if a frame throws, which freezes the
+  // whole app (planner exit, dragging, playback). Log the error and keep going.
+  let lastFrameError = 0;
   renderer.setAnimationLoop(() => {
+    try {
+      renderFrame();
+    } catch (err) {
+      const t = performance.now();
+      if (t - lastFrameError > 5000) {
+        lastFrameError = t;
+        console.error("Frame failed; continuing", err);
+      }
+    }
+  });
+
+  function renderFrame() {
     const now = performance.now();
     const deltaTime = (now - lastFrameTime) / 1000;
     lastFrameTime = now;
@@ -938,7 +953,7 @@ systemsOK.then(() => {
         ...simJumpers.map((j) => j.getMesh()),
       ] as Array<THREE.Object3D | null>);
     if (!planner?.active) updateCameraFollow();
-  });
+  }
 });
 /**
  *potentially uncomment later, need to downsize 3mf file or get new stl from amanda

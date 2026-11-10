@@ -17,10 +17,11 @@ export interface Jumprun {
 export interface LandingZone {
   id: string;
   name: string;
-  primary: boolean;
   polygon: EN[];
-  target: EN;
-  spreadM: number;
+  /** Old plans only (before touchdown moved to the pattern); ignored. */
+  primary?: boolean;
+  target?: EN;
+  spreadM?: number;
 }
 
 export type DangerKind =
@@ -47,8 +48,10 @@ export interface DangerZone {
 }
 
 export interface CanopyPattern {
-  /** Downwind start, turn to base, turn to final. Final runs to the primary LZ target. */
-  points: [EN, EN, EN];
+  /** Downwind start, turn to base, turn to final, touchdown — all picked by the user. */
+  points: [EN, EN, EN, EN];
+  /** Jumpers' touchdown points are spread this far around the picked touchdown (m). */
+  spreadM: number;
   /** Downwind, base, final start altitudes (ft AGL). */
   legAltitudesFt: [number, number, number];
   orientation: "flip" | "fixed";
@@ -267,19 +270,73 @@ export function importPlanJSON(text: string): string | null {
 
 function validatePlan(raw: any): DropzonePlan | null {
   if (!raw || raw.version !== 1) return null;
+  const landingZones: LandingZone[] = Array.isArray(raw.landingZones) ? raw.landingZones : [];
+  let canopyPattern: any = raw.canopyPattern ?? null;
+  if (canopyPattern && Array.isArray(canopyPattern.points) && canopyPattern.points.length === 3) {
+    // plans saved before the touchdown was part of the pattern: keep the touchdown the
+    // user had placed in their LZ; without one the pattern has to be redrawn
+    const old = landingZones.find((z) => z.primary && z.target) ?? landingZones.find((z) => z.target);
+    canopyPattern = old?.target
+      ? { ...canopyPattern, points: [...canopyPattern.points, old.target] }
+      : null;
+  }
+  if (canopyPattern && typeof canopyPattern.spreadM !== "number")
+    canopyPattern = { ...canopyPattern, spreadM: old_spread(landingZones) };
   return {
     version: 1,
     dropzone: String(raw.dropzone ?? ""),
     jumprun: raw.jumprun ?? null,
-    landingZones: Array.isArray(raw.landingZones) ? raw.landingZones : [],
+    landingZones,
     dangerZones: Array.isArray(raw.dangerZones) ? raw.dangerZones : [],
-    canopyPattern: raw.canopyPattern ?? null,
+    canopyPattern,
     freefallPatterns: Array.isArray(raw.freefallPatterns) ? raw.freefallPatterns : [],
   };
 }
 
-export function primaryLandingZone(p: DropzonePlan = plan): LandingZone | null {
-  return p.landingZones.find((z) => z.primary) ?? p.landingZones[0] ?? null;
+function old_spread(lzs: LandingZone[]): number {
+  const s = lzs.find((z) => z.primary)?.spreadM;
+  return typeof s === "number" ? s : DEFAULT_SPREAD_M;
+}
+
+export const DEFAULT_SPREAD_M = 30;
+
+/** The touchdown point the user picked as the end of the landing pattern. */
+export function patternTouchdown(p: DropzonePlan = plan): EN | null {
+  return p.canopyPattern?.points[3] ?? null;
+}
+
+/** The landing zone the pattern lands in (the one containing its touchdown), if any. */
+export function mainLandingZone(p: DropzonePlan = plan): LandingZone | null {
+  const t = patternTouchdown(p);
+  if (!t) return null;
+  return p.landingZones.find((z) => z.polygon.length >= 3 && inPolygonEN(z.polygon, t)) ?? null;
+}
+
+/** @deprecated use mainLandingZone */
+export const primaryLandingZone = mainLandingZone;
+
+function inPolygonEN(pts: EN[], p: EN): boolean {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i];
+    const b = pts[j];
+    if (a.n > p.n !== b.n > p.n && p.e < ((b.e - a.e) * (p.n - a.n)) / (b.n - a.n) + a.e) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Reference point for jumprun offsets and the planner view: the picked touchdown, else
+ * the middle of the first landing zone, else the DZ origin. Never used as a landing spot.
+ */
+export function planReferencePoint(p: DropzonePlan = plan): EN {
+  const t = patternTouchdown(p);
+  if (t) return t;
+  const lz = p.landingZones.find((z) => z.polygon.length >= 3);
+  if (!lz) return { e: 0, n: 0 };
+  const e = lz.polygon.reduce((s, q) => s + q.e, 0) / lz.polygon.length;
+  const n = lz.polygon.reduce((s, q) => s + q.n, 0) / lz.polygon.length;
+  return { e, n };
 }
 
 export function defaultFreefallPattern(kind: "tracking" | "wingsuit", p: DropzonePlan = plan) {

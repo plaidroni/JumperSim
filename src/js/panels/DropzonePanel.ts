@@ -4,14 +4,15 @@ import {
   exportPlanJSON,
   getDropzonePlan,
   importPlanJSON,
-  primaryLandingZone,
+  mainLandingZone,
+  planReferencePoint,
   resetPlanToDefault,
   updatePlan,
   emptyPlan,
   type DangerKind,
   type FreefallPattern,
 } from "../dropzone/DropzonePlan";
-import { enToXZ, FT, polygonCentroid, xzToEN } from "../dropzone/geometry";
+import { enToXZ, FT, xzToEN } from "../dropzone/geometry";
 import { exitPoints, offsetFromTarget, planeJumprun, rotateJumprunAbout } from "../dropzone/Jumprun";
 import {
   flyCanopyPattern,
@@ -67,12 +68,15 @@ export function initializeDropzonePanel(planner: Planner) {
   function warnings(): Warning[] {
     const plan = getDropzonePlan();
     const out: Warning[] = [];
-    const lz = primaryLandingZone(plan);
-    if ((plan.canopyPattern || plan.dangerZones.length) && !lz) out.push({ text: "No primary landing zone" });
+    const lz = mainLandingZone(plan);
+    if (!plan.canopyPattern && plan.landingZones.length)
+      out.push({ text: "No landing pattern yet: press C in the planner and pick the legs and touchdown" });
+    if (plan.canopyPattern && plan.landingZones.length && !lz)
+      out.push({ text: "The pattern's touchdown isn't inside a landing zone", sel: { kind: "canopy", id: "canopy" } });
     if (!currentWindProfile().length && plan.canopyPattern) out.push({ text: "No wind data: pattern shown as drawn" });
     const zones = resolveZones(plan);
-    if (plan.canopyPattern && lz && zones.length) {
-      const T = lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ));
+    if (plan.canopyPattern && zones.length) {
+      const T = enToXZ(plan.canopyPattern.points[3]);
       const alts = [...plan.canopyPattern.legAltitudesFt.map((a) => a * FT), 0];
       const names = ["Downwind", "Base", "Final"];
       const check = (pts: { x: number; z: number }[], label: string) => {
@@ -84,8 +88,8 @@ export function initializeDropzonePanel(planner: Planner) {
             });
         }
       };
-      const drawn = [...plan.canopyPattern.points.map(enToXZ), T];
-      const mirrored = flyCanopyPattern({ ...plan.canopyPattern, orientation: "flip" }, T, (() => {
+      const drawn = plan.canopyPattern.points.map(enToXZ);
+      const mirrored = flyCanopyPattern({ ...plan.canopyPattern, orientation: "flip" }, (() => {
         // a wind that forces the mirror: blowing along the drawn final
         const f = { x: T.x - drawn[2].x, z: T.z - drawn[2].z };
         return { x: f.x * 10, z: f.z * 10 };
@@ -95,7 +99,7 @@ export function initializeDropzonePanel(planner: Planner) {
     }
     // spot check: exits that can't make the main LZ
     const jumpers = planner.jumpers();
-    if (lz) {
+    if (plan.canopyPattern) {
       const exits = exitPoints(planner.plane(), jumpers);
       const bad = exits.filter((e) => e.jumper.landingOutcome && e.jumper.landingOutcome.kind !== "lz" || e.jumper.canopyAlternate).map((e) => e.order);
       if (bad.length) {
@@ -109,7 +113,7 @@ export function initializeDropzonePanel(planner: Planner) {
             a = b = n;
           }
         }
-        out.push({ text: `Exit${bad.length > 1 ? "s" : ""} ${runs.join(", ")} can't make ${lz.name}`, sel: { kind: "jumprun", id: "jumprun" } });
+        out.push({ text: `Exit${bad.length > 1 ? "s" : ""} ${runs.join(", ")} can't make ${lz ? lz.name : "the landing pattern"}`, sel: { kind: "jumprun", id: "jumprun" } });
       }
     }
     for (const j of jumpers) {
@@ -130,7 +134,8 @@ export function initializeDropzonePanel(planner: Planner) {
     let h = `<div class="dzp-group">Jumprun</div>`;
     h += row({ kind: "jumprun", id: "jumprun" }, "Jumprun", `${Math.round((plan.jumprun ?? planeJumprun(planner.plane())).headingDeg)}°`);
     h += `<div class="dzp-group">Landing zones</div>`;
-    h += plan.landingZones.map((z) => row({ kind: "lz", id: z.id }, `${z.primary ? "★ " : ""}${esc(z.name)}`)).join("") || `<div class="dzp-empty">None · press L in the planner</div>`;
+    const main = mainLandingZone(plan);
+    h += plan.landingZones.map((z) => row({ kind: "lz", id: z.id }, esc(z.name), main?.id === z.id ? "Main" : "")).join("") || `<div class="dzp-empty">None · press L in the planner</div>`;
     h += `<div class="dzp-group">Danger zones</div>`;
     h +=
       plan.dangerZones.map((z) => row({ kind: "danger", id: z.id }, esc(z.name), `${DANGER_KINDS[z.kind].label} · ${z.ceilingFt} ft`)).join("") ||
@@ -161,7 +166,7 @@ export function initializeDropzonePanel(planner: Planner) {
     const times = [...new Set(exits.map((e) => e.t))].sort((a, b) => a - b);
     const gap = Number((plane as any).planeLoad?.jumpIntervalSeconds) || (times.length > 1 ? times[1] - times[0] : 0);
     const off = offsetFromTarget(jr);
-    const lz = primaryLandingZone(plan);
+    const lz = mainLandingZone(plan) ?? (plan.canopyPattern ? { name: "touchdown" } : null);
     return `
       <div class="dzp-card">
         <div class="dzp-row"><label>Heading</label><input type="number" step="1" data-jr="heading" value="${Math.round(jr.headingDeg)}"><span>° true</span></div>
@@ -189,8 +194,7 @@ export function initializeDropzonePanel(planner: Planner) {
       if (!z) return "";
       return `<div class="dzp-card">
         <div class="dzp-row"><label>Name</label><input type="text" data-f="name" value="${esc(z.name)}"></div>
-        <div class="dzp-row"><label>Primary</label><input type="checkbox" data-f="primary"${z.primary ? " checked" : ""}><span>holds the landing target and pattern</span></div>
-        <div class="dzp-row"><label>Spread</label><input type="number" step="5" min="0" data-f="spreadM" value="${z.spreadM}"><span>m around the target</span></div>
+        <div class="dzp-note">${mainLandingZone(plan)?.id === z.id ? "The landing pattern's touchdown is in this zone." : "Jumpers use this zone only when they can't make the landing pattern."}</div>
         <div class="dzp-row dzp-buttons"><button data-act="delete" class="danger">Delete</button></div></div>`;
     }
     if (sel.kind === "danger") {
@@ -223,6 +227,7 @@ export function initializeDropzonePanel(planner: Planner) {
         <div class="dzp-row"><label>Downwind</label><input type="number" step="50" data-alt="0" value="${c.legAltitudesFt[0]}"><span>ft</span></div>
         <div class="dzp-row"><label>Base</label><input type="number" step="50" data-alt="1" value="${c.legAltitudesFt[1]}"><span>ft</span></div>
         <div class="dzp-row"><label>Final</label><input type="number" step="50" data-alt="2" value="${c.legAltitudesFt[2]}"><span>ft</span></div>
+        <div class="dzp-row" title="Each jumper's touchdown is spread this far around the one you picked"><label>Spread</label><input type="number" step="5" min="0" data-f="spreadM" value="${c.spreadM ?? 30}"><span>m around touchdown</span></div>
         <div class="dzp-row"><label>Orientation</label><select data-f="orientation">
           <option value="flip"${c.orientation === "flip" ? " selected" : ""}>Flip (mirror into the wind)</option>
           <option value="fixed"${c.orientation === "fixed" ? " selected" : ""}>Fixed (as drawn)</option></select></div>
@@ -338,11 +343,7 @@ export function initializeDropzonePanel(planner: Planner) {
       const sel = planner.selection;
       if (!sel) return;
       updatePlan((p) => {
-        if (sel.kind === "lz") {
-          const was = p.landingZones.find((z) => z.id === sel.id)?.primary;
-          p.landingZones = p.landingZones.filter((z) => z.id !== sel.id);
-          if (was && p.landingZones[0]) p.landingZones[0].primary = true;
-        }
+        if (sel.kind === "lz") p.landingZones = p.landingZones.filter((z) => z.id !== sel.id);
         if (sel.kind === "danger") p.dangerZones = p.dangerZones.filter((z) => z.id !== sel.id);
         if (sel.kind === "canopy") p.canopyPattern = null;
         if (sel.kind === "freefall") {
@@ -369,9 +370,7 @@ export function initializeDropzonePanel(planner: Planner) {
           if (sel.kind === "lz") {
             const z = p.landingZones.find((x) => x.id === sel.id);
             if (!z) return;
-            if (key === "primary") {
-              if (val) p.landingZones.forEach((x) => (x.primary = x.id === z.id));
-            } else (z as any)[key] = val;
+            (z as any)[key] = val;
           } else if (sel.kind === "danger") {
             const z = p.dangerZones.find((x) => x.id === sel.id);
             if (!z) return;
@@ -467,8 +466,7 @@ export function initializeDropzonePanel(planner: Planner) {
       const prof = currentWindProfile();
       if (!prof.length) return;
       const w = upperWind(prof, planner.plane().initialPosition.y);
-      const lz = primaryLandingZone(getDropzonePlan());
-      const pivot = lz ? (lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ))) : { x: 0, z: 0 };
+      const pivot = enToXZ(planReferencePoint(getDropzonePlan()));
       updatePlan((p) => (p.jumprun = { ...rotateJumprunAbout(jr(), intoWindHeading(w), pivot), mode: "fixed" }));
     });
     jrAct("reverse", () => {

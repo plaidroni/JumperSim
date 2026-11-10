@@ -71,10 +71,9 @@ export function getPlanContext(plane: SimPlane, wind: WindLevel[]): PlanContext 
   const plan = getDropzonePlan();
   const zones = resolveZones(plan);
   const lzs = resolveLandingZones(plan);
-  const primary = lzs.find((r) => r.lz.primary) ?? lzs[0] ?? null;
+  const primary = lzs.find((r) => r.main) ?? null;
   const landingWind = wind.length ? meanWind(wind, 0, 250 * FT) : null;
-  const flown =
-    plan.canopyPattern && primary ? flyCanopyPattern(plan.canopyPattern, primary.target, landingWind) : null;
+  const flown = plan.canopyPattern ? flyCanopyPattern(plan.canopyPattern, landingWind) : null;
   const frame = jumprunFrameOf(plane);
   const resolved = new Map<string, ResolvedFreefallPattern>();
   for (const p of plan.freefallPatterns) if (p.legs.length) resolved.set(p.id, resolveFreefallPattern(p, frame));
@@ -113,17 +112,17 @@ export function getPlanContext(plane: SimPlane, wind: WindLevel[]): PlanContext 
     }
   };
 
-  // aim points: a golden-angle spiral inside the LZ spread radius, clipped to the LZ
+  // aim points: a golden-angle spiral around the touchdown the user picked, kept inside
+  // its landing zone. No landing pattern → no aim point (nothing is assumed).
   const aimFor = (j: SimJumper): XZ | null => {
-    if (!primary) return null;
+    if (!flown || !plan.canopyPattern) return null;
+    const T = flown.points[3];
     const k = Math.max(0, j.index);
-    const spread = Math.max(0, primary.lz.spreadM ?? 40);
+    const spread = Math.max(0, plan.canopyPattern.spreadM ?? 30);
     const r = spread * Math.sqrt(((k % 16) + 0.5) / 16);
     const a = k * 2.39996;
-    return clampToPolygon(primary.pts, {
-      x: primary.target.x + Math.cos(a) * r,
-      z: primary.target.z + Math.sin(a) * r,
-    });
+    const p = { x: T.x + Math.cos(a) * r, z: T.z + Math.sin(a) * r };
+    return primary ? clampToPolygon(primary.pts, p) : p;
   };
 
   cacheKey = key;

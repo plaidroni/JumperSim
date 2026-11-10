@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { CanopyPerformance } from "./Canopy";
 import type { FlownPattern } from "../dropzone/patternMath";
 import type { XZ } from "../dropzone/geometry";
-import { FT } from "../dropzone/geometry";
+import { clampToPolygon, FT, polygonCentroid } from "../dropzone/geometry";
 import { hazardAt, maxCeilingM, type ResolvedLZ, type ResolvedZone } from "./Hazards";
 import { crabHeading, headingToward, rotateHeading } from "./Steering";
 import { getGroundHeight } from "../terrain/GroundHeight";
@@ -98,13 +98,22 @@ export class CanopyGuidance {
       return;
     }
     // alternates, nearest first (straight-in into the wind)
+    // aim for the nearest part of each alternate LZ (20 m in from its edge), not its centre
+    const spotIn = (r: ResolvedLZ): XZ => {
+      const edge = clampToPolygon(r.pts, { x: pos.x, z: pos.z });
+      const c = polygonCentroid(r.pts);
+      const d = Math.hypot(c.x - edge.x, c.z - edge.z) || 1;
+      const k = Math.min(20, d) / d;
+      return { x: edge.x + (c.x - edge.x) * k, z: edge.z + (c.z - edge.z) * k };
+    };
     const others = this.i.lzs
-      .filter((r) => !r.lz.primary)
-      .sort((a, b) => Math.hypot(a.target.x - pos.x, a.target.z - pos.z) - Math.hypot(b.target.x - pos.x, b.target.z - pos.z));
-    for (const r of others) {
-      if (reach(r.target, 0, 50 * FT)) {
+      .filter((r) => !r.main)
+      .map((r) => ({ r, spot: spotIn(r) }))
+      .sort((a, b) => Math.hypot(a.spot.x - pos.x, a.spot.z - pos.z) - Math.hypot(b.spot.x - pos.x, b.spot.z - pos.z));
+    for (const { r, spot } of others) {
+      if (reach(spot, 0, 50 * FT)) {
         this.alternate = r;
-        this.target = { ...r.target };
+        this.target = spot;
         this.phase = "straight-in";
         return;
       }

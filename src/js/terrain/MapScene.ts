@@ -231,11 +231,22 @@ export class MapScene {
     this.tick();
   }
 
+  private lastTileError = 0;
+
   private tick() {
     if (!this.terrain && !this.buildings) return;
     this.camera.updateMatrixWorld();
-    this.terrain?.update();
-    if (this.buildings && this.options.buildings) this.buildings.update();
+    // a tile streaming error must never stop the map (or the app's render loop)
+    try {
+      this.terrain?.update();
+      if (this.buildings && this.options.buildings) this.buildings.update();
+    } catch (err) {
+      const now = performance.now();
+      if (now - this.lastTileError > 5000) {
+        this.lastTileError = now;
+        console.warn("Map tiles update failed; continuing", err);
+      }
+    }
   }
 
   /** Render the map for another camera (the planner's top-down view) and back. */

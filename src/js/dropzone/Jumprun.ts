@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { SimJumper, SimPlane } from "../classes/SimEntities";
-import { getDropzonePlan, primaryLandingZone, type Jumprun } from "./DropzonePlan";
-import { dirOfHeading, enToXZ, headingDegOf, polygonCentroid, xzToEN, type XZ } from "./geometry";
+import { getDropzonePlan, planReferencePoint, type Jumprun } from "./DropzonePlan";
+import { dirOfHeading, enToXZ, headingDegOf, xzToEN, type XZ } from "./geometry";
 import { intoWindHeading, upperWind } from "./patternMath";
 import type { WindLevel } from "../wind/WindProfile";
 
@@ -23,10 +23,9 @@ export function planeJumprun(plane: SimPlane): Jumprun {
   };
 }
 
+/** The landing pattern's touchdown (or the LZ / DZ when there's no pattern yet). */
 function lzTarget(): XZ {
-  const lz = primaryLandingZone(getDropzonePlan());
-  if (!lz) return { x: 0, z: 0 };
-  return lz.target ? enToXZ(lz.target) : polygonCentroid(lz.polygon.map(enToXZ));
+  return enToXZ(planReferencePoint(getDropzonePlan()));
 }
 
 /**

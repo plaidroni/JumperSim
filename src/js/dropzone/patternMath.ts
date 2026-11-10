@@ -115,8 +115,9 @@ export function patternHand(pts: XZ[]): "left" | "right" {
  * more into the landing wind (DZ-style flip). `wind` is the landing wind (m/s, XZ),
  * or null when there is no weather.
  */
-export function flyCanopyPattern(pattern: CanopyPattern, target: XZ, wind: XZ | null): FlownPattern {
+export function flyCanopyPattern(pattern: CanopyPattern, wind: XZ | null): FlownPattern {
   const drawn = pattern.points.map(enToXZ) as XZ[];
+  const target = drawn[3];
   const p2 = drawn[2];
   const fl = Math.hypot(target.x - p2.x, target.z - p2.z) || 1;
   const f = { x: (target.x - p2.x) / fl, z: (target.z - p2.z) / fl };
@@ -132,7 +133,7 @@ export function flyCanopyPattern(pattern: CanopyPattern, target: XZ, wind: XZ | 
     // into-wind is −wind; flip when the drawn final points downwind
     mirrored = f.x * -wind.x + f.z * -wind.z < -1e-9;
   }
-  const pts = mirrored ? drawn.map((p) => mirrorPoint(p, target, f)) : drawn;
+  const pts = mirrored ? drawn.slice(0, 3).map((p) => mirrorPoint(p, target, f)) : drawn.slice(0, 3);
   const fin = mirrored ? { x: -f.x, z: -f.z } : f;
   return {
     points: [pts[0], pts[1], pts[2], { ...target }],

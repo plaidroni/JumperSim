@@ -641,3 +641,18 @@ src/js/utils/AlignJumprun.ts
 
   When height runs short on downwind or base, the jumper turns final early.
 - **Exit altitude:** the plane still starts at its fixed 13,000 ft. The Jump Height input isn't wired to it, as before this work.
+- **Touchdown is picked by hand.** The canopy pattern tool takes **4 clicks**:
+  - downwind start;
+  - turn to base;
+  - turn to final;
+  - **touchdown**.
+
+  Effects:
+  - Landing zones no longer have a target, a "primary" flag or a spread.
+  - The LZ that contains the touchdown is shown as **Main**.
+  - The spread (default 30 m) belongs to the pattern, and each jumper's touchdown is spread around the picked point.
+  - Nobody aims for the middle of an LZ:
+    - an alternate LZ is approached at its nearest part, 20 m in from the edge;
+    - with no pattern drawn, jumpers keep the old straight-in to the DZ, and the Dropzone tab asks for a pattern.
+  - Plans saved earlier are converted on load: the old LZ target becomes the touchdown.
+- **Render-loop safety:** a frame or map-tile error is logged and the app keeps running, instead of freezing the view. Before, a 3d-tiles-renderer imagery race when switching map style stopped the render loop, so the view stayed frozen in top-down after leaving the planner. That race is now guarded in `terrain/imagery.ts`.
