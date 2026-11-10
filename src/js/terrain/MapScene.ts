@@ -1,3 +1,4 @@
+import { WORLD_SCALE, worldRoot } from "../core/WorldScale";
 import * as THREE from "three";
 import { TilesRenderer } from "3d-tiles-renderer/three";
 import {
@@ -394,7 +395,7 @@ export class MapScene {
 
     tiles.setCamera(this.camera);
     tiles.setResolutionFromRenderer(this.camera, this.renderer);
-    this.scene.add(tiles.group);
+    worldRoot.add(tiles.group);
     this.terrain = tiles;
     this.terrainReorient = reorient;
   }
@@ -450,7 +451,7 @@ export class MapScene {
     tiles.setCamera(this.camera);
     tiles.setResolutionFromRenderer(this.camera, this.renderer);
     tiles.group.visible = this.terrain?.group.visible ?? false;
-    this.scene.add(tiles.group);
+    worldRoot.add(tiles.group);
     this.buildings = tiles;
     this.buildingsReorient = reorient;
   }
@@ -554,7 +555,7 @@ export class MapScene {
     this.grid = new THREE.GridHelper(PLANE_SIZE, 16);
     this.grid.visible = this.options.showGrid;
     (window as any).gridHelper = this.grid;
-    this.scene.add(this.grid);
+    worldRoot.add(this.grid);
 
     this.heightAxis = new HeightAxis({
       maxHeight: 5500, // ~18000 ft in meters
@@ -562,7 +563,7 @@ export class MapScene {
       majorInterval: 304.8, // ~1000 ft in meters
     });
     (window as any).heightAxis = this.heightAxis;
-    this.scene.add(this.heightAxis.getObject());
+    worldRoot.add(this.heightAxis.getObject());
 
     // wind arrows on the tower (x = the tower's position at the grid edge)
     this.windTower = new WindTower(PLANE_SIZE / 2, TOWER_TOP_M);
@@ -570,7 +571,7 @@ export class MapScene {
     this.heightAxis.getObject().add(this.windTower.object);
 
     this.scene.add(this.hemiLight);
-    this.scene.fog = new THREE.Fog(THEME[this.options.imagery].fog, 15000, 60000);
+    this.scene.fog = new THREE.Fog(THEME[this.options.imagery].fog, 15000 * WORLD_SCALE, 60000 * WORLD_SCALE);
     this.applyTheme();
   }
 
@@ -591,7 +592,7 @@ export class MapScene {
     this.fallbackPlane = new THREE.Mesh(geometry, material);
     this.fallbackPlane.rotation.x = -Math.PI / 2;
     (window as any).mapPlane = this.fallbackPlane;
-    this.scene.add(this.fallbackPlane);
+    worldRoot.add(this.fallbackPlane);
     if (this.grid) this.grid.visible = true;
     setGroundProvider(null);
     this.applyTheme();
@@ -602,7 +603,7 @@ export class MapScene {
     this.rebuildTimer = null;
     for (const tiles of [this.terrain, this.buildings]) {
       if (!tiles) continue;
-      this.scene.remove(tiles.group);
+      worldRoot.remove(tiles.group);
       tiles.dispose();
     }
     this.buildingMaterials.forEach((m) => m.dispose());
@@ -624,7 +625,7 @@ export class MapScene {
     this.windTower = null;
     for (const obj of [this.grid, this.heightAxis?.getObject(), this.fallbackPlane]) {
       if (!obj) continue;
-      this.scene.remove(obj);
+      obj?.removeFromParent();
       disposeObject(obj);
     }
     this.scene.remove(this.hemiLight);

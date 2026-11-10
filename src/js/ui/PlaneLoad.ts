@@ -8,6 +8,7 @@ import {
   BODY_POSITION_ORDER,
   MS_TO_MPH,
   TRACK_START_FT,
+  TRACK_LEAD_FT,
   normalizeBodyPosition,
 } from "../physics/BodyPositions";
 import {
@@ -489,7 +490,7 @@ export class PlaneLoad {
       <th style="text-align:left">#</th>
       <th style="text-align:left">Name</th>
       <th style="text-align:left" title="Freefall body position (sets the drag area)">Position</th>
-      <th style="text-align:left" title="Break off at ${TRACK_START_FT.toLocaleString()} ft and track away">Track</th>
+      <th style="text-align:left" title="Break off at ${TRACK_START_FT.toLocaleString()} ft (or ${TRACK_LEAD_FT.toLocaleString()} ft above the pull) and track away">Track</th>
       <th style="text-align:left">Wt (kg)</th>
       <th style="text-align:left" title="Canopy size (sq ft)">Canopy</th>
       <th style="text-align:right" title="${WL_HINT}">WL</th>
@@ -559,7 +560,7 @@ export class PlaneLoad {
         track.checked = canTrack && j.tracking;
         track.disabled = !canTrack;
         track.title = canTrack
-          ? `Break off at ${TRACK_START_FT.toLocaleString()} ft (rounds: their breakoff altitude) and track away`
+          ? `Break off at ${TRACK_START_FT.toLocaleString()} ft (rounds: their breakoff altitude), at least ${TRACK_LEAD_FT.toLocaleString()} ft above the pull, and track away`
           : "Tracks the whole jump";
         if (!canTrack) track.checked = true;
       };
@@ -1115,9 +1116,8 @@ export class PlaneLoad {
       if (el && el.textContent !== text) el.textContent = text;
     };
     set("load-size", String(this.jumpers.length));
-    // plane.speed is m/s (times simScale)
-    const scale = (window as any).simScale || 1;
-    set("plane-speed", String(Math.round(this.plane.speed / scale / 0.51444)));
+    // plane.speed is m/s
+    set("plane-speed", String(Math.round(this.plane.speed / 0.51444)));
     const d = this.plane.direction;
     if (Math.hypot(d.x, d.z) < 1e-6) {
       set("plane-direction", "N/A");

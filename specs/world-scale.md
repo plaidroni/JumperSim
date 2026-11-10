@@ -1,6 +1,6 @@
 # Spec: World Scale (map, plane and jumpers in proportion)
 
-**Status:** Draft for implementation
+**Status:** Implemented. §12 lists the decisions and where the build differs from this text.
 **Scope:** new `src/js/core/WorldScale.ts`. Changes to:
 - `src/js/Scripts.ts`
 - `src/js/PlaneSelect.ts`
@@ -264,3 +264,20 @@ The camera now has to be 5.8× farther away to show the same patch of map, so ju
 1. **Body length.** The scale assumes the jumper model is 1.8 m from head to toe. If a typical jumper should read smaller (1.7 m) or larger, `WORLD_SCALE` moves with it (1.7 m → 6.1).
 2. **Aircraft exaggeration.** Should the planes stay slightly larger than true for readability (for example ×1.25 on top of true size), or be strictly true size as specified?
 3. **Marker style.** Plain coloured dots, or small arrows showing each jumper's heading?
+
+---
+
+## 12. Decisions and as-built notes
+
+- **Body length:** 1.8 m, so `WORLD_SCALE = 5.8` (`core/WorldScale.ts`). The jumper STL is drawn at `1.8 / 10.4` m per unit.
+- **Aircraft:**
+  - drawn **1.25× true size** for readability (`PLANE_READABILITY`), so 7.25× on screen against the jumpers' 5.8×;
+  - true size comes from `unitsToMetres` in `PlaneSelect.ts` (1 for the GLBs, 0.0203 for the DC-9);
+  - door offsets are scaled by the same 1.25 so jumpers leave from the drawn door.
+- **Markers:** a plain dot with an arrowhead pointing along the direction of travel (`visuals/Markers.ts`).
+  - Landed or stationary objects show only the dot.
+  - Jumpers still in the plane have no marker.
+  - Markers are 18 px. They show below 8 px of model size and are hidden above 16 px.
+  - Clicking a marker selects its jumper or the plane.
+- **Depth:** the logarithmic depth buffer is on. The planner and plan overlays keep a constant pixel size by dividing by `WORLD_SCALE`, because they live under the world root. The wind tower labels do the same.
+- **Planner fix found while testing:** quick clicks while drawing a shape no longer count as a double-click. A double-click must also land within 6 px of the previous click.

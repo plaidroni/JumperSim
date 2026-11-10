@@ -1,3 +1,5 @@
+import { JUMPER_UNITS_TO_M, WORLD_SCALE, sceneToWorld, worldRoot } from "./core/WorldScale";
+import { initializeMarkers, markerObjects, updateMarkers } from "./visuals/Markers";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -46,12 +48,17 @@ import { initializePlanner, type Planner } from "./dropzone/PlannerView";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
-const renderer = new THREE.WebGLRenderer();
+// everything positioned in metres (map, plane, jumpers, lines, overlays) lives under
+// worldRoot, drawn WORLD_SCALE× larger (specs/world-scale.md)
+scene.add(worldRoot);
+// the scaled world spans ~50 km of scene units: a log depth buffer keeps near terrain
+// and far terrain free of z-fighting
+const renderer = new THREE.WebGLRenderer({ logarithmicDepthBuffer: true });
 const camera = new THREE.PerspectiveCamera(
   50,
   window.innerWidth / window.innerHeight,
   0.5, // was 0.1; a larger near plane avoids z-fighting on distant terrain
-  100000,
+  100000 * WORLD_SCALE,
 );
 const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -118,7 +125,7 @@ scene.add(new THREE.AxesHelper(5));
 
 let clock = new THREE.Clock();
 
-camera.position.set(0, 108, 30);
+camera.position.set(0, 108 * WORLD_SCALE, 30 * WORLD_SCALE);
 controls.update();
 
 // === TOOLTIP ===
@@ -159,7 +166,7 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   pressAt = null;
   if (moved > 4 || isEditingPlane || isAligningJumprun || planner?.active) return;
   onMouseMove(e);
-  pickAt([simPlane.getMesh(), ...simJumpers.map((j) => j.getMesh())]);
+  pickAt([simPlane.getMesh(), ...simJumpers.map((j) => j.getMesh()), ...markerObjects()]);
 });
 
 function onMouseMove(event) {
@@ -294,7 +301,7 @@ function collectTwoAlignPoints(
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObject(mapPlane, true);
       if (intersects.length > 0) {
-        points.push(intersects[0].point.clone());
+        points.push(sceneToWorld(intersects[0].point)); // scene units → metres
         if (points.length === 2) {
           renderer.domElement.removeEventListener("click", onClick);
           resolve([points[0], points[1]]);
@@ -354,7 +361,7 @@ function drawAlignArrow() {
   const length = p1.distanceTo(p2);
   alignArrow = new THREE.ArrowHelper(dir, p1, length, 0xff0000, length * 0.1);
 
-  scene.add(alignArrow);
+  worldRoot.add(alignArrow);
 }
 
 document
@@ -574,6 +581,8 @@ function setFollowingLabel(name: string | null) {
 /** Map a picked mesh (or one of its children) back to the plane or a jumper. */
 function findSceneObjectFor(obj: THREE.Object3D): { type: "plane" | "jumper"; id: string } | null {
   const planeMesh = simPlane.getMesh();
+  // a zoomed-out marker stands in for its jumper or the plane
+  if (obj.userData?.markerFor) obj = obj.userData.markerFor;
   for (let o: THREE.Object3D | null = obj; o; o = o.parent) {
     if (planeMesh && o === planeMesh) return { type: "plane", id: simPlane.id };
     const j = simJumpers.find((x) => x.getMesh() === o);
@@ -759,7 +768,7 @@ systemsOK.then(() => {
   // start initial precalculation for jumpers
   simPlane.precalculate(SIM_DURATION_S);
   precalculateJumpers(simJumpers, SIM_DURATION_S);
-  simJumpers.forEach((jumper) => scene.add(jumper.getMesh()));
+  simJumpers.forEach((jumper) => worldRoot.add(jumper.getMesh()));
   updateSimWindow(simJumpers);
 
   followTarget = simPlane.getMesh();
@@ -792,7 +801,8 @@ systemsOK.then(() => {
 
         const mesh = new THREE.Mesh(geometry, material);
 
-        mesh.scale.set(1, 1, 1);
+        // true size in the scaled world (10.4 model units = 1.8 m)
+        mesh.scale.setScalar(JUMPER_UNITS_TO_M);
 
         geometry.computeBoundingBox();
         const center = new THREE.Vector3();
@@ -819,7 +829,7 @@ systemsOK.then(() => {
         } else {
           // mesh.quaternion.copy(fixQuat);
         }
-        scene.add(jumper.getMesh());
+        worldRoot.add(jumper.getMesh());
       });
     },
     (xhr) => {
@@ -887,11 +897,11 @@ systemsOK.then(() => {
         )}, ${jumper.angle.z.toFixed(1)}) deg`,
       };
     });
-    updateCanopyRigs(scene, simJumpers, time);
+    updateCanopyRigs(worldRoot, simJumpers, time);
   }
 
   const lines = simJumpers.map(createDynamicTrajectoryLine);
-  lines.forEach((l) => scene.add(l));
+  lines.forEach((l) => worldRoot.add(l));
 
   // Three.js stops the animation loop for good if a frame throws, which freezes the
   // whole app (planner exit, dragging, playback). Log the error and keep going.
@@ -937,6 +947,7 @@ systemsOK.then(() => {
     (window as any).mapScene?.update();
 
     planner?.update(simulationTime);
+    updateMarkers(planner?.active ? planner.camera : camera, renderer, simulationTime);
     renderer.render(scene, planner?.active ? planner.camera : camera);
 
     camera.getWorldDirection(dir);
@@ -970,6 +981,7 @@ initializeDock();
 initializeTimeline();
 planner = initializePlanner({
   scene,
+  world: worldRoot,
   renderer,
   perspective: camera,
   controls,
@@ -978,6 +990,7 @@ planner = initializePlanner({
   jumpers: () => ((window as any).simJumpers as SimJumper[]) ?? simJumpers,
 });
 initializeWindWidget(camera, controls);
+initializeMarkers(scene, () => simPlane, () => ((window as any).simJumpers as SimJumper[]) ?? simJumpers);
 
 // Global access to notification system for use across the application
 (window as any).notificationManager = notificationManager;

@@ -1,3 +1,4 @@
+import { WORLD_SCALE } from "../core/WorldScale";
 import * as THREE from "three";
 import {
   MS_TO_KT,
@@ -268,7 +269,9 @@ function makeTextSprite(text: string, color: string): THREE.Sprite {
     fog: false,
   });
   const sprite = new THREE.Sprite(material);
-  const pxToScreen = 0.0006; // label height ≈ 24 px on a 1080p screen
+  // label height ≈ 24 px on a 1080p screen; the tower sits under the world root,
+  // whose scale would enlarge a screen-sized sprite too
+  const pxToScreen = 0.0006 / WORLD_SCALE;
   sprite.scale.set(w * pxToScreen, h * pxToScreen, 1);
   sprite.renderOrder = 3;
   return sprite;

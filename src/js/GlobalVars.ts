@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-(<any>(<any>window)).simScale = 1; // real-world scale
+// (window.simScale was removed: physics is always in metres; see specs/world-scale.md)
 
 // To Cole: use (<any>window).weatherSnapshotLog[0]
 // to get the current weather data

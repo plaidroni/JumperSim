@@ -12,6 +12,7 @@ import {
   GLIDE_TAU_S,
   TRACK_SPEC,
   TRACK_START_FT,
+  breakoffAltitudeFt,
   normalizeBodyPosition,
 } from "../physics/BodyPositions";
 import {
@@ -70,6 +71,8 @@ export class SimPlane extends Plane {
   linkedFormation: FormationShapeId = DEFAULT_FORMATION_SHAPE;
   // UI state holder, assigned at runtime to avoid circular imports
   planeLoad?: any;
+  /** Where jumpers leave the aircraft, metres in its frame (set by PlaneSelect). */
+  doorOffset = { right: 0, up: 0, back: 0 };
 
   constructor(
     position: THREE.Vector3,
@@ -241,8 +244,10 @@ export class SimJumper extends Jumper {
     let currentPosition = planeSampleAtJump
       ? planeSampleAtJump.position.clone().add(this.origin)
       : this.plane.position.clone().add(this.origin);
-    // Tracking / gliding parameters
-    const trackingStartAltitudeM = feetToMeters(TRACK_START_FT);
+    // Tracking / gliding parameters: solo jumpers break off at TRACK_START_FT, or
+    // higher when they pull high, so they always get to track before the pull
+    const myPullFt = this.pullAltitudeFt ?? DEFAULT_PULL_FT;
+    const trackingStartAltitudeM = feetToMeters(breakoffAltitudeFt(TRACK_START_FT, myPullFt));
     let trackingStarted = false;
     const glideBlend = 1 - Math.exp(-step / GLIDE_TAU_S);
     // Determine the intended horizontal tracking direction
@@ -316,7 +321,13 @@ export class SimJumper extends Jumper {
     let facing: THREE.Quaternion | null = null;
     this.formationEndTime = null;
     this.formationStatus = null;
+    // the round breaks off at its setting, or higher if any member pulls high
+    let roundBreakoffM = trackingStartAltitudeM;
     if (formation) {
+      const highestPullFt = Math.max(...formation.plan.members.map((m) => m.pullAltitudeFt ?? DEFAULT_PULL_FT));
+      roundBreakoffM = feetToMeters(
+        breakoffAltitudeFt(roundSettingsOf(this.plane as SimPlane).breakoffFt, highestPullFt)
+      );
       slot = formation.plan.slots[formation.slotIndex].clone();
       groupPath = formationPath(
         formation.plan,
@@ -324,7 +335,7 @@ export class SimJumper extends Jumper {
         windProfile,
         step,
         duration,
-        trackingStartAltitudeM
+        roundBreakoffM
       );
       this.formationEndTime = groupPath.endTime;
       this.formationStatus = formation.plan.shape.statusLabel || null;
@@ -464,7 +475,18 @@ export class SimJumper extends Jumper {
           simTime
         );
         if (sample) {
-          currentPosition = sample.position.clone();
+          // at the aircraft's door rather than its centre
+          const p = this.plane as SimPlane;
+          const fwd = new THREE.Vector3(p.direction.x, 0, p.direction.z);
+          if (fwd.lengthSq() < 1e-9) fwd.set(0, 0, -1);
+          fwd.normalize();
+          const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+          const door = p.doorOffset ?? { right: 0, up: 0, back: 0 };
+          currentPosition = sample.position
+            .clone()
+            .addScaledVector(right, door.right)
+            .addScaledVector(fwd, -door.back)
+            .add(new THREE.Vector3(0, door.up, 0));
           this.velocity = sample.velocity.clone();
         }
       } else {
@@ -529,7 +551,7 @@ export class SimJumper extends Jumper {
               this.trackStartTime = simTime;
             }
             // Break off and track below the breakoff altitude (if this jumper tracks)
-            const breakoffY = formation ? feetToMeters(roundSettings.breakoffFt) : trackingStartAltitudeM;
+            const breakoffY = formation ? roundBreakoffM : trackingStartAltitudeM;
             if (tracks && !trackingStarted && !breakoffHeld && currentPosition.y <= breakoffY) {
               trackingStarted = true;
               this.trackStartTime = simTime;

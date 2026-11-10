@@ -1,3 +1,4 @@
+import { WORLD_SCALE } from "../core/WorldScale";
 import * as THREE from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { SimJumper, SimPlane } from "../classes/SimEntities";
@@ -72,6 +73,8 @@ export interface Planner {
 
 interface Deps {
   scene: THREE.Scene;
+  /** The metre-frame root (core/WorldScale): plan visuals live here. */
+  world: THREE.Object3D;
   renderer: THREE.WebGLRenderer;
   perspective: THREE.PerspectiveCamera;
   controls: OrbitControls;
@@ -119,12 +122,13 @@ function loadBool(key: string, def: boolean) {
 }
 
 export function initializePlanner(d: Deps): Planner {
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 60000);
+  // plan coordinates are metres; the camera works in scene units (× WORLD_SCALE)
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 60000 * WORLD_SCALE);
   camera.up.set(0, 0, -1);
-  const overlays = new PlanOverlays(d.scene);
+  const overlays = new PlanOverlays(d.world);
   const handlesGroup = new THREE.Group();
   const previewGroup = new THREE.Group();
-  d.scene.add(handlesGroup, previewGroup);
+  d.world.add(handlesGroup, previewGroup);
 
   let active = false;
   let tool: PlannerTool = "select";
@@ -298,14 +302,15 @@ export function initializePlanner(d: Deps): Planner {
 
   function updateCamera() {
     const aspect = vw() / vh();
-    const h = viewW / aspect;
-    camera.left = -viewW / 2;
-    camera.right = viewW / 2;
+    const w = viewW * WORLD_SCALE;
+    const h = w / aspect;
+    camera.left = -w / 2;
+    camera.right = w / 2;
     camera.top = h / 2;
     camera.bottom = -h / 2;
     camera.zoom = 1;
-    camera.position.set(center.x, 30000, center.z);
-    camera.lookAt(center.x, 0, center.z);
+    camera.position.set(center.x * WORLD_SCALE, 30000 * WORLD_SCALE, center.z * WORLD_SCALE);
+    camera.lookAt(center.x * WORLD_SCALE, 0, center.z * WORLD_SCALE);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
   }
@@ -1036,6 +1041,7 @@ export function initializePlanner(d: Deps): Planner {
   // ---------------------------------------------------------------- input
   const el = d.renderer.domElement;
   let lastClick = 0;
+  let lastClickPos = { x: -1e9, y: -1e9 };
 
   el.addEventListener(
     "pointerdown",
@@ -1059,9 +1065,12 @@ export function initializePlanner(d: Deps): Planner {
       if (e.button !== 0) return;
       const drawingTool = tool === "lz" || tool === "danger" || tool === "canopy" || tool === "tracking" || tool === "wingsuit";
       if (drawingTool) {
+        // a double-click is two quick clicks on (nearly) the same spot
         const now = performance.now();
-        const dbl = now - lastClick < 300;
+        const dbl =
+          now - lastClick < 300 && Math.hypot(e.clientX - lastClickPos.x, e.clientY - lastClickPos.y) < 6;
         lastClick = now;
+        lastClickPos = { x: e.clientX, y: e.clientY };
         addPoint(w, dbl);
         return;
       }

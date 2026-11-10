@@ -1,3 +1,4 @@
+import { WORLD_SCALE } from "../core/WorldScale";
 import * as THREE from "three";
 import type { SimJumper, SimPlane } from "../classes/SimEntities";
 import { DANGER_KINDS, mainLandingZone, type DropzonePlan } from "./DropzonePlan";
@@ -185,7 +186,7 @@ export class PlanOverlays {
   /** The pattern drawn as flown (for the panel's label), updated on rebuild. */
   flown: FlownPattern | null = null;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Object3D) {
     this.group.name = "Dropzone plan";
     scene.add(this.group);
   }
@@ -421,6 +422,8 @@ export class PlanOverlays {
       const c = camera as THREE.PerspectiveCamera;
       k = (2 * Math.tan(THREE.MathUtils.degToRad(c.fov) / 2)) / viewportHeightPx;
     }
+    // labels sit under the world root, which scales them by WORLD_SCALE again
+    k /= WORLD_SCALE;
     for (const s of this.screen) {
       const h = s.px * k;
       s.obj.scale.set(h * s.aspect, h, 1);

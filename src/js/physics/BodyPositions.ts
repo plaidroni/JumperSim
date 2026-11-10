@@ -46,6 +46,17 @@ export const TRACK_SPEC = {
 
 /** Altitude (ft above the DZ) where jumpers with tracking on break off and track. */
 export const TRACK_START_FT = 4500;
+/**
+ * Jumpers always break off at least this far above their pull altitude, so there is
+ * time to track (≈ 6 s) before throwing the pilot chute. Without it, a pull altitude
+ * at or above the breakoff altitude meant the jumper pulled without ever tracking.
+ */
+export const TRACK_LEAD_FT = 1000;
+
+/** Breakoff altitude (ft) for a nominal breakoff and a pull altitude. */
+export function breakoffAltitudeFt(nominalFt: number, pullFt: number): number {
+  return Math.max(nominalFt, pullFt + TRACK_LEAD_FT);
+}
 
 /** Seconds to blend into a new horizontal speed (exit throw → track / wingsuit flight). */
 export const GLIDE_TAU_S = 2.0;

@@ -176,7 +176,7 @@ export function initializeSceneObjects(src: Sources) {
       const onBoard = src.jumpers().filter((j) => !hasJumperExited(j, plane, t)).length;
       title = `Plane · ${aircraftName()}`;
       rows = [
-        ["Speed", `${Math.round(plane.speed / ((window as any).simScale || 1) / 0.51444)} kt`],
+        ["Speed", `${Math.round(plane.speed / 0.51444)} kt`],
         ["Heading", `${String(headingDeg(plane.direction.x, plane.direction.z)).padStart(3, "0")}°`],
         ["Altitude", s ? fmtFt(s.position.y) : "–"],
         ["On board", `${onBoard} of ${src.jumpers().length}`],

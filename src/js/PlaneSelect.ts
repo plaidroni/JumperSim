@@ -1,3 +1,5 @@
+import { PLANE_READABILITY, worldRoot } from "./core/WorldScale";
+import { requestRecalculation } from "./core/data/SimulationVariables";
 import { SIM_DURATION_S } from "./physics/SimWindow";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -7,31 +9,41 @@ let currentPlane = null;
 let planeMesh: THREE.Mesh = null;
 const loader = new GLTFLoader();
 
+/**
+ * `unitsToMetres` converts each model to true size (the GLBs are already in metres;
+ * the DC-9 is in ~2 cm units). Aircraft are then drawn PLANE_READABILITY× larger.
+ * `door` is where jumpers leave, in metres in the aircraft frame:
+ * right of centreline, above the centre, behind the centre.
+ */
 const planeConfigs = {
   "cessna-172": {
     file: "fabs/cessna_fix.glb",
-    scale: [8, 8, 8],
+    unitsToMetres: 1, // 8.2 m long, 10.9 m span (real 8.3 m / 11.0 m)
+    door: { right: 0.8, up: -0.3, back: 0.4 }, // right-hand door, strut exit
     color: 0x00ff00,
     name: "Cessna-172",
     rotation: [0, 0, 0],
   },
   skyvan: {
     file: "fabs/skyvan_fix.glb",
-    scale: [8, 8, 8],
+    unitsToMetres: 1, // 12.2 m long, 19.8 m span (real 12.2 m / 19.8 m)
+    door: { right: 0, up: -0.8, back: 4.5 }, // rear ramp
     color: 0x0066ff,
     name: "Skyvan",
     rotation: [0, 0, 0],
   },
   "dc-9": {
     file: "fabs/dc9.gltf",
-    scale: [0.2, 0.2, 0.2],
+    unitsToMetres: 0.0203, // 1,567 units long = 31.8 m
+    door: { right: 0, up: -1.5, back: 14 }, // aft airstair
     color: 0xff6600,
     name: "DC-9",
     rotation: [0, 0, 0],
   },
   "twin-otter": {
     file: "fabs/twin_otter_fix.glb",
-    scale: [8, 8, 8],
+    unitsToMetres: 1, // 15.6 m long (real 15.8 m)
+    door: { right: -0.9, up: -0.4, back: 2.5 }, // rear left door
     color: 0xff0066,
     name: "Twin Otter",
     rotation: [0, 0, 0],
@@ -53,9 +65,9 @@ export function handlePlaneSelection(
   console.log(config.name);
   updateStatus("Loading…");
 
-  // remve existing plane
-  if (planeMesh && scene) {
-    scene.remove(planeMesh);
+  // remove existing plane
+  if (planeMesh) {
+    planeMesh.removeFromParent();
     planeMesh = null;
   }
 
@@ -77,7 +89,13 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
       });
 
       if (meshes.length > 0) {
-        gltf.scene.scale.set(...config.scale);
+        gltf.scene.scale.setScalar(config.unitsToMetres * PLANE_READABILITY);
+        // jumpers leave from the (drawn) door
+        simPlane.doorOffset = {
+          right: config.door.right * PLANE_READABILITY,
+          up: config.door.up * PLANE_READABILITY,
+          back: config.door.back * PLANE_READABILITY,
+        };
 
         if (config.rotation) {
           const [xDeg, yDeg, zDeg] = config.rotation;
@@ -93,10 +111,11 @@ function loadPlane(config, scene: THREE.Scene, simPlane: SimPlane) {
         planeMesh = gltf.scene;
 
         simPlane.setMesh(planeMesh);
-        scene.add(planeMesh);
+        worldRoot.add(planeMesh);
 
         updateStatus(""); // loaded: nothing to say
         simPlane.precalculate(SIM_DURATION_S);
+        requestRecalculation(); // exits move to the new aircraft's door
       }
     },
     function (xhr) {

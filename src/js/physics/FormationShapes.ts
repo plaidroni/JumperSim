@@ -58,10 +58,10 @@ export function breakoffDistance(n: number, settings: Partial<RoundSettings> | u
   return Math.max(minSep, minSep / (2 * Math.sin(Math.PI / n)));
 }
 
-/** Centre-to-centre spacing around a round (arm's-length grips). */
-export const ROUND_SPACING_M = 1.7;
-/** Smallest ring radius, so a 2- or 3-way still has room. */
-export const ROUND_MIN_RADIUS_M = 1.0;
+/** Hip-to-hip spacing between neighbours around a round (arm's-length grips). */
+export const ROUND_SPACING_M = 2.0;
+/** Smallest ring radius (hips to centre for a 4-way, heads in, hands gripped). */
+export const ROUND_MIN_RADIUS_M = 1.5;
 /** Seconds after exit for the group to close into its slots. */
 export const FORMATION_DOCK_S = 8;
 

@@ -7,12 +7,11 @@ import { canopyDimensions, DeploymentTimes, phaseAt, poseHeading } from "../phys
  * suspension lines and an arched 9-cell ram-air wing sized from the canopy's sq ft.
  *
  * Built in metres in a "trail frame" centred on the jumper: +Y points away from the
- * relative wind (up the lines), +Z is the canopy's heading. The group is scaled by the
- * same factor as the (exaggerated) jumper model so the two read at the same size.
+ * relative wind (up the lines), +Z is the canopy's heading. True size: it lives under
+ * the world root, which scales everything in metres (specs/world-scale.md).
  */
 
 const CELLS = 9;
-const BODY_LENGTH_M = 1.8;
 /** Riser confluence above the jumper's centre (shoulders). */
 const RISER_Y = 0.55;
 const RISER_HALF_WIDTH = 0.22;
@@ -58,7 +57,7 @@ export class CanopyRig {
   private ribPoints: THREE.Vector3[] = [];
   private cellMaterials: THREE.MeshLambertMaterial[];
 
-  constructor(color: THREE.Color, visualScale = 10.4 / BODY_LENGTH_M) {
+  constructor(color: THREE.Color, visualScale = 1) {
     this.group.name = "Canopy rig";
     this.group.userData.label = "Canopy";
     this.group.scale.setScalar(visualScale);
@@ -256,20 +255,8 @@ function colorOf(jumper: SimJumper): THREE.Color {
   return mat?.color ? mat.color.clone() : new THREE.Color(0xf5c518);
 }
 
-/** Model length ÷ real body length, so the rig matches the exaggerated jumper. */
-function visualScaleOf(jumper: SimJumper): number {
-  const mesh = jumper.getMesh() as THREE.Mesh;
-  const geo = mesh?.geometry as THREE.BufferGeometry | undefined;
-  if (!geo) return 10.4 / BODY_LENGTH_M;
-  if (!geo.boundingBox) geo.computeBoundingBox();
-  const size = geo.boundingBox!.getSize(new THREE.Vector3());
-  const length = Math.max(size.x, size.y, size.z) * mesh.scale.x;
-  // the placeholder sphere before the STL loads is tiny; keep the default then
-  return length > 2 ? length / BODY_LENGTH_M : 10.4 / BODY_LENGTH_M;
-}
-
 /** Create, update and retire one rig per jumper. Call whenever the scene time changes. */
-export function updateCanopyRigs(scene: THREE.Scene, jumpers: SimJumper[], t: number) {
+export function updateCanopyRigs(scene: THREE.Object3D, jumpers: SimJumper[], t: number) {
   const live = new Set(jumpers);
   for (const [j, rig] of rigs) {
     if (!live.has(j)) {
@@ -285,12 +272,11 @@ export function updateCanopyRigs(scene: THREE.Scene, jumpers: SimJumper[], t: nu
       continue;
     }
     if (!rig) {
-      rig = new CanopyRig(colorOf(j), visualScaleOf(j));
+      rig = new CanopyRig(colorOf(j), 1);
       rigs.set(j, rig);
       scene.add(rig.group);
     } else if (rig.group.userData.meshId !== j.getMesh()?.id) {
-      // the STL model replaced the placeholder: pick up its colour and size
-      rig.setVisualScale(visualScaleOf(j));
+      // the STL model replaced the placeholder: pick up its colour
       rig.setColor(colorOf(j));
     }
     rig.group.userData.meshId = j.getMesh()?.id;

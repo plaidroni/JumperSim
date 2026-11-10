@@ -1,3 +1,4 @@
+import { worldRoot } from "../core/WorldScale";
 import * as THREE from "three";
 
 /**
@@ -47,6 +48,10 @@ export class GroundHeightField {
     const v1 = new THREE.Vector3();
     const v2 = new THREE.Vector3();
 
+    // vertices are taken into the metre frame (worldRoot), not scene units
+    worldRoot.updateMatrixWorld(true);
+    const toMetres = new THREE.Matrix4().copy(worldRoot.matrixWorld).invert();
+    const meshToMetres = new THREE.Matrix4();
     forEachModel((scene, tile) => {
       const error: number = tile?.geometricError ?? 0;
       scene.updateMatrixWorld(true);
@@ -63,8 +68,9 @@ export class GroundHeightField {
         // transform vertices to world space once
         const world = new Float32Array(pos.count * 3);
         const tmp = new THREE.Vector3();
+        meshToMetres.multiplyMatrices(toMetres, mesh.matrixWorld);
         for (let i = 0; i < pos.count; i++) {
-          tmp.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+          tmp.fromBufferAttribute(pos, i).applyMatrix4(meshToMetres);
           world[i * 3] = tmp.x;
           world[i * 3 + 1] = tmp.y;
           world[i * 3 + 2] = tmp.z;
