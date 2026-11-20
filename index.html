@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="./src/css/map-loader.css" />
     <link rel="stylesheet" href="./src/css/editor.css" />
     <link rel="stylesheet" href="./src/css/planner.css" />
+    <link rel="stylesheet" href="./src/css/weather.css" />
   </head>
   <body>
     <!-- Shown instead of the app on phones/tablets (see src/css/mobile-blocker.css) -->
@@ -118,12 +119,32 @@
 
         <div class="menu-item dropdown">
           <span>Weather</span>
-          <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="handleClick('Undo')">
-              <span>Undo</span>
+          <!-- wired by src/js/ui/WeatherMenu.ts -->
+          <div class="dropdown-menu" id="weather-menu">
+            <div class="dropdown-item" data-weather-set="clouds" role="menuitemcheckbox">
+              <span>Clouds</span><input type="checkbox" tabindex="-1" />
             </div>
-            <div class="dropdown-item" onclick="handleClick('Redo')">
-              <span>Redo</span>
+            <div class="dropdown-item" data-weather-set="cloudShadows" role="menuitemcheckbox">
+              <span>Cloud shadows</span><input type="checkbox" tabindex="-1" />
+            </div>
+            <div class="dropdown-item" data-weather-set="precipitation" role="menuitemcheckbox">
+              <span>Rain &amp; snow</span><input type="checkbox" tabindex="-1" />
+            </div>
+            <div class="dropdown-item" data-weather-set="darken" role="menuitemcheckbox">
+              <span>Darken in rain</span><input type="checkbox" tabindex="-1" />
+            </div>
+            <div class="dropdown-item" data-weather-set="haze" role="menuitemcheckbox">
+              <span>Visibility haze</span><input type="checkbox" tabindex="-1" />
+            </div>
+            <hr />
+            <div class="dropdown-item" id="weather-refresh">
+              <span>Refresh weather now</span>
+            </div>
+            <div class="dropdown-item" id="weather-hold" role="menuitemcheckbox">
+              <span>Hold weather</span><input type="checkbox" tabindex="-1" />
+            </div>
+            <div class="dropdown-item" id="weather-open">
+              <span>Open Weather panel</span>
             </div>
           </div>
         </div>

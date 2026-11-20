@@ -26,6 +26,8 @@ import { initializeDock } from "./editor/Dock";
 import { initializeTimeline, renderTimelineMarkers } from "./editor/Timeline";
 import { initializeSceneObjects } from "./panels/SceneObjects";
 import { initializeWindWidget } from "./panels/WindWidget";
+import { initializeWeatherPanel } from "./panels/WeatherPanel";
+import { initializeWeatherMenu } from "./ui/WeatherMenu";
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
@@ -989,7 +991,10 @@ planner = initializePlanner({
   plane: () => simPlane,
   jumpers: () => ((window as any).simJumpers as SimJumper[]) ?? simJumpers,
 });
+(window as any).planner = planner; // weather updates wait for planner drags (WeatherService)
 initializeWindWidget(camera, controls);
+initializeWeatherPanel();
+initializeWeatherMenu();
 initializeMarkers(scene, () => simPlane, () => ((window as any).simJumpers as SimJumper[]) ?? simJumpers);
 
 // Global access to notification system for use across the application

@@ -598,7 +598,7 @@ body.dock-dragging * {
 
 .wind-row {
   display: grid;
-  grid-template-columns: 1fr 28px 56px;
+  grid-template-columns: 1fr 28px 72px;
   align-items: center;
   padding: 3px 8px;
   font-variant-numeric: tabular-nums;

@@ -1,10 +1,15 @@
 import * as THREE from "three";
 import {
+  MS_TO_KT,
   STRONG_SHEAR_KT_PER_1000FT,
+  SURFACE_LABEL,
   WindLevel,
   currentWindProfile,
   windShears,
 } from "../wind/WindProfile";
+import { weatherService } from "../weather/WeatherService";
+import { formatDzTime } from "../weather/WeatherState";
+import { CLOUD_TYPE_LABEL, coverLabel } from "../weather/CloudLayers";
 
 /**
  * Weather tab: "winds aloft" rows for each forecast height, with an arrow showing
@@ -45,8 +50,12 @@ export function initializeWindWidget(camera: THREE.Camera, controls: { addEventL
 
   function rebuild() {
     levels = currentWindProfile().slice().sort((a, b) => b.heightM - a.heightM);
-    const snapshot = (window as any).weatherSnapshotLog?.[0];
-    timeEl.textContent = snapshot?.time ? String(snapshot.time) : "";
+    const ws = weatherService.getWindState();
+    const sky = weatherService.get();
+    timeEl.textContent = ws ? `valid ${formatDzTime(ws.validTime, ws.timezone)}` : "";
+    timeEl.title = ws
+      ? `Winds valid ${new Date(ws.validTime).toLocaleString()} your time · ${new Date(ws.validTime).toISOString().slice(11, 16)} UTC`
+      : "";
     rowsEl.replaceChildren();
     arrows = [];
     lastHeading = NaN;
@@ -67,15 +76,31 @@ export function initializeWindWidget(camera: THREE.Camera, controls: { addEventL
       const row = document.createElement("div");
       row.className = "wind-row";
       row.setAttribute("role", "row");
+      const surface = level.label === SURFACE_LABEL;
       const ft = Math.round((level.heightM * M_TO_FT) / 100) * 100;
       const kt = Math.trunc(level.speedKt);
       const toDeg = (level.fromDeg + 180) % 360;
-      row.title = `${ft.toLocaleString()} ft: from ${Math.round(level.fromDeg)}° at ${kt} kt`;
+      const gustKt = surface ? Math.trunc((ws?.surface.gustMs ?? NaN) * MS_TO_KT) : NaN;
+      const gust = Number.isFinite(gustKt) && gustKt > kt ? ` G${gustKt}` : "";
+      const lvl = ws?.levels.find((l) => `${l.hpa}hPa` === level.label);
+      const tempC = surface ? ws?.surface.tempC : lvl?.tempC;
+      const temp = Number.isFinite(tempC) ? ` · ${Math.round(tempC!)} °C` : "";
+      const where = surface ? "Surface (10 m)" : `${ft.toLocaleString()} ft`;
+      row.title = `${where}: from ${Math.round(level.fromDeg)}° at ${kt} kt${gust}${temp}`;
 
       const h = document.createElement("span");
       h.className = "wind-h";
       h.setAttribute("role", "cell");
-      h.textContent = `${ft.toLocaleString()} ft`;
+      h.textContent = surface ? "Surface" : `${ft.toLocaleString()} ft`;
+      const layer = sky?.clouds.layers.find((l) => level.heightM >= l.baseAglM && level.heightM <= l.topAglM);
+      if (layer) {
+        const mark = document.createElement("span");
+        mark.className = "wind-cloud";
+        mark.textContent = "☁";
+        const fmt = (m: number) => `${(Math.round((m * M_TO_FT) / 100) * 100).toLocaleString()}`;
+        mark.title = `In cloud: ${coverLabel(layer.coverPct)} ${CLOUD_TYPE_LABEL[layer.type].name} ${fmt(layer.baseAglM)}–${fmt(layer.topAglM)} ft`;
+        h.appendChild(mark);
+      }
 
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", "0 0 24 24");
@@ -87,7 +112,7 @@ export function initializeWindWidget(camera: THREE.Camera, controls: { addEventL
       const sp = document.createElement("span");
       sp.className = "wind-s";
       sp.setAttribute("role", "cell");
-      sp.textContent = `${kt} kt`;
+      sp.textContent = `${kt} kt${gust}`;
 
       row.append(h, svg, sp);
       rowsEl.appendChild(row);

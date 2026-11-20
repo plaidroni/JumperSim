@@ -17,7 +17,6 @@ if (window.matchMedia(MOBILE_QUERY).matches && !allowMobile) {
   await import("./DevConsole");
   await import("./TimeScrubber");
   await import("./Scripts");
-  await import("../apidata/OpenMateo");
   await import("./LocationSelect");
   await import("./Menubar");
   await import("./ui/PlaneSettings");

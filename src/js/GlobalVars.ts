@@ -2,8 +2,8 @@ import * as THREE from "three";
 
 // (window.simScale was removed: physics is always in metres; see specs/world-scale.md)
 
-// To Cole: use (<any>window).weatherSnapshotLog[0]
-// to get the current weather data
+// To Cole: use weatherService.get() (src/js/weather/WeatherService.ts)
+// to get the current weather data; window.weatherSnapshotLog[0] is deprecated
 
 function calculatePositions(lengthOfSimulation: number) {
   const kstepone = 0;

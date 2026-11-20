@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { WeatherSnapshot } from "../apidata/OpenMateo";
+import type { WeatherSnapshot } from "./weather/WeatherState";
 export function clampVectorAboveYZero(vector) {
   vector.y = THREE.MathUtils.clamp(vector.y, 0, Infinity); // Clamp y to be >= 0
   return vector;

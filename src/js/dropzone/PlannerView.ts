@@ -52,6 +52,8 @@ export interface Selection {
 
 export interface Planner {
   readonly active: boolean;
+  /** A drag or a shape being drawn is in progress (weather updates wait for it). */
+  readonly interacting: boolean;
   readonly camera: THREE.OrthographicCamera;
   enter(tool?: PlannerTool): void;
   exit(): void;
@@ -1258,6 +1260,9 @@ export function initializePlanner(d: Deps): Planner {
   const planner: Planner = {
     get active() {
       return active;
+    },
+    get interacting() {
+      return active && (drag !== null || drawing.length > 0);
     },
     camera,
     enter,

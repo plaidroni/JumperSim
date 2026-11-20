@@ -1,5 +1,5 @@
 import { loadPlanForDropzone } from "./dropzone/DropzonePlan";
-import { declareParams, fetchWeatherData } from "../apidata/OpenMateo";
+import { weatherService } from "./weather/WeatherService";
 import { getCookie, setCookie } from "./Utils";
 import * as THREE from "three";
 import { handleForeignRecalculation, signalMeshReady } from "./Scripts";
@@ -81,8 +81,7 @@ export async function loadDropzones(scene: THREE.Scene) {
       Longitude: ${dz.longitude}
     `;
 
-    declareParams();
-    fetchWeatherData();
+    weatherService.setDropzone(dz);
 
     if (!mapScene) {
       mapScene = new MapScene(
