@@ -19,6 +19,13 @@ const LOOK_UP_M = 60; // ≈ 7° above the horizon
 const COVERAGE_M = 7000; // stay over the detailed terrain
 const DURATION_S = 1.6;
 const PLANE_OFFSET = new THREE.Vector3(100, 100, 100); // the usual follow offset (scene units)
+// intro shot: behind and off the plane's side, a little above, looking nearly level
+// so the terrain and horizon fill the background
+const INTRO_BACK = 140; // scene units behind the plane
+const INTRO_SIDE = 110; // scene units off the plane's side
+const INTRO_UP = 22; // scene units above the plane
+const INTRO_DURATION_S = 3.2;
+const INTRO_WAIT_MS = 15000; // give up waiting for the plane model after this
 
 export interface ZoopDeps {
   camera: THREE.PerspectiveCamera;
@@ -38,6 +45,7 @@ interface Flight {
   /** Recomputed each frame (the plane moves while the sim plays). */
   end(): { pos: THREE.Vector3; target: THREE.Vector3 };
   start: number;
+  duration: number;
   onDone?: () => void;
 }
 
@@ -47,7 +55,7 @@ export function initializeCameraZoop(d: ZoopDeps) {
   let flight: Flight | null = null;
   let flying = false; // our own controls.update() calls fire "start"? no, but guard anyway
 
-  const fly = (end: Flight["end"], onDone?: () => void) => {
+  const fly = (end: Flight["end"], onDone?: () => void, duration = DURATION_S) => {
     if (d.plannerActive()) return;
     d.release();
     flight = {
@@ -55,6 +63,7 @@ export function initializeCameraZoop(d: ZoopDeps) {
       fromTarget: d.controls.target.clone(),
       end,
       start: performance.now(),
+      duration,
       onDone,
     };
     requestAnimationFrame(step);
@@ -62,7 +71,7 @@ export function initializeCameraZoop(d: ZoopDeps) {
 
   const step = () => {
     if (!flight) return;
-    const t = Math.min(1, (performance.now() - flight.start) / 1000 / DURATION_S);
+    const t = Math.min(1, (performance.now() - flight.start) / 1000 / flight.duration);
     const k = ease(t);
     const { pos, target } = flight.end();
     flying = true;
@@ -116,6 +125,47 @@ export function initializeCameraZoop(d: ZoopDeps) {
     );
   }
 
+  /**
+   * First-load shot: fly from wherever the camera starts to a three-quarter view of
+   * the plane with the scenery behind it, then follow the plane. Waits for the plane
+   * model if it isn't in yet; skipped if the user has already grabbed the camera.
+   */
+  let userMoved = false;
+  d.controls.addEventListener("start", () => {
+    if (!flying) userMoved = true;
+  });
+  function intro() {
+    const waitingSince = performance.now();
+    const go = () => {
+      if (userMoved || d.plannerActive()) return;
+      const plane = d.planeMesh();
+      if (!plane) {
+        if (performance.now() - waitingSince < INTRO_WAIT_MS) setTimeout(go, 100);
+        return;
+      }
+      const centre = () => new THREE.Box3().setFromObject(plane).getCenter(new THREE.Vector3());
+      const q = new THREE.Quaternion();
+      const offset = () => {
+        // the plane's horizontal heading (its model faces +Z)
+        plane.getWorldQuaternion(q);
+        const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q).setY(0);
+        if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+        fwd.normalize();
+        const side = new THREE.Vector3(-fwd.z, 0, fwd.x);
+        return fwd.multiplyScalar(-INTRO_BACK).addScaledVector(side, INTRO_SIDE).setY(INTRO_UP);
+      };
+      fly(
+        () => {
+          const c = centre();
+          return { pos: c.clone().add(offset()), target: c };
+        },
+        () => d.followPlane(),
+        INTRO_DURATION_S,
+      );
+    };
+    go();
+  }
+
   // ------------------------------------------------------------------ UI
   const bar = document.createElement("div");
   bar.className = "cam-zoop";
@@ -137,7 +187,7 @@ export function initializeCameraZoop(d: ZoopDeps) {
     else if (k === "j") toJumpHeight();
   });
 
-  const api = { toGround, toJumpHeight, get flying() { return !!flight; } };
+  const api = { toGround, toJumpHeight, intro, get flying() { return !!flight; } };
   (window as any).cameraZoop = api;
   return api;
 }

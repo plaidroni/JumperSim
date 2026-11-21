@@ -819,7 +819,8 @@ systemsOK.then(() => {
   simJumpers.forEach((jumper) => worldRoot.add(jumper.getMesh()));
   updateSimWindow(simJumpers);
 
-  cameraFocus(simPlane.getMesh(), { name: "the plane" });
+  // first load: zoop in to a view of the plane with the scenery behind it, then follow it
+  cameraZoop.intro();
 
   renderTimelineMarkers();
   initializeSceneObjects({
@@ -1039,7 +1040,7 @@ initializeWindWidget(camera, controls);
 initializeWeatherPanel();
 initializeWeatherMenu();
 // "zoop" to the ground or back up to jump height (viewport buttons, G / J)
-initializeCameraZoop({
+const cameraZoop = initializeCameraZoop({
   camera,
   controls,
   viewport: viewportEl as HTMLElement,
