@@ -29,6 +29,9 @@ import { notificationManager } from "../classes/NotificationManager";
 import { GroundHeightField } from "./GroundHeightField";
 import { setGroundProvider } from "./GroundHeight";
 import { WindTower } from "../wind/WindTower";
+import { requestRecalculation } from "../core/data/SimulationVariables";
+import { CloudAxisLabels } from "../visuals/weather/CloudAxisLabels";
+import { registerOverlay, seeAllLayers, unregisterOverlay } from "../visuals/Layers";
 
 export interface DropzoneLike {
   name: string;
@@ -84,6 +87,7 @@ export class MapScene {
   private grid: THREE.GridHelper | null = null;
   private heightAxis: HeightAxis | null = null;
   private windTower: WindTower | null = null;
+  private cloudLabels: CloudAxisLabels | null = null;
   private fallbackPlane: THREE.Mesh | null = null;
   private hemiLight: THREE.HemisphereLight;
   private attributionEl: HTMLElement;
@@ -93,6 +97,9 @@ export class MapScene {
   private lonRad = 0;
   /** Ellipsoid height (m) of the DZ ground, i.e. the world y = 0 plane. */
   groundEllipsoidM = 0;
+  /** The DZ ground has been measured and moved to y = 0 for the current load. */
+  private calibrated = false;
+  private cacheKey = "";
   usingFallback = false;
 
   private lastExternalUpdate = -Infinity;
@@ -119,6 +126,7 @@ export class MapScene {
     }
 
     this.hemiLight = new THREE.HemisphereLight(0xffffff, 0x222222, 0.6);
+    seeAllLayers(this.hemiLight);
 
     this.attributionEl = document.createElement("div");
     this.attributionEl.id = "map-attribution";
@@ -161,8 +169,11 @@ export class MapScene {
     }
 
     const cacheKey = `${GROUND_CACHE_PREFIX}${dz.latitude.toFixed(5)},${dz.longitude.toFixed(5)}`;
+    this.calibrated = false;
+    this.cacheKey = cacheKey;
     const cached = Number(safeGet(cacheKey));
-    const haveCache = Number.isFinite(cached) && safeGet(cacheKey) !== null;
+    // a bad calibration once cached (e.g. -2,199,335 m) used to compound on every load
+    const haveCache = safeGet(cacheKey) !== null && plausibleGround(cached);
     this.groundEllipsoidM = haveCache ? cached : 0;
 
     // don't drape Mapbox tiles that Mapbox is going to refuse
@@ -205,10 +216,7 @@ export class MapScene {
     }
 
     onProgress(0.92);
-    this.calibrateGround();
-    if (Number.isFinite(this.groundEllipsoidM)) {
-      safeSet(cacheKey, this.groundEllipsoidM.toFixed(2));
-    }
+    if (this.calibrateGround()) safeSet(cacheKey, this.groundEllipsoidM.toFixed(2));
 
     this.terrain!.group.visible = true;
     if (this.buildings) this.buildings.group.visible = true;
@@ -512,19 +520,28 @@ export class MapScene {
   }
 
   /** Measure the terrain under the DZ and shift both tilesets so it sits at y = 0. */
-  private calibrateGround() {
+  /** Measure the DZ ground and move it to y = 0. Returns whether it succeeded. */
+  private calibrateGround(): boolean {
     const terrain = this.terrain!;
     terrain.group.updateMatrixWorld(true);
     this.heightField.build((cb) => terrain.forEachLoadedModel(cb));
     const h0 = this.heightField.getHeight(0, 0);
     if (!Number.isFinite(h0)) {
       console.warn("Could not sample ground height at the DZ; leaving terrain as is.");
-      return;
+      return false;
+    }
+    if (!plausibleGround(this.groundEllipsoidM + h0)) {
+      console.warn(
+        `Ground calibration gave an impossible height (${(this.groundEllipsoidM + h0).toFixed(0)} m); will retry as finer tiles load.`,
+      );
+      return false;
     }
     this.groundEllipsoidM += h0;
     this.applyGroundHeight(this.terrainReorient!, terrain);
     if (this.buildings) this.applyGroundHeight(this.buildingsReorient!, this.buildings);
     this.heightField.offset(-h0);
+    this.calibrated = true;
+    return true;
   }
 
   private applyGroundHeight(reorient: ReorientationPlugin, tiles: TilesRenderer) {
@@ -546,6 +563,15 @@ export class MapScene {
       this.rebuildTimer = null;
       const terrain = this.terrain;
       if (!terrain) return;
+      if (!this.calibrated) {
+        // the first try only had coarse tiles: try again now that finer ones loaded
+        if (this.calibrateGround()) {
+          safeSet(this.cacheKey, this.groundEllipsoidM.toFixed(2));
+          console.info(`Ground calibrated late: ellipsoid height ${this.groundEllipsoidM.toFixed(1)} m`);
+          requestRecalculation(); // landings depend on the ground height
+        }
+        return;
+      }
       terrain.group.updateMatrixWorld(true);
       this.heightField.build((cb) => terrain.forEachLoadedModel(cb));
     }, 1500);
@@ -569,6 +595,11 @@ export class MapScene {
     this.windTower = new WindTower(PLANE_SIZE / 2, TOWER_TOP_M);
     this.windTower.setVisible(this.options.showWind);
     this.heightAxis.getObject().add(this.windTower.object);
+    // cloud layers beside the tower (follows the weather and the cloud toggles)
+    this.cloudLabels = new CloudAxisLabels(PLANE_SIZE / 2);
+    this.heightAxis.getObject().add(this.cloudLabels.object);
+    // grid, height axis and wind tower stay readable above clouds and haze
+    registerOverlay(this.grid, this.heightAxis.getObject());
 
     this.scene.add(this.hemiLight);
     this.scene.fog = new THREE.Fog(THEME[this.options.imagery].fog, 15000 * WORLD_SCALE, 60000 * WORLD_SCALE);
@@ -622,7 +653,10 @@ export class MapScene {
   private unload() {
     this.unloadTiles();
     this.windTower?.dispose();
+    this.cloudLabels?.dispose();
+    this.cloudLabels = null;
     this.windTower = null;
+    unregisterOverlay(this.grid, this.heightAxis?.getObject());
     for (const obj of [this.grid, this.heightAxis?.getObject(), this.fallbackPlane]) {
       if (!obj) continue;
       obj?.removeFromParent();
@@ -649,6 +683,11 @@ function disposeObject(root: THREE.Object3D) {
       m?.dispose?.();
     });
   });
+}
+
+/** Earth's surface lies roughly between -500 m and +9,000 m relative to the ellipsoid. */
+function plausibleGround(ellipsoidM: number): boolean {
+  return Number.isFinite(ellipsoidM) && ellipsoidM > -500 && ellipsoidM < 9000;
 }
 
 function safeGet(key: string): string | null {

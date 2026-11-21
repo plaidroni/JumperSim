@@ -757,3 +757,287 @@ body.dock-dragging * {
   outline: 1px solid var(--accent, #ffd700);
   background: rgba(255, 215, 0, 0.12);
 }
+
+/* ---------------------------------------------------------------- Camera zoop (ui/CameraZoop.ts) */
+
+.cam-zoop {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+
+.cam-zoop button {
+  background: rgba(20, 20, 20, 0.85);
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font: 600 12px/1.4 inherit;
+  cursor: pointer;
+}
+
+.cam-zoop button:hover {
+  border-color: var(--accent, #ffd700);
+  color: #fff;
+}
+
+body.planner-active .cam-zoop {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- Reopen tabs (editor/DockView.ts) */
+
+/* Short slide when a closed dock is reopened from its arrow tab */
+#editor.dock-sliding {
+  transition: grid-template-columns 0.22s ease-out, grid-template-rows 0.22s ease-out;
+}
+
+.dock-reopen {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: rgba(30, 30, 30, 0.9);
+  color: #ccc;
+  border: 1px solid #555;
+  font: 600 14px/1 system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: none;
+  opacity: 0.75;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.dock-reopen[hidden] {
+  display: none;
+}
+
+.dock-reopen:hover,
+.dock-reopen:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.dock-reopen[data-zone="side"] {
+  top: 50%;
+  width: 16px;
+  height: 56px;
+  margin-top: -28px;
+}
+
+.dock-reopen[data-zone="side"][data-edge="right"] {
+  right: 0;
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  cursor: w-resize;
+}
+
+.dock-reopen[data-zone="side"][data-edge="left"] {
+  left: 0;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  cursor: e-resize;
+}
+
+.dock-reopen[data-zone="side"][data-edge="right"]:hover { transform: translateX(-2px); }
+.dock-reopen[data-zone="side"][data-edge="left"]:hover { transform: translateX(2px); }
+
+.dock-reopen[data-zone="bottom"] {
+  bottom: 0;
+  left: 50%;
+  width: 64px;
+  height: 16px;
+  margin-left: -32px;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: n-resize;
+  font-size: 12px;
+}
+
+.dock-reopen[data-zone="bottom"]:hover { transform: translateY(-2px); }
+
+body.planner-active .dock-reopen {
+  z-index: 20;
+}
+
+/* ---------------------------------------------------------------- Follow chip + click menu (ui/CameraFollow.ts) */
+
+.follow-chip {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 4px 4px 4px 10px;
+  background: rgba(20, 20, 20, 0.88);
+  border: 1px solid #555;
+  border-radius: 999px;
+  color: #eee;
+  font: 12px/1.3 system-ui, sans-serif;
+  white-space: nowrap;
+  animation: follow-chip-in 0.18s ease-out;
+}
+
+.follow-chip[hidden] {
+  display: none;
+}
+
+@keyframes follow-chip-in {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.follow-chip-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+}
+
+.follow-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.follow-chip-modes {
+  display: flex;
+  border: 1px solid #444;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.follow-chip button {
+  background: transparent;
+  color: #bbb;
+  border: none;
+  padding: 3px 9px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.follow-chip-modes button + button {
+  border-left: 1px solid #444;
+}
+
+.follow-chip button:hover {
+  color: #fff;
+  background: #333;
+}
+
+.follow-chip-modes button.is-active {
+  background: var(--accent);
+  color: #1e1e1e;
+  font-weight: 600;
+}
+
+.follow-chip-stop {
+  width: 24px;
+  height: 24px;
+  padding: 0 !important;
+  border-radius: 50%;
+  font-size: 12px !important;
+}
+
+.follow-chip-stop:hover {
+  background: #6b2323 !important;
+}
+
+@media (max-width: 700px) {
+  .follow-chip-modes {
+    display: none;
+  }
+}
+
+body.planner-active .follow-chip {
+  display: none;
+}
+
+.pick-menu {
+  position: absolute;
+  z-index: 30;
+  min-width: 170px;
+  padding: 4px;
+  background: #242424;
+  border: 1px solid #555;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  color: #ddd;
+  font: 12px/1.3 system-ui, sans-serif;
+  animation: pick-menu-in 0.12s ease-out;
+}
+
+@keyframes pick-menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+.pick-menu-title {
+  padding: 4px 8px 6px;
+  color: #999;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pick-menu hr {
+  margin: 4px 2px;
+  border: none;
+  border-top: 1px solid #3a3a3a;
+}
+
+.pick-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pick-menu button:hover,
+.pick-menu button:focus-visible {
+  background: #3a3a3a;
+  color: #fff;
+  outline: none;
+}
+
+.pick-menu button.is-active {
+  color: var(--accent);
+}
+
+.pick-menu button.is-active span::after {
+  content: " ✓";
+}
+
+.pick-menu button.is-danger:hover {
+  background: #5a2020;
+}
+
+.pick-menu kbd {
+  color: #888;
+  font: 10px/1 ui-monospace, monospace;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 2px 4px;
+}

@@ -3,6 +3,7 @@ import type { SimJumper, SimPlane } from "../classes/SimEntities";
 import { hasJumperExited } from "../panels/jumperStatus";
 import { poseHeading } from "../physics/Canopy";
 import { JUMPER_UNITS_TO_M, WORLD_SCALE } from "../core/WorldScale";
+import { registerOverlay } from "./Layers";
 
 /**
  * Zoomed-out markers (specs/world-scale.md §7). With the world at true proportions,
@@ -65,6 +66,7 @@ export function initializeMarkers(scene: THREE.Scene, plane: () => SimPlane, jum
   group = new THREE.Group();
   group.name = "Zoomed-out markers";
   scene.add(group);
+  registerOverlay(group); // drawn above clouds and haze
   getPlane = plane;
   getJumpers = jumpers;
   arrowTex = makeTexture(true);

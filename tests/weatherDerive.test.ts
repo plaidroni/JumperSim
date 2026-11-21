@@ -149,8 +149,8 @@ describe("cloud layers", () => {
     expect(low.band).toBe("low");
     expect(low.type).toBe("stratocumulus");
     expect(low.baseAglM).toBeCloseTo(lclAglM(-8.9, -11.9)); // 375 m
-    // top where humidity drops below 84% between 925 hPa (94%) and 850 hPa (70%)
-    expect(low.topAglM + 104).toBeCloseTo(598 + (1260 - 598) * (10 / 24), 0);
+    // top where per-level cover falls below half its 41% peak, between 925 and 850 hPa
+    expect(low.topAglM + 104).toBeCloseTo(598 + (1260 - 598) * (20.5 / 41), 0);
   });
 
   it("makes low overcast near the ground stratus and sets the ceiling", () => {
@@ -199,6 +199,35 @@ describe("cloud layers", () => {
   it("labels cover in oktas", () => {
     expect([10, 40, 60, 90, 100].map(coverLabel)).toEqual(["FEW", "SCT", "BKN", "BKN", "OVC"]);
     expect(oktas(37.5)).toBe(3);
+  });
+});
+
+// Skydive Sebastian, 2026-11-20 04:45 UTC: 100% low cover in a near-saturated column
+// (RH 92–99% from the surface to 3 km), per-level cover 55–77% from 950 to 700 hPa,
+// and some instability. It used to come out as a 238–4,354 m "cumulus" block whose
+// base sat at the dew-point estimate, because the humidity window reached the ground.
+const SEBASTIAN: Lv[] = [
+  [1000, 123, 92, 15], [975, 343, 94, 32], [950, 569, 97, 55], [925, 799, 99, 76],
+  [900, 1034, 99, 77], [850, 1521, 98, 70], [800, 2033, 94, 52], [700, 3142, 98, 72],
+  [600, 4396, 87.5, 35], [500, 5837, 73, 5], [400, 7541, 38], [300, 9626, 44], [250, 10873, 16], [200, 12329, 50],
+];
+
+describe("cloud layers in a saturated column (Skydive Sebastian)", () => {
+  const s = makeState({
+    elevationM: 8, levels: SEBASTIAN, low: 100, mid: 54, high: 23, total: 100,
+    tempC: 22.5, dewPointC: 20.6, cape: 400, li: -1.5, code: 3,
+  });
+  const low = s.clouds.layers.find((l) => l.band === "low")!;
+
+  it("puts the overcast base where the model's per-level cover starts, not at the ground", () => {
+    // per-level cover crosses half its 77% peak between 975 hPa (32%) and 950 hPa (55%)
+    expect(low.baseAglM).toBeCloseTo(569 + (343 - 569) * (16.5 / 23) - 8, 0); // ≈ 399 m
+    expect(s.clouds.ceilingAglM).toBe(low.baseAglM);
+  });
+
+  it("draws an overcast deck as a sheet, not cumulus, even in unstable air", () => {
+    expect(low.type).not.toBe("cumulus");
+    expect(low.type).not.toBe("cumulonimbus");
   });
 });
 

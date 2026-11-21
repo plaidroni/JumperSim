@@ -28,6 +28,7 @@ import { initializeSceneObjects } from "./panels/SceneObjects";
 import { initializeWindWidget } from "./panels/WindWidget";
 import { initializeWeatherPanel } from "./panels/WeatherPanel";
 import { initializeWeatherMenu } from "./ui/WeatherMenu";
+import { initializeCameraZoop } from "./ui/CameraZoop";
 // Notification system for displaying alerts and feedback to users
 // Usage: notificationManager.success/error/warning/info(message, options)
 import { notificationManager } from "./classes/NotificationManager";
@@ -43,10 +44,22 @@ import { PlaneLoad } from "./ui/PlaneLoad";
 import { SIM_DURATION_S, updateSimWindow } from "./physics/SimWindow";
 import { updateCanopyRigs } from "./visuals/CanopyRig";
 import { precalculateJumpers } from "./classes/SimEntities";
-import { getDropzonePlan } from "./dropzone/DropzonePlan";
+import { getDropzonePlan, planReferencePoint } from "./dropzone/DropzonePlan";
+import { enToXZ } from "./dropzone/geometry";
 import { applyJumprun } from "./dropzone/Jumprun";
 import { currentWindProfile } from "./wind/WindProfile";
+import {
+  CameraFollow,
+  FOLLOW_MODES,
+  FollowMode,
+  PickMenuItem,
+  closePickMenu,
+  isPickMenuOpen,
+  showPickMenu,
+} from "./ui/CameraFollow";
 import { initializePlanner, type Planner } from "./dropzone/PlannerView";
+import { WeatherRenderer } from "./visuals/weather/WeatherRenderer";
+import { registerOverlay, seeAllLayers, unregisterOverlay } from "./visuals/Layers";
 
 // === THREE SETUP ===
 const scene = new THREE.Scene();
@@ -63,6 +76,10 @@ const camera = new THREE.PerspectiveCamera(
   100000 * WORLD_SCALE,
 );
 const controls = new OrbitControls(camera, renderer.domElement);
+// clouds, haze and rain darkening (specs/weather-clouds-visibility.md §5.1)
+seeAllLayers(camera);
+const weatherRenderer = new WeatherRenderer(renderer);
+(window as any).weatherRenderer = weatherRenderer;
 
 (window as any).simulationCamera = camera;
 (window as any).simulationRenderer = renderer;
@@ -77,6 +94,7 @@ function resizeToViewport() {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
+  weatherRenderer.setSize();
   (window as any).mapScene?.onResize();
 }
 resizeToViewport();
@@ -120,8 +138,19 @@ renderer.setClearColor(0x000000, 1);
 
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(10, 10, 10);
+seeAllLayers(light);
 scene.add(light);
+weatherRenderer.setSun(light); // clouds are lit (and cast shadows) from the scene's light
+// visibility ring / planner clouds centre: the orbit target in 3D, the landing area in the planner
+weatherRenderer.setFocus({
+  view: () => controls.target.clone().divideScalar(WORLD_SCALE),
+  planner: () => {
+    const t = enToXZ(planReferencePoint(getDropzonePlan()));
+    return new THREE.Vector3(t.x, 0, t.z);
+  },
+});
 const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+seeAllLayers(ambient);
 scene.add(ambient);
 scene.add(new THREE.AxesHelper(5));
 
@@ -140,13 +169,12 @@ addTooltipToggle(tooltip);
 const compass = document.getElementById("compass");
 const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
+seeAllLayers(raycaster); // markers live on the overlay layer
 
 // const gridHelper = new THREE.GridHelper(1609, 16); // 16 subdivisions = 100m spacing
 // scene.add(gridHelper);
 
 // === LOOKING AT SCENE OBJECT ===
-let followTarget: THREE.Object3D | null = null;
-let isUserControllingCamera = false;
 let isEditingPlane = false;
 // === EVENT LISTENERS ===
 
@@ -168,7 +196,10 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   pressAt = null;
   if (moved > 4 || isEditingPlane || isAligningJumprun || planner?.active) return;
   onMouseMove(e);
-  pickAt([simPlane.getMesh(), ...simJumpers.map((j) => j.getMesh()), ...markerObjects()]);
+  const hadMenu = isPickMenuOpen();
+  const picked = pickAt([simPlane.getMesh(), ...simJumpers.map((j) => j.getMesh()), ...markerObjects()]);
+  if (picked) showFollowMenu(picked, { x: e.clientX, y: e.clientY });
+  else if (!hadMenu) closePickMenu();
 });
 
 function onMouseMove(event) {
@@ -370,26 +401,54 @@ document
   .getElementById("start-align-jumprun")
   ?.addEventListener("click", handleStartAlignJumprun);
 
-/** Select (and follow) the plane/jumper under the mouse, if any. */
-function pickAt(objects: Array<THREE.Object3D | null>) {
+type Picked = { type: "plane" | "jumper"; id: string; root: THREE.Object3D; name: string };
+
+/** Select the plane/jumper under the mouse, if any, and return it. */
+function pickAt(objects: Array<THREE.Object3D | null>): Picked | null {
   raycaster.setFromCamera(mouse, camera);
   const valid = objects.filter((o): o is THREE.Object3D => o != null);
-  if (valid.length === 0) return;
+  if (valid.length === 0) return null;
   const hit = raycaster.intersectObjects(valid, true)[0];
-  if (!hit) return;
+  if (!hit) return null;
   const picked = findSceneObjectFor(hit.object);
-  if (!picked) return;
-  const root =
-    picked.type === "plane"
-      ? simPlane.getMesh()
-      : simJumpers.find((j) => j.id === picked.id)?.getMesh() ?? hit.object;
-  cameraFocus(root, {
-    name:
-      picked.type === "plane"
-        ? "the plane"
-        : `Jumper ${(simJumpers.find((j) => j.id === picked.id)?.index ?? 0) + 1}`,
-  });
+  if (!picked) return null;
+  const jumper = picked.type === "jumper" ? currentJumpers().find((j) => j.id === picked.id) : null;
+  const root = picked.type === "plane" ? simPlane.getMesh() : jumper?.getMesh() ?? hit.object;
+  if (!root) return null;
   window.dispatchEvent(new CustomEvent("scene-object-picked", { detail: picked }));
+  return { ...picked, root, name: picked.type === "plane" ? "the plane" : jumperLabel(jumper) };
+}
+
+function currentJumpers(): SimJumper[] {
+  return Array.isArray((window as any).simJumpers) ? (window as any).simJumpers : simJumpers;
+}
+
+function jumperLabel(j: SimJumper | null | undefined) {
+  return (j as any)?.name || `Jumper ${(j?.index ?? 0) + 1}`;
+}
+
+/** Click menu on a plane/jumper: follow options, details, stop following. */
+function showFollowMenu(p: Picked, at: { x: number; y: number }) {
+  const following = cameraFollow.isFollowing(p.root);
+  const keys: Record<FollowMode, string> = { free: "F", close: "C", chase: "R", top: "T" };
+  const items: Array<PickMenuItem | "sep"> = FOLLOW_MODES.map((m) => ({
+    label: m.label,
+    hint: m.hint,
+    key: keys[m.mode],
+    active: following && cameraFollow.mode === m.mode,
+    action: () => cameraFollow.follow(p.root, { mode: m.mode, name: p.name }),
+  }));
+  items.push("sep", {
+    label: "Show details",
+    hint: "Open it in Scene Objects",
+    key: "D",
+    action: () => (window as any).dock?.focus?.("objects"),
+  });
+  if (cameraFollow.isFollowing()) {
+    items.push({ label: "Stop following", hint: "Esc also stops following", danger: true, action: () => cameraFollow.stop() });
+  }
+  const title = p.type === "plane" ? "Plane" : p.name;
+  showPickMenu(viewportEl as HTMLElement, at, following ? `${title} · following` : title, items);
 }
 
 function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
@@ -519,7 +578,7 @@ function startPlaneEdit() {
     planner.enter("jumprun");
     return;
   }
-  followTarget = null;
+  cameraFollow.stop();
   StartEditPlane(
     simPlane.getMesh()!,
     camera,
@@ -548,37 +607,50 @@ controls.touches = {
 controls.addEventListener("start", () => {
   // leaving "Top view": re-enable picking/hover once the user moves the camera
   isEditingPlane = false;
-  // deprecate, as soon as the user clicks it is "panning"
-  isUserControllingCamera = false;
-  if (followTarget) setFollowingLabel(null);
-  followTarget = null;
-  followOffset = DEFAULT_FOLLOW_OFFSET.clone();
+  closePickMenu();
 });
 
-// use control.touches to disable following if user is panning (not rotating)
-controls.addEventListener("end", () => {
-  isUserControllingCamera = false;
-});
-
-let cameraOffset = new THREE.Vector3(10, 10, 10);
-const DEFAULT_FOLLOW_OFFSET = new THREE.Vector3(100, 100, 100);
-let followOffset = DEFAULT_FOLLOW_OFFSET.clone();
 const followLabel = document.querySelector("#following-label");
+const FOLLOW_MODE_NAMES: Record<FollowMode, string> = { free: "free", close: "close-up", chase: "chase", top: "top-down" };
+
+function setFollowingLabel(name: string | null, mode: FollowMode | null = null) {
+  if (!followLabel) return;
+  followLabel.textContent = name
+    ? `Following ${name}${mode ? ` (${FOLLOW_MODE_NAMES[mode]} view)` : ""}. Drag to orbit, scroll to zoom; right-drag or Esc stops.`
+    : "You're not following anything. Click a jumper or the plane in the view, or pick one in Scene Objects.";
+}
+
+/** Scene-space velocity of the plane or a jumper's mesh, from its precalculated track. */
+function velocityOfMesh(obj: THREE.Object3D): THREE.Vector3 | null {
+  const t = Number((window as any).simulationTime) || 0;
+  const track =
+    obj === simPlane.getMesh() ? simPlane.track : currentJumpers().find((j) => j.getMesh() === obj)?.track;
+  const v = track?.getInterpolatedSample(t)?.velocity;
+  return v ? v.clone() : null;
+}
+
+// Follow camera (ui/CameraFollow.ts): orbit/zoom while following, pan or Esc to stop
+const cameraFollow = new CameraFollow({
+  camera,
+  controls,
+  viewport: viewportEl as HTMLElement,
+  canvas: renderer.domElement,
+  velocityOf: velocityOfMesh,
+  onChange: (name, mode) => setFollowingLabel(name, mode),
+});
+(window as any).cameraFollow = cameraFollow;
 
 document
   .querySelector("#following-panel .panel-controls button")
-  ?.addEventListener("click", () => {
-    followTarget = null;
-    isUserControllingCamera = true;
-    setFollowingLabel(null);
-  });
+  ?.addEventListener("click", () => cameraFollow.stop());
 
-function setFollowingLabel(name: string | null) {
-  if (!followLabel) return;
-  followLabel.textContent = name
-    ? `Following ${name}.`
-    : "You're not following anything. Pick a jumper in Scene Objects.";
-}
+// Esc stops following (a menu open on top takes the Esc first)
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || e.defaultPrevented || isPickMenuOpen() || planner?.active) return;
+  const t = e.target as HTMLElement | null;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  cameraFollow.stop();
+});
 
 /** Map a picked mesh (or one of its children) back to the plane or a jumper. */
 function findSceneObjectFor(obj: THREE.Object3D): { type: "plane" | "jumper"; id: string } | null {
@@ -594,23 +666,20 @@ function findSceneObjectFor(obj: THREE.Object3D): { type: "plane" | "jumper"; id
 }
 
 /**
- * Point the camera at an object. With `zoom`, it flies in close (offset chosen from
- * the object's motion) and then follows; otherwise it follows from where it is now.
- * Any manual orbit/zoom cancels it (see controls "start").
+ * Point the camera at an object and follow it. With `zoom` (or an `offset`) it flies
+ * in close first; otherwise it follows from where it is now. Orbit/zoom keep
+ * following; panning stops (see ui/CameraFollow.ts).
  */
 function cameraFocus(
   object: THREE.Object3D | null,
-  opts: { zoom?: boolean; offset?: THREE.Vector3; name?: string } = {},
+  opts: { zoom?: boolean; offset?: THREE.Vector3; name?: string; mode?: FollowMode } = {},
 ) {
   if (!object) return;
-  const box = new THREE.Box3().setFromObject(object);
-  const center = box.getCenter(new THREE.Vector3());
-  if (opts.offset) followOffset = opts.offset.clone();
-  else if (opts.zoom) followOffset = new THREE.Vector3(20, 10, 20);
-  else followOffset = camera.position.clone().sub(center);
-  followTarget = object;
-  isUserControllingCamera = false;
-  setFollowingLabel(opts.name ?? null);
+  cameraFollow.follow(object, {
+    mode: opts.mode ?? (opts.zoom || opts.offset ? "close" : "free"),
+    offset: opts.offset,
+    name: opts.name ?? null,
+  });
 }
 (window as any).cameraFocus = cameraFocus;
 
@@ -618,6 +687,7 @@ function cameraFocus(
 let selectionHelper: THREE.BoxHelper | null = null;
 function setSelectedObject(object: THREE.Object3D | null) {
   if (selectionHelper) {
+    unregisterOverlay(selectionHelper);
     scene.remove(selectionHelper);
     selectionHelper.geometry.dispose();
     (selectionHelper.material as THREE.Material).dispose();
@@ -628,37 +698,13 @@ function setSelectedObject(object: THREE.Object3D | null) {
   (selectionHelper.material as THREE.LineBasicMaterial).depthTest = false;
   selectionHelper.renderOrder = 10;
   scene.add(selectionHelper);
+  registerOverlay(selectionHelper);
 }
 (window as any).setSelectedObject = setSelectedObject;
 
-// Follow: the camera moves with the target (no lag behind a falling jumper) and eases
-// toward the chosen offset at the same speed regardless of frame rate.
-const FOLLOW_EASE_S = 0.35;
-let lastFollowCenter: THREE.Vector3 | null = null;
-let lastFollowObj: THREE.Object3D | null = null;
-let lastFollowTime = performance.now();
 function updateCameraFollow() {
   selectionHelper?.update();
-  const now = performance.now();
-  const dt = Math.min(0.25, (now - lastFollowTime) / 1000);
-  lastFollowTime = now;
-  if (followTarget && !isUserControllingCamera) {
-    const box = new THREE.Box3().setFromObject(followTarget);
-    const center = box.getCenter(new THREE.Vector3());
-    if (lastFollowObj === followTarget && lastFollowCenter) {
-      camera.position.add(center.clone().sub(lastFollowCenter)); // carry along
-    }
-    lastFollowObj = followTarget;
-    lastFollowCenter = center.clone();
-
-    controls.target.copy(center);
-    const alpha = 1 - Math.exp(-dt / FOLLOW_EASE_S);
-    camera.position.lerp(center.clone().add(followOffset), alpha);
-    controls.update();
-  } else {
-    lastFollowObj = null;
-    lastFollowCenter = null;
-  }
+  cameraFollow.update();
 }
 
 // Set when the tracks change so the scene redraws even while playback is paused
@@ -773,9 +819,7 @@ systemsOK.then(() => {
   simJumpers.forEach((jumper) => worldRoot.add(jumper.getMesh()));
   updateSimWindow(simJumpers);
 
-  followTarget = simPlane.getMesh();
-  isUserControllingCamera = false;
-  setFollowingLabel("the plane");
+  cameraFocus(simPlane.getMesh(), { name: "the plane" });
 
   renderTimelineMarkers();
   initializeSceneObjects({
@@ -904,6 +948,7 @@ systemsOK.then(() => {
 
   const lines = simJumpers.map(createDynamicTrajectoryLine);
   lines.forEach((l) => worldRoot.add(l));
+  registerOverlay(...lines);
 
   // Three.js stops the animation loop for good if a frame throws, which freezes the
   // whole app (planner exit, dragging, playback). Log the error and keep going.
@@ -925,14 +970,12 @@ systemsOK.then(() => {
     const deltaTime = (now - lastFrameTime) / 1000;
     lastFrameTime = now;
 
-    simulationTime = (window as any).isPlaying
-      ? simulationTime + deltaTime
-      : (window as any).currentTime;
+    // one clock: TimeScrubber advances currentTime while playing (and holds it while
+    // the scrubber is dragged), so scrubbing mid-play just moves the playhead
+    simulationTime = (window as any).advancePlayback?.(Math.min(deltaTime, 1)) ?? (window as any).currentTime;
 
     // expose for UI components (e.g., plane load jumped indicator)
     (window as any).simulationTime = simulationTime;
-
-    (window as any).updateScrubber?.(simulationTime);
 
     if (simulationTime !== lastSimTime || forceSceneUpdate) {
       forceSceneUpdate = false;
@@ -950,7 +993,7 @@ systemsOK.then(() => {
 
     planner?.update(simulationTime);
     updateMarkers(planner?.active ? planner.camera : camera, renderer, simulationTime);
-    renderer.render(scene, planner?.active ? planner.camera : camera);
+    weatherRenderer.render(scene, planner?.active ? planner.camera : camera, { planner: planner?.active });
 
     camera.getWorldDirection(dir);
     sph.setFromVector3(dir);
@@ -995,6 +1038,16 @@ planner = initializePlanner({
 initializeWindWidget(camera, controls);
 initializeWeatherPanel();
 initializeWeatherMenu();
+// "zoop" to the ground or back up to jump height (viewport buttons, G / J)
+initializeCameraZoop({
+  camera,
+  controls,
+  viewport: viewportEl as HTMLElement,
+  release: () => cameraFollow.stop(),
+  followPlane: () => cameraFocus(simPlane.getMesh(), { name: "the plane" }),
+  planeMesh: () => simPlane.getMesh(),
+  plannerActive: () => !!planner?.active,
+});
 initializeMarkers(scene, () => simPlane, () => ((window as any).simJumpers as SimJumper[]) ?? simJumpers);
 
 // Global access to notification system for use across the application

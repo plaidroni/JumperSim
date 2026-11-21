@@ -36,6 +36,8 @@ import { onRecalculated } from "../core/data/SimulationVariables";
 import { currentWindProfile, MS_TO_KT, vectorToFromDeg } from "../wind/WindProfile";
 import { getGroundHeight } from "../terrain/GroundHeight";
 import { initializeDropzonePanel } from "../panels/DropzonePanel";
+import { registerOverlay, seeAllLayers } from "../visuals/Layers";
+import { weatherService } from "../weather/WeatherService";
 
 /**
  * Dropzone Planner: a north-up orthographic view of the same scene, with tools to set
@@ -131,6 +133,8 @@ export function initializePlanner(d: Deps): Planner {
   const handlesGroup = new THREE.Group();
   const previewGroup = new THREE.Group();
   d.world.add(handlesGroup, previewGroup);
+  registerOverlay(handlesGroup, previewGroup);
+  seeAllLayers(camera);
 
   let active = false;
   let tool: PlannerTool = "select";
@@ -176,7 +180,7 @@ export function initializePlanner(d: Deps): Planner {
   hud.innerHTML = `
     <div class="planner-scale"><div class="planner-scale-bar"></div><span></span></div>
     <div class="planner-readout"></div>
-    <div class="planner-wind" title="Landing wind (0–250 ft)"><div class="planner-wind-arrow">➤</div><span></span></div>
+    <div class="planner-wind" title="Landing wind (0–250 ft)"><div class="planner-wind-arrow">➤</div><span></span><span class="planner-sky" title="Ceiling (lowest BKN/OVC layer) and surface visibility"></span></div>
     <div class="planner-north">N<br>▲</div>`;
   const planBtn = document.createElement("button");
   planBtn.className = "planner-open-btn";
@@ -617,6 +621,15 @@ export function initializePlanner(d: Deps): Planner {
     (hud.querySelector(".planner-scale span") as HTMLElement).textContent = nice >= 1000 ? `${nice / 1000} km` : `${nice} m`;
     const prof = currentWindProfile();
     const windEl = hud.querySelector(".planner-wind") as HTMLElement;
+    // ceiling and visibility (specs/weather-clouds-visibility.md §5.7)
+    const sky = weatherService.get();
+    const skyEl = hud.querySelector(".planner-sky") as HTMLElement;
+    if (sky) {
+      const ceil = sky.clouds.ceilingAglM === null ? "No ceiling" : `Ceiling ${(Math.round((sky.clouds.ceilingAglM / FT) / 100) * 100).toLocaleString()} ft`;
+      const vSm = sky.visibilityM / 1609.344;
+      const vis = Number.isFinite(vSm) ? `Vis ${vSm < 10 ? vSm.toFixed(1) : Math.round(vSm)} sm` : "";
+      skyEl.textContent = [ceil, vis].filter(Boolean).join(" · ");
+    } else skyEl.textContent = "";
     if (prof.length) {
       const w = meanWind(prof, 0, 250 * FT);
       const v = new THREE.Vector3(w.x, 0, w.z);

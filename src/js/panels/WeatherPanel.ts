@@ -184,7 +184,7 @@ export function initializeWeatherPanel() {
         </select>
       </label>
     </div>
-    <div class="wx-note">The 3D cloud, rain and haze effects arrive in a later update; these settings are saved for them.</div>`;
+    <div class="wx-note">Clouds drift with the sim clock. On Medium and High a still view smooths out over about a second.</div>`;
   show.body.querySelectorAll<HTMLInputElement>("input[data-set]").forEach((box) =>
     box.addEventListener("change", () => weatherDisplay.set({ [box.dataset.set!]: box.checked } as any)),
   );

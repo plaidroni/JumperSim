@@ -15,6 +15,7 @@ import {
 import { exitPoints } from "./Jumprun";
 import { getGroundHeight } from "../terrain/GroundHeight";
 import type { WindLevel } from "../wind/WindProfile";
+import { registerOverlay } from "../visuals/Layers";
 
 /**
  * Everything the plan draws in the scene: landing and danger zones, the canopy pattern
@@ -189,6 +190,7 @@ export class PlanOverlays {
   constructor(scene: THREE.Object3D) {
     this.group.name = "Dropzone plan";
     scene.add(this.group);
+    registerOverlay(this.group); // readable above clouds, not darkened
   }
 
   private clear() {

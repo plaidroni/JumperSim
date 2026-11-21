@@ -224,3 +224,6 @@ body.planner-active #compass { display: none; }
 .ps-popover h4 { margin: 4px 0 0; font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.05em; }
 .ps-popover label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ps-popover input, .ps-popover select { width: 110px; background: #1d1d1d; color: #ddd; border: 1px solid #444; border-radius: 3px; padding: 2px 4px; }
+/* ceiling · visibility on its own line, so the box stays narrow beside the toolbar */
+.planner-wind { flex-wrap: wrap; max-width: 220px; }
+.planner-sky:not(:empty) { flex-basis: 100%; color: #ccc; font-size: 11px; }

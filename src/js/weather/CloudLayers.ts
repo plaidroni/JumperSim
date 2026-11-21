@@ -20,6 +20,10 @@ const MIN_LOW_SPAN_M = 1500;
 const MIN_COVER_PCT = 2;
 /** The layer is where humidity stays within this many points of its peak. */
 const RH_BAND_PTS = 10;
+/** Per-level cloud cover (%) at or above this is trusted to place a layer. */
+const MIN_LEVEL_CLOUD_PCT = 20;
+/** Above this low cover (%) a deck is a sheet, not cumulus, unless it is showering. */
+const MAX_CUMULUS_COVER_PCT = 75;
 const MIN_BASE_AGL_M = 60;
 /** Low and mid layers closer than this become one deep layer. */
 const MERGE_GAP_M = 300;
@@ -86,16 +90,25 @@ function humidExtent(levels: WeatherLevel[], lo: number, hi: number): Extent | n
     return ka > kb || (ka === kb && a.rhPct > b.rhPct) ? i : best;
   }, pool[0]);
 
-  const thr = levels[peak].rhPct - RH_BAND_PTS;
+  // When the model's per-level cloud cover is substantial, it marks the layer best:
+  // the layer is where cover stays above half its peak. Otherwise (thin mid/high
+  // cloud often reads ~0 per level) fall back to humidity within 10 points of its peak.
+  // In a near-saturated column (humid Florida days) the humidity window reaches the
+  // ground, which put overcast bases far too low.
+  const peakCloud = levels[peak].cloudPct;
+  const useCloud = withCloud.length > 0 && peakCloud >= MIN_LEVEL_CLOUD_PCT;
+  const metric = (l: WeatherLevel) => (useCloud ? l.cloudPct : l.rhPct);
+  const thr = useCloud ? Math.max(MIN_LEVEL_CLOUD_PCT, peakCloud / 2) : levels[peak].rhPct - RH_BAND_PTS;
   const cross = (a: WeatherLevel, b: WeatherLevel) =>
-    a.mslM + ((b.mslM - a.mslM) * (a.rhPct - thr)) / (a.rhPct - b.rhPct);
+    a.mslM + ((b.mslM - a.mslM) * (metric(a) - thr)) / (metric(a) - metric(b));
+  const outside = (l: WeatherLevel) => !(metric(l) >= thr);
 
   let baseMsl = lo;
   let openBelow = true;
   for (let i = peak; i > 0; i--) {
     const b = levels[i - 1];
     if (!inBand(b)) break;
-    if (b.rhPct < thr) {
+    if (outside(b)) {
       baseMsl = cross(levels[i], b);
       openBelow = false;
       break;
@@ -105,7 +118,7 @@ function humidExtent(levels: WeatherLevel[], lo: number, hi: number): Extent | n
   for (let i = peak; i < levels.length - 1; i++) {
     const b = levels[i + 1];
     if (!inBand(b)) break;
-    if (b.rhPct < thr) {
+    if (outside(b)) {
       topMsl = cross(levels[i], b);
       break;
     }
@@ -134,7 +147,9 @@ function lowType(state: WeatherState, coverPct: number, baseAglM: number): Cloud
   const code = Math.round(s.weatherCode);
   const showers = state.precip.showersMmPerH > 0 || (code >= 80 && code <= 86);
   if ((code >= 95 && code <= 99) || (s.capeJkg >= 1000 && showers)) return "cumulonimbus";
-  if (showers || (s.capeJkg >= 100 && s.liftedIndex < 0)) return "cumulus";
+  if (showers) return "cumulus";
+  // unstable air under a near-solid deck is still a sheet (stratocumulus/stratus)
+  if (s.capeJkg >= 100 && s.liftedIndex < 0 && coverPct < MAX_CUMULUS_COVER_PCT) return "cumulus";
   if (coverPct >= 70 && baseAglM < 600) return "stratus";
   return "stratocumulus";
 }

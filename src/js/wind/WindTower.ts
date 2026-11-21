@@ -237,7 +237,7 @@ function makeGlowTexture(): THREE.Texture {
 }
 
 /** Screen-sized text label (doesn't shrink with distance). */
-function makeTextSprite(text: string, color: string): THREE.Sprite {
+export function makeTextSprite(text: string, color: string): THREE.Sprite {
   const font = "500 26px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
   const pad = 10;
   const measure = document.createElement("canvas").getContext("2d")!;

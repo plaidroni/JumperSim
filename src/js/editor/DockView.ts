@@ -61,6 +61,7 @@ export class DockView {
     this.viewport = byId("viewport");
     this.store = byId("dock-tab-store");
     this.setupZoneSplitters();
+    this.setupReopenTabs();
     window.addEventListener("resize", () => this.applyZoneSizes());
     new ResizeObserver(() => this.layoutFloats()).observe(this.viewport);
     document.addEventListener("pointerdown", (e) => {
@@ -79,6 +80,7 @@ export class DockView {
     this.editor.classList.toggle("side-closed", !s.side.open);
     this.editor.classList.toggle("bottom-closed", !s.bottom.open);
     this.applyZoneSizes();
+    this.syncReopenTabs();
 
     // park every tab in the store, then hand them out to their groups
     this.tabs.forEach((t) => {
@@ -637,6 +639,96 @@ export class DockView {
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
+  }
+
+  // ================================================================== reopen tabs
+
+  private reopenTabs: Partial<Record<ZoneId, HTMLButtonElement>> = {};
+
+  /**
+   * Small arrow tabs on the viewport edge while a dock is closed: click to slide it
+   * back open, or drag the tab out to open it at the size you pull it to.
+   */
+  private setupReopenTabs() {
+    (["side", "bottom"] as ZoneId[]).forEach((zone) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "dock-reopen";
+      btn.dataset.zone = zone;
+      btn.hidden = true;
+      const label = zone === "side"
+        ? "Show the side dock (Ctrl+B) · drag to size"
+        : "Show the bottom panel (Ctrl+J) · drag to size";
+      btn.title = label;
+      btn.setAttribute("aria-label", label);
+      this.viewport.appendChild(btn);
+      this.reopenTabs[zone] = btn;
+
+      btn.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        btn.setPointerCapture(e.pointerId);
+        const start = { x: e.clientX, y: e.clientY };
+        const limits = zone === "side" ? SIDE_LIMITS : BOTTOM_LIMITS;
+        let dragging = false;
+        const move = (ev: PointerEvent) => {
+          const pull = zone === "side"
+            ? (this.host.layout.state.dockSide === "right" ? start.x - ev.clientX : ev.clientX - start.x)
+            : start.y - ev.clientY;
+          if (!dragging) {
+            if (pull < DRAG_THRESHOLD) return;
+            dragging = true;
+            this.host.layout.setZoneSize(zone, limits.min);
+            this.host.commit((l) => l.setZoneOpen(zone, true));
+          }
+          const max = (zone === "side" ? window.innerWidth : window.innerHeight) * limits.maxFrac;
+          this.host.layout.setZoneSize(zone, clamp(pull, limits.min, max));
+          requestAnimationFrame(() => this.applyZoneSizes());
+        };
+        const up = () => {
+          btn.removeEventListener("pointermove", move);
+          btn.removeEventListener("pointerup", up);
+          btn.removeEventListener("pointercancel", up);
+          if (dragging) {
+            this.host.save();
+            this.updateOverflowButtons();
+          } else {
+            this.slideOpen(zone);
+          }
+        };
+        btn.addEventListener("pointermove", move);
+        btn.addEventListener("pointerup", up);
+        btn.addEventListener("pointercancel", up);
+      });
+      btn.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          this.slideOpen(zone);
+        }
+      });
+    });
+  }
+
+  /** Reopen a dock with a short slide (the grid track animates from 0). */
+  private slideOpen(zone: ZoneId) {
+    this.editor.classList.add("dock-sliding");
+    this.host.commit((l) => l.setZoneOpen(zone, true));
+    window.setTimeout(() => this.editor.classList.remove("dock-sliding"), 260);
+  }
+
+  private syncReopenTabs() {
+    const s = this.host.layout.state;
+    const { side, bottom } = this.reopenTabs;
+    if (side) {
+      side.hidden = s.side.open;
+      side.dataset.edge = s.dockSide;
+      side.textContent = s.dockSide === "right" ? "‹" : "›";
+    }
+    if (bottom) {
+      bottom.hidden = s.bottom.open;
+      bottom.textContent = "⌃";
+    }
   }
 
   // ================================================================== zone splitters

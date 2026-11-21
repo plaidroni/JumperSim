@@ -250,7 +250,11 @@ export interface WeatherState {
 For each band with cover ≥ 2%:
 
 1. **Peak level.** Among the valid levels in the band, take the one with the highest `cloudPct`. If they are all 0, take the highest humidity.
-2. **Extent.** Walk down and up from the peak while humidity stays within 10 points of the peak, without leaving the band. Base and top are interpolated where the humidity crosses that threshold.
+2. **Extent.** Walk down and up from the peak, without leaving the band, and interpolate base and top where the value crosses the threshold:
+   - When the peak level's own cloud cover is at least 20%, the layer is where cover stays above half its peak.
+   - Otherwise, the layer is where humidity stays within 10 points of its peak.
+
+   *As built:* the cover rule was added after Skydive Sebastian (2026-11-20). There the column was near-saturated (RH 92–99% from the surface to 3 km) under 100% low cover, so the humidity window reached the ground. The base fell back to the dew-point estimate (238 m), and the deck looked like it reached the ground. Per-level cover put the base at about 400 m.
 3. **Thickness limits:**
 
    | Band | Min | Max | Used when no level helps |
@@ -267,7 +271,7 @@ For each band with cover ≥ 2%:
    | Band | Rule | Type |
    |---|---|---|
    | low | code 95–99, or CAPE ≥ 1,000 J/kg with showers | cumulonimbus |
-   | low | showers (codes 80–86), or CAPE ≥ 100 J/kg with lifted index < 0 | cumulus |
+   | low | showers (codes 80–86), or CAPE ≥ 100 J/kg with lifted index < 0 and low cover < 75% | cumulus |
    | low | cover ≥ 70% and base < 600 m AGL | stratus |
    | low | otherwise | stratocumulus |
    | mid | steady rain (61–65) with mid ≥ 80%, merged with low | nimbostratus |
@@ -328,9 +332,10 @@ P5  overlay pass    camera.layers = OVERLAY (1)       → sceneRT (depth-tested 
 P6  output          linear → sRGB                     → canvas
 ```
 
-**No feedback loops.** P4 writes into `sceneRT` with premultiplied "over" blending (`ONE, ONE_MINUS_SRC_ALPHA`).
-- It samples only `cloudRT` and `depthRT`, never `sceneRT`'s own colour or depth.
-- Darkening and shadows scale the destination through the blend alpha: `1 − a = T_cloud · T_haze · (1 − D) · shadow`.
+**No feedback loops.** P4 writes into `sceneRT` and samples only `cloudRT` and `depthRT`, never `sceneRT`'s own colour or depth.
+- As built (phase 3), P4 is two blended full-screen passes: a multiply pass (`ZERO, SRC_COLOR`) for everything that scales the scene, then an add pass (`ONE, ONE`) for haze and fog light. `final = scene · keep + added`.
+- A single premultiplied pass can't do it, because the rain tint scales each colour channel differently and blend alpha is one number.
+- The two passes also apply today's 15–60 km horizon fog (`scene.fog`) themselves, so the pipeline matches a direct render.
 
 **Log depth.** With `logarithmicDepthBuffer`, three.js writes `depth = log2(1 + w) / log2(far + 1)`.
 - P2 inverts it, `w = 2^(depth · log2(far + 1)) − 1`, then rebuilds the view-space position and divides by `WORLD_SCALE` to get metres.
@@ -428,13 +433,13 @@ At 20 kt, a cloud moves 617 m per minute of sim time.
 
 ### 5.4 Rain and snow
 
-**Particles.** GPU-instanced streaks facing the camera, in a box around it (160 × 120 × 160 m), under `worldRoot`, on the overlay layer.
+**Particles.** GPU-instanced streaks facing the camera, in a box around it (60 × 45 × 60 m as built; 160 × 120 × 160 m read as sparse dots), under `worldRoot`, on the overlay layer.
 - Position, computed in the shader: `mod(seed · box + v · t − camera, box)`.
 - `v` = the wind at the camera's height + the fall speed:
   - rain: 6.5 m/s;
   - drizzle: 2 m/s, smaller and fainter;
   - snow: 1.2 m/s, with sway and round flakes.
-- Streak length = speed × 1/30 s.
+- Streak length = speed × 1/12 s as built (1/30 s looked like dots).
 - Count = intensity × the preset's maximum (§5.8).
 
 **Where particles appear:**
@@ -479,7 +484,7 @@ At 20 kt, a cloud moves 617 m per minute of sim time.
 The constants live in `weather/config.ts`.
 
 **Colour.**
-- The haze goes from the theme's fog colour (`0x0a0a0a`) at good visibility toward grey (`#7d858f`) as V falls (smoothstep from 24 km to 3 km), times `1 − D`.
+- The haze goes from the theme's fog colour (`0x0a0a0a`) at good visibility toward grey (`#4f565e`) as V falls (smoothstep from 24 km to 3 km), times `1 − D`. The grey is deliberately dark: on the near-black theme, a lighter grey (first tried `#7d858f`) made rainy scenes look brighter than clear ones.
 - Clouds receive haze at their transmittance-weighted mean distance.
 
 **Observer.** The haze is measured from the camera. When following the plane or a jumper, the haze is what they see.
@@ -496,14 +501,33 @@ The constants live in `weather/config.ts`.
 
 | Preset | Cloud res. | Max steps | Light samples | Detail noise | Temporal | Shape noise | Max rain particles |
 |---|---|---|---|---|---|---|---|
-| Low | ¼ | 48 | 3 | off | off | 64³ | 4k |
-| **Medium** (default) | ½ | 96 | 5 | on | off | 128³ | 12k |
-| High | ½ | 160 | 6 | on | on | 128³ | 30k |
+| Low | ¼ | 40 | 3 | off | off | 128³ | 4k |
+| **Medium** (default) | ½ | 64 | 4 | on | off | 128³ | 12k |
+| High | ½ | 128 | 6 | on | on (phase 6) | 128³ | 30k |
+
+As built (phase 4):
+- **Step counts and light samples** are lower than first planned. Light samples skip the detail noise and reuse the column's coverage.
+- **One shape-noise texture:** a single 128³ texture serves every preset.
+- **Measured cost:** on an AMD Radeon integrated GPU (Ryzen laptop), the cloud pass costs about 45 ns per cloud pixel at Medium. That projects to about 23 ms at 1080p (½ res) for Medium and about 5 ms for Low.
+- **Auto quality** therefore shipped in phase 4, not phase 6, so integrated GPUs drop to Low on their own.
+- **Domed clouds:** heaped clouds get rounded tops by scaling a layer's top with how far inside a coverage cell a point is. Sheets (stratus, altostratus, nimbostratus) stay flat.
 
 - **Upsampling.** P4 upsamples `cloudRT` by nearest depth (using `depthRT`), so ridges and jumpers don't get halos.
 - **Temporal (High only).** Blend with the reprojected previous frame, rejecting samples whose depth or colour disagree. Reset on camera cuts and DZ switches.
 - **Auto quality.** If frame time averages over 25 ms for 5 s with clouds on, drop one preset and toast once: "Clouds lowered to Low to keep the frame rate up. Change it in Weather."
 - **GPU memory at 1080p:** about 50 MB (render targets about 40 MB, noise about 8 MB, coverage map 1 MB).
+
+### 5.9 Camera: ground and jump height (added in phase 5)
+
+Two viewport buttons (bottom left) and keys fly the camera over 1.6 s with an ease-in-out curve:
+- **⤓ Ground (G):** to eye height (1.8 m) on the terrain under what you're looking at. Over the detailed terrain only (≤ 7 km from the DZ). Keeps your heading and looks about 7° up, so you see the clouds and rain from below.
+- **⤒ Jump height (J):** back up to the plane (wherever it is in the sim) at the usual follow offset, then follows it again.
+
+Orbiting or zooming during a flight cancels it. Hidden in the planner. `src/js/ui/CameraZoop.ts`.
+
+**Fix found while testing:** `MapScene` had cached an impossible DZ ground height (−2,199,335 m) after calibrating on coarse tiles, and each load compounded it.
+- The cache and the calibration now reject heights outside −500 to +9,000 m (ellipsoid).
+- A failed calibration retries when finer tiles finish loading, then recalculates the sim.
 
 ---
 
