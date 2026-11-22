@@ -416,6 +416,7 @@
       </section>
       <section class="dock-tab" id="plane-panel" data-tab-id="plane" data-tab-title="Plane Settings">
         <div class="panel-body plane-settings">
+          <div class="ps-strip" id="plane-strip" role="tablist" aria-label="Planes"></div>
           <div class="ps-header">
             <label class="ps-field">
               <span class="ps-label">Aircraft</span>
@@ -428,6 +429,9 @@
             </label>
             <span id="plane-status" class="ps-status" role="status" hidden></span>
             <dl class="ps-stats">
+              <div><dt>Seats</dt><dd id="plane-seats">0</dd></div>
+              <div><dt>Floaters</dt><dd><input type="number" class="ps-input ps-input-narrow" id="plane-floaters" min="0" step="1" placeholder="auto" title="Jumpers hanging outside before go. Empty = only those who don't fit in the door." /></dd></div>
+              <div><dt>Position</dt><dd id="plane-position">Lead</dd></div>
               <div><dt>Speed</dt><dd><span id="plane-speed">0</span> kt</dd></div>
               <div><dt>Heading</dt><dd id="plane-direction">N/A</dd></div>
               <div><dt>Load</dt><dd><span id="load-size">0</span> jumpers</dd></div>

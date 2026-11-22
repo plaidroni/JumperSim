@@ -1,6 +1,9 @@
 import { SimPlane, SimJumper } from "../classes/SimEntities";
 import { pickAndImportJump } from "../formations/ImportJump";
 import { sequenceOf } from "../formations/FormationSequence";
+import { ALL_PLANES, renderPlaneStrip } from "./PlaneStrip";
+import { AIRCRAFT } from "../fleet/Aircraft";
+import type { Fleet } from "../fleet/Fleet";
 import { notificationManager } from "../classes/NotificationManager";
 import { requestRecalculation } from "../core/data/SimulationVariables";
 import { hasJumperExited, jumperStatus } from "../panels/jumperStatus";
@@ -62,6 +65,41 @@ export class PlaneLoad {
   plane: SimPlane;
   jumpers: SimJumper[] = [];
   selectedId: string | null = null;
+  /** Plane being edited (a plane id, or "all"). */
+  selectedPlaneId = "";
+
+  private fleet(): Fleet | null {
+    return (window as any).fleet ?? null;
+  }
+
+  /** The plane the header and aircraft picker edit (the lead in the All view). */
+  selectedPlane(): SimPlane {
+    const f = this.fleet();
+    if (!f) return this.plane;
+    return f.planes.find((p) => p.id === this.selectedPlaneId) ?? f.lead;
+  }
+
+  selectPlane(id: string) {
+    this.selectedPlaneId = id;
+    const p = this.selectedPlane();
+    const mesh = p.getMesh();
+    if (id !== ALL_PLANES && mesh && this.fleet() && this.fleet()!.planes.length > 1) (window as any).setSelectedObject?.(mesh);
+    this.render();
+  }
+
+  /** Strip edits: recalculate now (fleet changes aren't table edits). */
+  changed() {
+    this.fleet()?.reindex(this.jumpers);
+    this.normalizeJumpTimes();
+    requestRecalculation();
+    queueMicrotask(() => this.render());
+  }
+
+  /** Jumpers on a plane (lead also gets anyone whose plane is gone). */
+  private onPlane(p: SimPlane): SimJumper[] {
+    const f = this.fleet();
+    return this.jumpers.filter((j) => j.plane === p || (f && p === f.lead && !f.planes.includes(j.plane as SimPlane)));
+  }
   view: "organizer" = "organizer";
   layout: PlaneLayout;
   private selectedFormationIdx: number = 0;
@@ -100,12 +138,25 @@ export class PlaneLoad {
     const btn = panel?.querySelector("#plane-load-save") as HTMLButtonElement | null;
     const note = panel?.querySelector("#plane-load-dirty") as HTMLElement | null;
     if (btn) btn.classList.toggle("is-dirty", this.dirty);
-    if (note) note.textContent = this.dirty ? "Unsaved changes" : "Up to date";
-    if (note) note.classList.toggle("is-dirty", this.dirty);
+    const f = this.fleet();
+    const over = f ? f.planes.map((p) => ({ p, s: f.seats(p, this.jumpers) })).filter((x) => x.s.over) : [];
+    const capText = over.map((x) => `⚠ ${x.p.label} is over capacity (${x.s.used}/${x.s.capacity})`).join(" · ");
+    if (note) note.textContent = capText || (this.dirty ? "Unsaved changes" : "Up to date");
+    if (note) note.classList.toggle("is-dirty", this.dirty || !!capText);
   }
 
   constructor(plane: SimPlane, layout?: PlaneLayout) {
     this.plane = plane;
+    (window as any).planeLoadSelectedPlane = () => this.selectedPlane();
+    const fl = document.getElementById("plane-floaters") as HTMLInputElement | null;
+    fl?.addEventListener("change", () => {
+      const p = this.selectedPlane();
+      const raw = fl.value.trim();
+      const v = Number(raw);
+      p.floaters = raw === "" || !Number.isFinite(v) ? null : Math.max(0, Math.min(AIRCRAFT[p.aircraftId].maxFloaters, Math.round(v)));
+      this.changed();
+    });
+    (window as any).fleet?.onChange?.(() => queueMicrotask(() => this.render()));
     this.layout = layout || TwinOtterLayout;
     this.refreshJumpers();
     // pattern names / defaults show in the Pattern column
@@ -215,7 +266,7 @@ export class PlaneLoad {
   }
 
   private moveUp(j: SimJumper) {
-    const sorted = [...this.jumpers].sort((a, b) => a.index - b.index);
+    const sorted = this.onPlane(j.plane as SimPlane).sort((a, b) => a.index - b.index);
     const i = sorted.findIndex((x) => x.id === j.id);
     if (i <= 0) return;
     const prev = sorted[i - 1];
@@ -230,7 +281,7 @@ export class PlaneLoad {
   }
 
   private moveDown(j: SimJumper) {
-    const sorted = [...this.jumpers].sort((a, b) => a.index - b.index);
+    const sorted = this.onPlane(j.plane as SimPlane).sort((a, b) => a.index - b.index);
     const i = sorted.findIndex((x) => x.id === j.id);
     if (i < 0 || i >= sorted.length - 1) return;
     const next = sorted[i + 1];
@@ -502,7 +553,8 @@ export class PlaneLoad {
     table.className = "ps-table";
     const thead = document.createElement("thead");
     thead.innerHTML = `<tr>
-      <th style="text-align:left">#</th>
+      <th style="text-align:left" title="Exit order on this plane">#</th>
+      ${this.selectedPlaneId === ALL_PLANES && (this.fleet()?.planes.length ?? 1) > 1 ? '<th style="text-align:left" title="The aircraft this jumper rides">Plane</th>' : ""}
       <th style="text-align:left">Name</th>
       <th style="text-align:left" title="Freefall body position (sets the drag area)">Position</th>
       <th style="text-align:left" title="Break off at ${TRACK_START_FT.toLocaleString()} ft (or ${TRACK_LEAD_FT.toLocaleString()} ft above the pull) and track away">Track</th>
@@ -522,9 +574,18 @@ export class PlaneLoad {
 
     // Ensure no duplicate indices; then render
     this.reindexSequential();
-    const list = [...this.jumpers].sort((a, b) => a.index - b.index);
+    const fleet = this.fleet();
+    const showAll = this.selectedPlaneId === ALL_PLANES;
+    const multi = (fleet?.planes.length ?? 1) > 1;
+    const plane = this.selectedPlane();
+    const list = (showAll || !fleet ? [...this.jumpers] : this.onPlane(plane)).sort((a, b) => a.index - b.index);
+    const cap = showAll ? null : plane.capacity;
     list.forEach((j, i) => {
       const tr = document.createElement("tr");
+      if (cap !== null && i >= cap) {
+        tr.classList.add("is-over-capacity");
+        tr.title = `Over ${plane.label}'s capacity (${cap})`;
+      }
       tr.draggable = false;
       tr.dataset.id = j.id;
 
@@ -536,18 +597,22 @@ export class PlaneLoad {
       upBtn.textContent = "▲";
       upBtn.title = "Move up";
       upBtn.className = "ps-mini";
-      upBtn.disabled = i === 0;
+      const mates = showAll ? list.filter((x) => x.plane === j.plane) : list;
+      const mi = mates.indexOf(j);
+      upBtn.disabled = mi <= 0;
       upBtn.addEventListener("click", () => this.moveUp(j));
 
       const downBtn = document.createElement("button");
       downBtn.textContent = "▼";
       downBtn.title = "Move down";
       downBtn.className = "ps-mini";
-      downBtn.disabled = i === list.length - 1;
+      downBtn.disabled = mi < 0 || mi >= mates.length - 1;
       downBtn.addEventListener("click", () => this.moveDown(j));
 
       const idxLabel = document.createElement("span");
-      idxLabel.textContent = String(i + 1);
+      idxLabel.textContent =
+        showAll && multi && fleet ? `${fleet.planes.indexOf(j.plane as SimPlane) + 1}·${mi + 1}` : String(mi + 1);
+      if (j.isFloater) idxLabel.title = "Floater: hangs outside before go";
       idxLabel.style.minWidth = "1.5em";
       idxLabel.style.textAlign = "right";
 
@@ -555,6 +620,31 @@ export class PlaneLoad {
       tdIdx.appendChild(downBtn);
       tdIdx.appendChild(idxLabel);
       tr.appendChild(tdIdx);
+
+      if (showAll && multi && fleet) {
+        const tdPlane = document.createElement("td");
+        const ps = document.createElement("select");
+        ps.className = "ps-select ps-select-narrow";
+        fleet.planes.forEach((p, k) => {
+          const o = document.createElement("option");
+          o.value = p.id;
+          o.textContent = `${k + 1} ${p.label}`;
+          o.selected = p === j.plane;
+          ps.appendChild(o);
+        });
+        ps.title = "Move this jumper to another plane (last out)";
+        ps.addEventListener("change", () => {
+          const to = fleet.planes.find((p) => p.id === ps.value);
+          if (!to) return;
+          fleet.moveJumper(j, to);
+          fleet.reindex(this.jumpers);
+          this.normalizeJumpTimes();
+          this.markDirty();
+          this.render();
+        });
+        tdPlane.appendChild(ps);
+        tr.appendChild(tdPlane);
+      }
 
       const tdName = document.createElement("td");
       const name = document.createElement("input");
@@ -1034,6 +1124,10 @@ export class PlaneLoad {
     const container = panel as HTMLElement;
     container.innerHTML = "";
 
+    const f = this.fleet();
+    if (f && !f.planes.some((p) => p.id === this.selectedPlaneId) && this.selectedPlaneId !== ALL_PLANES)
+      this.selectedPlaneId = f.lead.id;
+    if (f) renderPlaneStrip(this, f, this.jumpers);
     container.appendChild(this.buildOrganizer());
     this.updateSaveState();
     this.updatePlaneSummary();
@@ -1112,10 +1206,32 @@ export class PlaneLoad {
       const el = document.getElementById(id);
       if (el && el.textContent !== text) el.textContent = text;
     };
-    set("load-size", String(this.jumpers.length));
+    const p = this.selectedPlane();
+    const f = this.fleet();
+    const aboard = f ? this.onPlane(p).length : this.jumpers.length;
+    set("load-size", String(this.selectedPlaneId === ALL_PLANES ? this.jumpers.length : aboard));
+    const cap = p.capacity;
+    set("plane-seats", `${aboard}/${cap ?? "—"}${cap !== null && aboard > cap ? " ⚠" : ""}`);
+    const seatsEl = document.getElementById("plane-seats");
+    seatsEl?.classList.toggle("is-over", cap !== null && aboard > cap);
+    const k = f ? f.planes.indexOf(p) : 0;
+    set(
+      "plane-position",
+      k <= 0
+        ? `Lead · ${Math.round(p.initialPosition.y * M_TO_FT).toLocaleString()} ft`
+        : `${Math.round(p.offset.backM)} m back · ${Math.round(Math.abs(p.offset.rightM))} m ${p.offset.rightM >= 0 ? "right" : "left"} · +${Math.round(p.offset.upM * M_TO_FT)} ft`,
+    );
+    const sel = document.getElementById("plane-select") as HTMLSelectElement | null;
+    if (sel && document.activeElement !== sel && sel.value !== p.aircraftId) sel.value = p.aircraftId;
+    const fl = document.getElementById("plane-floaters") as HTMLInputElement | null;
+    if (fl && document.activeElement !== fl) {
+      fl.value = p.floaters === null ? "" : String(p.floaters);
+      fl.max = String(AIRCRAFT[p.aircraftId].maxFloaters);
+      fl.disabled = AIRCRAFT[p.aircraftId].maxFloaters === 0;
+    }
     // plane.speed is m/s
-    set("plane-speed", String(Math.round(this.plane.speed / 0.51444)));
-    const d = this.plane.direction;
+    set("plane-speed", String(Math.round(p.speed / 0.51444)));
+    const d = p.direction;
     if (Math.hypot(d.x, d.z) < 1e-6) {
       set("plane-direction", "N/A");
     } else {

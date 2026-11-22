@@ -325,3 +325,27 @@ body {
 }
 
 #plane-panel.is-drop-target { outline: 2px dashed #ffd700; outline-offset: -4px; }
+
+/* Plane strip (specs/formation-jumps.md §10.2) */
+.ps-strip { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 4px 0 6px; border-bottom: 1px solid #333; margin-bottom: 6px; }
+.ps-plane-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid #444; border-top: 2px solid transparent; border-radius: 3px; background: #1e1e1e; color: #ccc; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.ps-plane-chip:hover { background: #262626; }
+.ps-plane-chip.is-active { background: #2c2c2c; color: #fff; border-top-color: #ffd700; }
+.ps-plane-chip.is-over .ps-plane-seats { color: #ff6b6b; }
+.ps-plane-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ps-plane-kind { color: #999; }
+.ps-plane-seats { color: #bbb; font-variant-numeric: tabular-nums; }
+.ps-plane-more { color: #888; padding: 0 2px; }
+.ps-plane-more:hover { color: #ffd700; }
+.ps-plane-add { height: 24px; min-width: 24px; border: 1px dashed #555; border-radius: 3px; background: transparent; color: #ccc; cursor: pointer; }
+.ps-plane-add:disabled { opacity: 0.4; cursor: default; }
+.ps-strip-spacer { flex: 1; }
+.ps-menu { display: flex; flex-direction: column; min-width: 170px; padding: 4px; }
+.ps-menu h4 { margin: 6px 6px 2px; font-size: 11px; color: #999; text-transform: uppercase; }
+.ps-menu hr { border: 0; border-top: 1px solid #444; margin: 4px 0; }
+.ps-menu-item { text-align: left; background: transparent; border: 0; color: #ddd; padding: 4px 8px; white-space: pre; cursor: pointer; border-radius: 3px; }
+.ps-menu-item:hover:not(:disabled) { background: #333; }
+.ps-menu-item:disabled { color: #666; cursor: default; }
+.ps-go label { display: flex; justify-content: space-between; gap: 8px; }
+.ps-table tr.is-over-capacity td:first-child { box-shadow: inset 3px 0 0 #ff4d4d; }
+#plane-seats.is-over { color: #ff6b6b; }
