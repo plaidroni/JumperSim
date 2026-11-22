@@ -35,7 +35,7 @@
 - **Low guard (§9.4):** it stays on until the diver is level again, so the target doesn't flip back and forth.
 - **Red arrow (§9.8):** shown when the steady area needed to hold the formation's fall rate is outside the jumper's belly range.
 - **Performance (G8):** solving the 32-way takes about 0.5 s in Node, and a full recalculation about 1.7 s. Most of that is the existing per-jumper physics (about 1 s for 32 jumpers without a formation). A 100-way under 1 s is **not** met.
-- **Tests:** `tests/jumpFile`, `fleet`, `loadSplit`, `jsimFile` and `sequenceSolver`. Two older tests in `tests/tracking.test.ts` still expect breakoff at 4,500 ft, but the default pull is now 4,500 ft, so breakoff is 5,500 ft. They failed before this work.
+- **Tests:** `tests/jumpFile`, `fleet`, `loadSplit`, `jsimFile` and `sequenceSolver`. Two older tracking tests that expected breakoff at 4,500 ft now expect the 5,500 ft that follows from the 4,500 ft default pull.
 
 **Rev 3 decisions**
 - The adjustment arrow also shows **sideways movement**: one arrow, tilted by how much the jumper is sliding across relative to the formation (§9.8).

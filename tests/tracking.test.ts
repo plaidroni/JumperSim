@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { SimJumper, SimPlane, precalculateJumpers } from "../src/js/classes/SimEntities";
 import { emptyPlan, setDropzonePlan } from "../src/js/dropzone/DropzonePlan";
-import { TRACK_LEAD_FT, TRACK_START_FT } from "../src/js/physics/BodyPositions";
+import { TRACK_LEAD_FT, TRACK_START_FT, breakoffAltitudeFt } from "../src/js/physics/BodyPositions";
+import { DEFAULT_PULL_FT } from "../src/js/physics/Canopy";
+
+/** Breakoff for the default pull: TRACK_START_FT, or TRACK_LEAD_FT above the pull if higher (5,500 ft today). */
+const DEFAULT_BREAKOFF_FT = breakoffAltitudeFt(TRACK_START_FT, DEFAULT_PULL_FT);
 
 /**
  * Breakoff tracking: a jumper with the Track toggle on (belly, sit fly, head down)
@@ -64,12 +68,12 @@ beforeEach(() => {
 });
 
 describe("breakoff tracking (solo)", () => {
-  it("breaks off at 4,500 ft and tracks away before pulling", () => {
+  it("breaks off 1,000 ft above the default pull and tracks away before pulling", () => {
     const { jumpers } = runLoad([{}]);
     const j = jumpers[0];
     expect(j.trackStartTime).not.toBeNull();
     expect(j.deployment).not.toBeNull();
-    expect(altFt(j, j.trackStartTime!)).toBeCloseTo(TRACK_START_FT, -2); // within ±50 ft
+    expect(altFt(j, j.trackStartTime!)).toBeCloseTo(DEFAULT_BREAKOFF_FT, -2); // within ±50 ft
     expect(j.trackStartTime!).toBeLessThan(j.deployment!.pullTime);
 
     // flat track: real horizontal speed and distance, not a straight fall
@@ -136,7 +140,7 @@ describe("breakoff tracking (round)", () => {
     for (const j of jumpers) {
       expect(j.formationEndTime).not.toBeNull();
       expect(j.trackStartTime).not.toBeNull();
-      expect(altFt(j, j.trackStartTime!)).toBeCloseTo(TRACK_START_FT, -2);
+      expect(altFt(j, j.trackStartTime!)).toBeCloseTo(DEFAULT_BREAKOFF_FT, -2);
       expect(trackDistance(j)).toBeGreaterThan(100);
     }
   });
