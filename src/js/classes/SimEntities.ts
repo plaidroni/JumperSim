@@ -203,6 +203,10 @@ export class SimJumper extends Jumper {
   exitOrder = 0;
   /** Hangs outside the plane before "go" (specs/formation-jumps.md §1.1). */
   isFloater = false;
+  /** Set by the load split: leaves on "go", floats, belongs to the lead's gripped exit piece. */
+  initialExit = false;
+  wantsFloat = false;
+  inExitPiece = false;
   /** Floater spot (drawn scale, aircraft frame) this jumper leaves from; null = the door. */
   exitSpot: { right: number; up: number; back: number } | null = null;
 

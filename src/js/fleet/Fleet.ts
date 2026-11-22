@@ -54,6 +54,14 @@ export function layoutOffset(layout: FleetLayoutId, k: number, s: FleetSpacing =
 
 type Listener = () => void;
 
+export interface FleetSnapshot {
+  planes: { p: SimPlane; aircraftId: AircraftId; label: string; floaters: number | null; goOffsetS: number; planeColor: number }[];
+  layout: FleetLayoutId;
+  spacing: FleetSpacing;
+  exitIntervalS: number;
+  formations: FormationSequence[];
+}
+
 export class Fleet {
   planes: SimPlane[];
   layout: FleetLayoutId = "v";
@@ -101,7 +109,7 @@ export class Fleet {
 
   private prepare(p: SimPlane, k: number) {
     if (!p.label) p.label = k === 0 ? "Lead" : `Plane ${k + 1}`;
-    if (!p.planeColor) p.planeColor = PLANE_COLORS[this.planes.indexOf(p) % PLANE_COLORS.length] ?? PLANE_COLORS[k % PLANE_COLORS.length];
+    if (!p.planeColor) p.planeColor = k === 0 ? AIRCRAFT[p.aircraftId].color : PLANE_COLORS[k % PLANE_COLORS.length];
     p.formations = this._formations;
   }
 
@@ -254,6 +262,66 @@ export class Fleet {
           out.push([pa, pb]);
       }
     return out;
+  }
+
+  /** Use exactly these planes (lead first). Dropped planes lose their model; new ones get one. */
+  setPlanes(list: SimPlane[]) {
+    if (!list.length) return;
+    this.planes.filter((p) => !list.includes(p)).forEach((p) => p.getMesh()?.removeFromParent());
+    const added = list.filter((p) => !this.planes.includes(p));
+    this.planes = [...list];
+    this.planes.forEach((p, k) => this.prepare(p, k));
+    this.applyLayout();
+    added.forEach((p) => this.modelLoader?.(p));
+    this.emit();
+  }
+
+  /** A new plane (not yet in the fleet) flying with the lead. */
+  createPlane(aircraftId: AircraftId, label: string): SimPlane {
+    const lead = this.lead;
+    const p = new SimPlane(lead.initialPosition.clone(), lead.getSpeedKnots(), lead.direction.clone());
+    p.aircraftId = aircraftId;
+    p.label = label;
+    p.planeColor = 0;
+    p.linkedFormation = lead.linkedFormation;
+    p.planeLoad = lead.planeLoad;
+    return p;
+  }
+
+  snapshot(): FleetSnapshot {
+    return {
+      planes: this.planes.map((p) => ({
+        p,
+        aircraftId: p.aircraftId,
+        label: p.label,
+        floaters: p.floaters,
+        goOffsetS: p.goOffsetS,
+        planeColor: p.planeColor,
+      })),
+      layout: this.layout,
+      spacing: { ...this.spacing },
+      exitIntervalS: this.exitIntervalS,
+      formations: [...this._formations],
+    };
+  }
+
+  restore(s: FleetSnapshot) {
+    const reload: SimPlane[] = [];
+    s.planes.forEach((st) => {
+      if (st.p.aircraftId !== st.aircraftId) reload.push(st.p);
+      st.p.aircraftId = st.aircraftId;
+      st.p.label = st.label;
+      st.p.floaters = st.floaters;
+      st.p.goOffsetS = st.goOffsetS;
+      st.p.planeColor = st.planeColor;
+    });
+    this.layout = s.layout;
+    this.spacing = { ...s.spacing };
+    this.exitIntervalS = s.exitIntervalS;
+    const before = new Set(this.planes);
+    this.setPlanes(s.planes.map((x) => x.p));
+    reload.filter((p) => before.has(p)).forEach((p) => this.modelLoader?.(p));
+    this.formations = s.formations;
   }
 
   /** Highest exit altitude (m) over all planes. */

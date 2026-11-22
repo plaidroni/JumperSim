@@ -56,11 +56,12 @@ export function scheduleExits({ planes, jumpers, formations, exitIntervalS }: Sc
       if (!members.length) continue;
       const spec = aircraft(p.aircraftId);
       const pGo = go + (p.goOffsetS || 0);
-      const initial = initialExitCount(spec, members.length, p.floaters);
-      const floaters = floatersFor(spec, initial, p.floaters);
-      // floaters are flagged by the split (outside of the piece); else the first out
-      let flagged = members.slice(0, initial).filter((j) => (j as any).wantsFloat);
-      if (flagged.length !== floaters) flagged = members.slice(0, floaters);
+      // the split (LoadSplit) flags who leaves on go and who floats; else work it out
+      const marked = members.filter((j) => j.initialExit).length;
+      const initial = marked > 0 && members.slice(0, marked).every((j) => j.initialExit) ? marked : initialExitCount(spec, members.length, p.floaters);
+      const floaters = Math.min(spec.maxFloaters, floatersFor(spec, initial, p.floaters));
+      let flagged = members.slice(0, initial).filter((j) => j.wantsFloat);
+      if (!flagged.length || flagged.length > spec.maxFloaters) flagged = members.slice(0, floaters);
       let spot = 0;
       members.forEach((j, n) => {
         if (n < initial) {
