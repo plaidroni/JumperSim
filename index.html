@@ -363,18 +363,19 @@
         
         
           <label>
-            Jump Height:
+            Exit altitude (ft AGL):
             <input
               type="number"
-              id="pullAltitude"
+              id="exitAltitude"
               min="3000"
-              max="18500"
+              max="18000"
               step="100"
-              value="12500"
+              value="13000"
             />
+            <span class="js-hint" id="exitAltitude-msl"></span>
           </label>
           <label>
-            Plane Speed (knots):
+            Plane speed (kt):
             <input
               type="number"
               id="planeSpeed"
@@ -384,6 +385,8 @@
               value="90"
             />
           </label>
+          <div class="js-hint" id="jump-settings-hint"></div>
+          <div class="js-hint js-warn" id="jump-settings-warn" hidden></div>
           <div class="panel-controls">
             <button id="start-align-jumprun">Align Jumprun</button>
           </div>

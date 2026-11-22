@@ -58,6 +58,8 @@ import {
   showPickMenu,
 } from "./ui/CameraFollow";
 import { initializePlanner, type Planner } from "./dropzone/PlannerView";
+import { applyJumpSettingsToPlane, exitAltitudeM, getJumpSettings } from "./core/data/JumpSettings";
+import { initializeJumpSettingsPanel } from "./ui/JumpSettingsPanel";
 import { WeatherRenderer } from "./visuals/weather/WeatherRenderer";
 import { registerOverlay, seeAllLayers, unregisterOverlay } from "./visuals/Layers";
 
@@ -495,8 +497,8 @@ function checkHoverIntersect(objects: Array<THREE.Object3D | null>) {
 // === PLANE +JUMPER + SIMULATION ===
 const stlLoader = new STLLoader();
 const simPlane = new SimPlane(
-  new THREE.Vector3(0, 3962, 0),
-  90,
+  new THREE.Vector3(0, exitAltitudeM(), 0),
+  getJumpSettings().planeSpeedKt,
   new THREE.Vector3(90, 0, 0),
 );
 handlePlaneSelection("twin-otter", scene, simPlane);
@@ -715,6 +717,7 @@ export function recalculateSimulation() {
   const jumpers: SimJumper[] = Array.isArray((window as any).simJumpers)
     ? (window as any).simJumpers
     : simJumpers;
+  applyJumpSettingsToPlane(simPlane);
   const jr = getDropzonePlan().jumprun;
   if (jr) applyJumprun(jr, simPlane, currentWindProfile());
   simPlane.precalculate(SIM_DURATION_S);
@@ -1038,6 +1041,7 @@ planner = initializePlanner({
 (window as any).planner = planner; // weather updates wait for planner drags (WeatherService)
 initializeWindWidget(camera, controls);
 initializeWeatherPanel();
+initializeJumpSettingsPanel();
 initializeWeatherMenu();
 // "zoop" to the ground or back up to jump height (viewport buttons, G / J)
 const cameraZoop = initializeCameraZoop({

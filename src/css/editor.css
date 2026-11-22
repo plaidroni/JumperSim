@@ -1041,3 +1041,10 @@ body.planner-active .follow-chip {
   border-radius: 3px;
   padding: 2px 4px;
 }
+
+/* Jump Settings hints (specs/formation-jumps.md §7.1) */
+.js-hint { display: block; font-size: 11px; color: #9a9a9a; margin: 2px 0 6px; white-space: pre-line; }
+label .js-hint { display: inline; margin-left: 6px; }
+.js-warn { color: #ffb74d; }
+@keyframes js-flash { 0% { box-shadow: 0 0 0 2px #ff4d4d; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.js-flash { animation: js-flash 0.8s ease-out; }

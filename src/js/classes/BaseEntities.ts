@@ -53,6 +53,16 @@ export class Plane {
     return this.mesh;
   }
 
+  /** Jumprun speed in knots (Jump Settings). */
+  setSpeedKnots(knots: number) {
+    this.speed = knots * 0.51444;
+    this.vector.copy(this.direction).multiplyScalar(this.speed);
+  }
+
+  getSpeedKnots(): number {
+    return this.speed / 0.51444;
+  }
+
   changeDirection(newDirection: THREE.Vector3) {
     this.direction.copy(newDirection.normalize());
     this.vector.copy(this.direction).multiplyScalar(this.speed);

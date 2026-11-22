@@ -15,8 +15,7 @@ function updateVarsFromUI() {
     if (Number.isFinite(v)) (<any>window).devConsoleVars[key] = v;
   };
   read("separation", "separation");
-  read("pullAltitude", "pullAltitude");
-  read("planeSpeed", "planeSpeed");
+  // exit altitude and plane speed live in core/data/JumpSettings.ts
 }
 
 document.querySelectorAll("input").forEach((input) => {
