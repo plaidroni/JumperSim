@@ -1066,3 +1066,10 @@ label .js-hint { display: inline; margin-left: 6px; }
 .jsim-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .jsim-dialog-actions button { padding: 5px 12px; border-radius: 3px; border: 1px solid #555; background: #1e1e1e; color: #ddd; cursor: pointer; }
 .jsim-dialog-actions button.primary { background: #ffd700; color: #111; border-color: #ffd700; }
+
+/* Formation windows on the timeline (specs/formation-jumps.md §8.6) */
+.timeline-band { position: absolute; bottom: 0; height: 4px; background: rgba(120, 200, 120, 0.18); pointer-events: auto; }
+.timeline-band[data-alt="1"] { background: rgba(120, 200, 120, 0.32); }
+.timeline-marker[data-kind="point-keyed"] { background: #4cd964; }
+.timeline-marker[data-kind="point-missed"] { background: #ff3b30; }
+.timeline-marker[data-kind="working-end"] { background: transparent; border-left: 2px dashed #fff; width: 0; }

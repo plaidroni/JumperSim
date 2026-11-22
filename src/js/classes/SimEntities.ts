@@ -33,6 +33,7 @@ import {
 import { breakoffDistance, MIN_DEPLOY_SEPARATION_M } from "../physics/FormationShapes";
 import { headingToQuaternion, sequenceOf } from "../formations/FormationSequence";
 import { AircraftId, DEFAULT_AIRCRAFT, aircraft } from "../fleet/Aircraft";
+import { MemberTrack, sampleMemberTrack, solveSequence } from "../physics/SequenceSolver";
 
 /** Seconds before "go" that floaters climb out to their spots (specs/formation-jumps.md §5.4). */
 export const CLIMB_OUT_S = 5;
@@ -201,6 +202,8 @@ export class SimJumper extends Jumper {
   pullSeparation: { distanceM: number; otherId: string } | null = null;
   /** 0-based exit order within this jumper's plane. */
   exitOrder = 0;
+  /** Solved flight from exit to breakoff in a .jump formation (physics/SequenceSolver.ts). */
+  seqTrack: MemberTrack | null = null;
   /** Hangs outside the plane before "go" (specs/formation-jumps.md §1.1). */
   isFloater = false;
   /** Set by the load split: leaves on "go", floats, belongs to the lead's gripped exit piece. */
@@ -384,7 +387,12 @@ export class SimJumper extends Jumper {
       }
       const hdg = formation.plan.headingsDeg?.[formation.slotIndex];
       if (typeof hdg === "number") facing = headingToQuaternion(hdg); // the .jump slot's heading
+      if (this.seqTrack) {
+        trackingDir.copy(this.seqTrack.breakoffDir); // out from the slot they're in at breakoff
+        this.formationEndTime = this.seqTrack.endTime;
+      }
     }
+    const seqTrack = formation ? this.seqTrack : null;
 
     // ----- dropzone plan: patterns, lanes, zones -----
     const pctx = getPlanContext(this.plane as SimPlane, windProfile);
@@ -533,7 +541,11 @@ export class SimJumper extends Jumper {
         this.hasJumped = true;
         timeSinceJump = simTime - this.jumpTime;
 
-        if (groupPath && slot && simTime < groupPath.endTime) {
+        if (seqTrack && simTime < seqTrack.endTime) {
+          // .jump formation: the solved approach, docking and transitions
+          const h = sampleMemberTrack(seqTrack, simTime, currentPosition, this.velocity);
+          this.angle.copy(headingToQuaternion(h));
+        } else if (groupPath && slot && !seqTrack && simTime < groupPath.endTime) {
           // in formation: centre of the group + this jumper's slot (eased in after exit)
           const g = samplePath(groupPath, simTime);
           const dock = smoothstep((simTime - this.jumpTime) / FORMATION_DOCK_S);
@@ -758,6 +770,7 @@ export class SimJumper extends Jumper {
 export function precalculateJumpers(jumpers: SimJumper[], duration: number) {
   invalidatePlanContext();
   const plane = jumpers[0]?.plane as SimPlane | undefined;
+  solveFormations(jumpers, duration, plane);
   const isFollower = (j: SimJumper) => {
     const f = plane ? flockPlanFor(j, plane) : null;
     return !!f && f.slotIndex > 0;
@@ -765,6 +778,29 @@ export function precalculateJumpers(jumpers: SimJumper[], duration: number) {
   const ordered = [...jumpers].sort((a, b) => Number(isFollower(a)) - Number(isFollower(b)));
   ordered.forEach((j) => j.precalculate(duration));
   computeSeparation(jumpers, (plane as any)?.minDeploySeparationM ?? MIN_DEPLOY_SEPARATION_M);
+}
+
+/** .jump formations: solve every member together before anyone's own pass. */
+function solveFormations(jumpers: SimJumper[], duration: number, plane: SimPlane | undefined) {
+  const seqs = new Set<NonNullable<ReturnType<typeof sequenceOf>>>();
+  jumpers.forEach((j) => {
+    j.seqTrack = null;
+    const s = sequenceOf(j);
+    if (s) seqs.add(s);
+  });
+  if (!seqs.size || !plane) return;
+  const lead: SimPlane = (typeof window !== "undefined" && (window as any).fleet?.lead) || plane;
+  const wind = currentWindProfile();
+  for (const seq of seqs) {
+    try {
+      const sol = solveSequence(seq, lead, wind, duration);
+      seq.result = sol ? sol.result : null;
+      sol?.tracks.forEach((tr, j) => (j.seqTrack = tr));
+    } catch (e) {
+      console.error(`Couldn't solve ${seq.title}`, e);
+      seq.result = null;
+    }
+  }
 }
 
 export function createDefaultSimJumpers(

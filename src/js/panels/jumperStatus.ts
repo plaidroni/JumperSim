@@ -1,4 +1,5 @@
 import type { SimJumper, SimPlane } from "../classes/SimEntities";
+import { sequenceOf } from "../formations/FormationSequence";
 import { BODY_POSITIONS, normalizeBodyPosition } from "../physics/BodyPositions";
 import { phaseAt } from "../physics/Canopy";
 import { PHASE_LABEL, type CanopyPhase } from "../physics/CanopyGuidance";
@@ -24,6 +25,37 @@ export function hasJumperExited(j: SimJumper, plane: SimPlane, t = simTime()): b
   return js.position.distanceTo(ps.position) > 2;
 }
 
+/** Status while flying a .jump formation (specs/formation-jumps.md §8.6). */
+export function sequenceStatus(j: SimJumper, t: number): string | null {
+  const tr = j.seqTrack;
+  const seq = sequenceOf(j);
+  if (!tr || !seq || t < tr.t0 || t >= tr.endTime) return null;
+  let cur = tr.states[0];
+  for (const s of tr.states) if (s.t <= t) cur = s;
+  if (!cur) return null;
+  const slot = seq.slotOf(j) + 1;
+  const P = seq.points.length;
+  switch (cur.state) {
+    case "exit":
+      return "Freefall · Exit";
+    case "dive":
+      return `Diving to slot ${slot}`;
+    case "approach":
+      return `Approaching slot ${slot}`;
+    case "setup":
+      return `Setting up · slot ${slot}`;
+    case "dock":
+      return `Docking · slot ${slot}`;
+    case "docked":
+      return `Docked · point ${cur.point + 1}/${P}`;
+    case "transition":
+      return j.inExitPiece && cur.t <= j.jumpTime + 0.05 ? `Exit piece · slot ${slot}` : `Transition → point ${cur.point + 1}`;
+    case "holdoff":
+      return `Holding off · slot ${slot}${tr.missed?.kind === "low" || tr.missed?.kind === "fallRate" ? " (low)" : ""}`;
+  }
+  return null;
+}
+
 export function jumperStatus(j: SimJumper, plane: SimPlane, t = simTime()): string {
   if (j.landTime !== null && t >= j.landTime) {
     const o = j.landingOutcome;
@@ -32,7 +64,10 @@ export function jumperStatus(j: SimJumper, plane: SimPlane, t = simTime()): stri
     if (o.kind === "lz") return `Landed · ${o.name}`;
     return "Landed out";
   }
+  if (t < j.jumpTime && j.isFloater && t >= j.jumpTime - 5) return "Floating outside";
   if (!hasJumperExited(j, plane, t)) return "In plane";
+  const seqText = sequenceStatus(j, t);
+  if (seqText) return seqText;
   if (j.formationStatus && j.formationEndTime !== null && t < j.formationEndTime) {
     return j.roundSlot ? `${j.formationStatus} · Slot ${j.roundSlot}` : j.formationStatus;
   }

@@ -64,6 +64,7 @@ import { applyJumpSettingsToPlane, exitAltitudeM, getJumpSettings } from "./core
 import { initializeJumpSettingsPanel } from "./ui/JumpSettingsPanel";
 import { initializeFileMenu } from "./ui/FileMenu";
 import { initializePlanSourceBanner } from "./ui/PlanSourceBanner";
+import { adjustmentText, initializeAdjustmentArrowsToggle, updateAdjustmentArrows } from "./visuals/AdjustmentArrows";
 import { WeatherRenderer } from "./visuals/weather/WeatherRenderer";
 import { registerOverlay, seeAllLayers, unregisterOverlay } from "./visuals/Layers";
 
@@ -955,8 +956,11 @@ systemsOK.then(() => {
           1,
         )}, ${jumper.angle.z.toFixed(1)}) deg`,
       };
+      const adj = adjustmentText(jumper, time);
+      if (adj) jumper.getMesh().userData.adjusting = adj;
     });
     updateCanopyRigs(worldRoot, simJumpers, time);
+    updateAdjustmentArrows(simJumpers, time, planner?.active ? planner.camera : camera, renderer.domElement.clientHeight);
   }
 
   sceneReady = true;
@@ -1052,6 +1056,8 @@ initializeWeatherPanel();
 initializeJumpSettingsPanel();
 initializeFileMenu();
 initializePlanSourceBanner();
+initializeAdjustmentArrowsToggle();
+(window as any).forceSceneUpdate = () => (forceSceneUpdate = true);
 initializeWeatherMenu();
 // "zoop" to the ground or back up to jump height (viewport buttons, G / J)
 const cameraZoop = initializeCameraZoop({

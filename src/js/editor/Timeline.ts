@@ -87,6 +87,29 @@ export function renderTimelineMarkers() {
       (j.hazardEvents ?? []).forEach((e: any) => add(e.start, "hazard", `${name}: over ${e.name} below its ceiling`));
     });
   getSeparationWarnings().forEach((s) => add(s.time, "separation", s.text));
+
+  // formations: point windows as bands, keyed (green) / missed (red), working-time end
+  const formations: any[] = w.fleet?.formations ?? [];
+  for (const f of formations) {
+    const r = f.result;
+    if (!r) continue;
+    r.windows.forEach((win: any, i: number) => {
+      const s = Math.max(0, win.start);
+      const e = Math.min(max, win.end);
+      if (e <= s) return;
+      const band = document.createElement("div");
+      band.className = "timeline-band";
+      band.dataset.alt = String(i % 2);
+      band.style.left = `${(s / max) * 100}%`;
+      band.style.width = `${((e - s) / max) * 100}%`;
+      const p = f.points[win.point];
+      band.title = `${f.title}: point ${p?.label ?? win.point + 1} (round ${win.round}) · ${s.toFixed(1)}–${e.toFixed(1)} s`;
+      box.appendChild(band);
+      if (win.keyedAt !== null) add(win.keyedAt, "point-keyed", `Point ${p?.label ?? win.point + 1} (round ${win.round}) keyed${win.scored ? "" : " (not scored)"}`);
+      else add(e - 0.01, "point-missed", `Point ${p?.label ?? win.point + 1} missed${win.missingSlots.length ? `: slot ${win.missingSlots.slice(0, 4).join(", ")}` : ""}`);
+    });
+    add(r.workingTimeEnd, "working-end", `${f.title}: working time ends · score ${r.score}`);
+  }
 }
 
 let initialized = false;

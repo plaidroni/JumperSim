@@ -2,6 +2,9 @@ import { SimPlane, SimJumper } from "../classes/SimEntities";
 import { pickAndImportJump } from "../formations/ImportJump";
 import { sequenceOf } from "../formations/FormationSequence";
 import { ALL_PLANES, renderPlaneStrip } from "./PlaneStrip";
+import { buildFormationBar } from "./FormationBar";
+import { onRecalculated } from "../core/data/SimulationVariables";
+import { sampleAdjust } from "../physics/SequenceSolver";
 import { AIRCRAFT } from "../fleet/Aircraft";
 import type { Fleet } from "../fleet/Fleet";
 import { notificationManager } from "../classes/NotificationManager";
@@ -158,6 +161,7 @@ export class PlaneLoad {
       this.changed();
     });
     (window as any).fleet?.onChange?.(() => queueMicrotask(() => this.render()));
+    onRecalculated(() => this.refreshFormationBar());
     this.layout = layout || TwinOtterLayout;
     this.refreshJumpers();
     // pattern names / defaults show in the Pattern column
@@ -544,11 +548,12 @@ export class PlaneLoad {
     });
     shapeWrap.appendChild(gear);
 
+    void formWrap;
+    void importBtn;
     toolbar.appendChild(intervalWrap);
     toolbar.appendChild(shapeWrap);
-    toolbar.appendChild(formWrap);
-    toolbar.appendChild(importBtn);
     toolbar.appendChild(saveWrap);
+    wrap.appendChild(this.formationBar());
     wrap.appendChild(toolbar);
     const table = document.createElement("table");
     table.className = "ps-table";
@@ -868,6 +873,28 @@ export class PlaneLoad {
     return wrap;
   }
 
+  /** Formation bar (§10.4). */
+  private formationBar(): HTMLElement {
+    const formations = this.plane.formations || [];
+    if (this.selectedFormationIdx >= formations.length) this.selectedFormationIdx = 0;
+    return buildFormationBar({
+      formations,
+      selectedIndex: this.selectedFormationIdx,
+      setSelected: (i) => {
+        this.selectedFormationIdx = i;
+        this.render();
+      },
+      render: () => this.render(),
+    });
+  }
+
+  /** After a recalculation: fresh score in the formation bar (unless it's being edited). */
+  private refreshFormationBar() {
+    const old = document.querySelector("#plane-panel .ps-formation-bar");
+    if (!old || old.contains(document.activeElement)) return;
+    old.replaceWith(this.formationBar());
+  }
+
   // Import a .jump formation file and attach to plane
   /** Round slot / flock slot / lane picker for one jumper (§9 of the planner spec). */
   private buildSlotCell(j: SimJumper): HTMLElement {
@@ -1183,7 +1210,18 @@ export class PlaneLoad {
     }
     set("alt-cell", Math.round(sample.position.y * M_TO_FT).toLocaleString());
     const falling = this.hasJumperExited(j) && !(j.landTime !== null && t >= j.landTime);
-    set("fall-cell", falling ? String(Math.round(Math.max(0, -sample.velocity.y) * MS_TO_MPH)) : "–");
+    let fall = falling ? String(Math.round(Math.max(0, -sample.velocity.y) * MS_TO_MPH)) : "–";
+    const adj = falling && j.seqTrack && t < j.seqTrack.endTime ? sampleAdjust(j.seqTrack, t) : null;
+    if (adj && Math.abs(adj.mph) >= 2) fall += ` (${adj.mph > 0 ? "+" : "−"}${Math.round(Math.abs(adj.mph))})`;
+    set("fall-cell", fall);
+    // formation warnings: fall-rate mismatch, missed slot
+    const warn = j.seqTrack?.fallWarning ?? (j.seqTrack?.missed ? `Missed slot: ${j.seqTrack.missed.detail}` : null);
+    const st = row.querySelector('td[data-role="status-cell"]') as HTMLElement | null;
+    if (st) {
+      st.classList.toggle("has-warning", !!warn);
+      const title = warn ? `⚠ ${warn}` : "";
+      if (st.title !== title) st.title = title;
+    }
   }
 
   private statusFor(j: SimJumper, t: number): string {

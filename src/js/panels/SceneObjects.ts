@@ -2,6 +2,8 @@ import * as THREE from "three";
 import type { SimJumper, SimPlane } from "../classes/SimEntities";
 import { onRecalculated } from "../core/data/SimulationVariables";
 import { BODY_POSITIONS, normalizeBodyPosition } from "../physics/BodyPositions";
+import { sequenceOf, type FormationSequence } from "../formations/FormationSequence";
+import { adjustmentText } from "../visuals/AdjustmentArrows";
 import {
   M_TO_FT,
   MS_TO_MPH,
@@ -27,6 +29,8 @@ const PLANE_PREFIX = "plane:";
 const DETAIL_INTERVAL_MS = 100;
 const AIRCRAFT_NAMES: Record<string, string> = { "twin-otter": "Twin Otter", skyvan: "Skyvan", "cessna-172": "Cessna-172", "dc-9": "DC-9" };
 const isPlaneKey = (k: string | null) => !!k && k.startsWith(PLANE_PREFIX);
+const FORMATION_PREFIX = "formation:";
+const isFormationKey = (k: string | null) => !!k && k.startsWith(FORMATION_PREFIX);
 
 export function initializeSceneObjects(src: Sources) {
   const tab = document.getElementById("objects-panel");
@@ -61,6 +65,8 @@ export function initializeSceneObjects(src: Sources) {
   function objectFor(key: string): THREE.Object3D | null {
     const p = planeFor(key);
     if (p) return p.getMesh();
+    const fm = formationFor(key);
+    if (fm) return fm.getAllJumpers()[0]?.getMesh() ?? null;
     return src.jumpers().find((j) => j.id === key)?.getMesh() ?? null;
   }
 
@@ -70,6 +76,9 @@ export function initializeSceneObjects(src: Sources) {
     const jumpers = sortedJumpers();
     signature = listSignature(jumpers);
     listEl.replaceChildren();
+    formations().forEach((f) =>
+      listEl.appendChild(makeRow(FORMATION_PREFIX + f.id, "#ffd700", "◆", f.title, `${f.points.length} point${f.points.length > 1 ? "s" : ""} · ${f.slotCount} slots`)),
+    );
     const ps = planes();
     const multi = ps.length > 1;
     ps.forEach((p, k) => {
@@ -124,7 +133,11 @@ export function initializeSceneObjects(src: Sources) {
       const cell = row.querySelector(".so-status") as HTMLElement;
       let text: string;
       const rowPlane = planeFor(key);
-      if (rowPlane) {
+      const rowF = formationFor(key);
+      if (rowF) {
+        const r = rowF.result;
+        text = r ? `Score ${r.score}${r.windows[0]?.keyedAt !== null && r.windows[0] ? ` · built ${(r.windows[0].keyedAt! - r.tGo).toFixed(1)} s` : " · point 1 not built"}` : "–";
+      } else if (rowPlane) {
         const s = rowPlane.track.getInterpolatedSample(t);
         text = s ? `In air · ${fmtFt(s.position.y)}` : "In air";
       } else {
@@ -158,8 +171,12 @@ export function initializeSceneObjects(src: Sources) {
     if (!obj) return;
     let offset: THREE.Vector3;
     let name: string;
+    const kf = formationFor(key);
     const kp = planeFor(key);
-    if (kp) {
+    if (kf) {
+      offset = new THREE.Vector3(30, 20, 30);
+      name = kf.title;
+    } else if (kp) {
       const d = kp.direction.clone().setY(0).normalize();
       offset = d.multiplyScalar(-80).add(new THREE.Vector3(0, 25, 0));
       name = planes().length > 1 ? kp.label : "the plane";
@@ -177,7 +194,8 @@ export function initializeSceneObjects(src: Sources) {
   function follow(key: string) {
     const obj = objectFor(key);
     const fp = planeFor(key);
-    const name = fp ? (planes().length > 1 ? fp.label : "the plane") : jumperName(src.jumpers().find((x) => x.id === key)!);
+    const ff = formationFor(key);
+    const name = ff ? ff.title : fp ? (planes().length > 1 ? fp.label : "the plane") : jumperName(src.jumpers().find((x) => x.id === key)!);
     (window as any).cameraFocus?.(obj, { name });
   }
 
@@ -191,6 +209,27 @@ export function initializeSceneObjects(src: Sources) {
     let rows: Array<[string, string]>;
     let color = "#ffd700";
 
+    const sf = formationFor(selected);
+    if (sf) {
+      const r = sf.result;
+      title = `${sf.title} · ${sf.points.length} point${sf.points.length > 1 ? "s" : ""}`;
+      rows = [
+        ["Score", r ? String(r.score) : "–"],
+        ["Time per point", `${sf.settings.timePerPointS} s · ${sf.settings.advance}${sf.settings.repeat ? " · repeat" : ""}`],
+        ["Working time", r ? `${(r.workingTimeEnd - r.tGo).toFixed(1)} s from exit` : "–"],
+        ["Breakoff", r ? `${(r.breakoffTime - r.tGo).toFixed(1)} s · ${sf.settings.breakoffFt.toLocaleString()} ft` : "–"],
+      ];
+      (r?.windows ?? []).slice(0, 12).forEach((w) => {
+        const p = sf.points[w.point];
+        rows.push([
+          `P${p?.label ?? w.point + 1} r${w.round}`,
+          w.keyedAt !== null
+            ? `keyed ${(w.keyedAt - r!.tGo).toFixed(1)} s${w.scored ? " ✓" : ""}`
+            : `✕ missing slot${w.missingSlots.length > 1 ? "s" : ""} ${w.missingSlots.slice(0, 5).join(", ")}`,
+        ]);
+      });
+      return { title, color, rows };
+    }
     const sp = planeFor(selected);
     if (sp) {
       const s = sp.track.getInterpolatedSample(t);
@@ -223,8 +262,24 @@ export function initializeSceneObjects(src: Sources) {
       const landed = j.landTime !== null && t >= j.landTime;
       const falling = exited && !landed && s;
       const ground = s ? Math.hypot(s.velocity.x, s.velocity.z) : 0;
+      const seq = sequenceOf(j);
+      const formationRows: Array<[string, string]> = [];
+      if (seq) {
+        const m = seq.result?.members.find((x) => x.slot === seq.slotOf(j));
+        const docks = (m?.dockTimes ?? []).map((d, i) => (d === null ? null : `P${(seq.result!.windows[i]?.point ?? 0) + 1} ${(d - seq.result!.tGo).toFixed(1)} s`)).filter(Boolean);
+        formationRows.push([
+          "Formation",
+          `${seq.title} · slot ${seq.slotOf(j) + 1}${j.inExitPiece ? " · exit piece" : ""}${j.isFloater ? " · floater" : ""}`,
+        ]);
+        formationRows.push(["Docked", docks.length ? docks.slice(0, 4).join(", ") + (docks.length > 4 ? " …" : "") : "–"]);
+        if (m?.missed) formationRows.push(["Missed", m.missed.detail]);
+        if (j.seqTrack?.fallWarning) formationRows.push(["⚠ Fall rate", j.seqTrack.fallWarning]);
+        const adj = adjustmentText(j, t);
+        if (adj) formationRows.push(["Adjusting", adj]);
+      }
       rows = [
         ["Status", jumperStatus(j, plane, t)],
+        ...formationRows,
         ...(planes().length > 1
           ? ([["Plane", `${(j.plane as SimPlane)?.label ?? "–"} · exit ${j.exitOrder + 1}${j.isFloater ? " (floater)" : ""}`]] as Array<[string, string]>)
           : []),
@@ -309,7 +364,7 @@ export function initializeSceneObjects(src: Sources) {
       <div class="so-actions">
         <button type="button" class="primary" data-act="zoom">Zoom in</button>
         <button type="button" data-act="follow">Follow</button>
-        ${isPlaneKey(selected) ? "" : `<button type="button" data-act="edit">Edit in Plane Settings</button>`}
+        ${isPlaneKey(selected) || isFormationKey(selected) ? "" : `<button type="button" data-act="edit">Edit in Plane Settings</button>`}
       </div>`;
     const key = selected;
     detailsEl.querySelector('[data-act="zoom"]')?.addEventListener("click", () => zoomIn(key));
@@ -380,9 +435,19 @@ export function initializeSceneObjects(src: Sources) {
     }
     requestAnimationFrame(tick);
   };
+  function formations(): FormationSequence[] {
+    return (window as any).fleet?.formations ?? [];
+  }
+
+  function formationFor(key: string | null): FormationSequence | null {
+    return isFormationKey(key) ? formations().find((f) => FORMATION_PREFIX + f.id === key) ?? null : null;
+  }
+
   function listSignature(jumpers: SimJumper[]) {
     const ps = planes();
     return (
+      formations().map((f) => f.id).join(",") +
+      "#" +
       ps.map((p) => `${p.id}:${p.label}:${p.aircraftId}`).join(",") +
       "#" +
       jumpers.map((j) => `${j.id}:${j.index}:${j.flyingStyle}:${(j.plane as any)?.id}`).join("|")
