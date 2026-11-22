@@ -1,6 +1,6 @@
 # Spec: Formation Jumps (Multi-Plane Loads, .jump Upload, Multi-Point Sequences, Slot-Seeking)
 
-**Status:** Draft for review, rev 3 (spec only, nothing built yet)
+**Status:** Implemented (rev 3). *Build notes* below lists where the build differs from this text.
 **Scope:** new `src/js/fleet/*`, `src/js/formations/*`, `src/js/physics/{SlotSeeking,SequenceSolver}.ts`, `src/js/visuals/AdjustmentArrows.ts`, `src/js/core/data/{JumpSettings,JsimFile}.ts` and `src/js/ui/FileMenu.ts`. Changes to:
 - `src/js/classes/BaseEntities.ts`, `src/js/classes/SimEntities.ts`, `src/js/physics/FormationFlight.ts`
 - `src/js/PlaneSelect.ts` (aircraft catalogue and model loading)
@@ -28,6 +28,14 @@
 - **Plane position index:** in a `.jump` file, `planeSlot.index` 0 may be the pilot's end of the cabin or the first jumper out. The import handles both (§4.3).
 - **Floaters** hang on the outside of the plane, so the initial exit holds the floaters **plus** the people in the door (§5.4, §6.3). Floaters leave from their spots outside the fuselage, not from the door.
 - **Save and load:** the whole JumperSim environment saves to and loads from a **`.jsim`** file, through the File menu's existing Save, Load from File and Auto-Save items (§12).
+
+**Build notes (where the code differs from this text)**
+- **First point, auto (§8.3):** with divers, point 1's window lasts until the point is built (plus `minHoldS`), capped at breakoff, instead of using a pre-flight estimate. The 32-way from 13,000 ft builds at about 32 s.
+- **Vertical control (§9.4):** the drag area is chosen for the wanted vertical *acceleration* at the current fall speed, not the terminal fall rate. The tuned constants differ from §9.7: `BODY_TAU_S` 0.3, new `FALL_TAU_S` 0.5, `A_FLARE` 2.5, `SETUP_DIST_M` 2, `DOCK_SPEED_MS` 0.7.
+- **Low guard (§9.4):** it stays on until the diver is level again, so the target doesn't flip back and forth.
+- **Red arrow (§9.8):** shown when the steady area needed to hold the formation's fall rate is outside the jumper's belly range.
+- **Performance (G8):** solving the 32-way takes about 0.5 s in Node, and a full recalculation about 1.7 s. Most of that is the existing per-jumper physics (about 1 s for 32 jumpers without a formation). A 100-way under 1 s is **not** met.
+- **Tests:** `tests/jumpFile`, `fleet`, `loadSplit`, `jsimFile` and `sequenceSolver`. Two older tests in `tests/tracking.test.ts` still expect breakoff at 4,500 ft, but the default pull is now 4,500 ft, so breakoff is 5,500 ft. They failed before this work.
 
 **Rev 3 decisions**
 - The adjustment arrow also shows **sideways movement**: one arrow, tilted by how much the jumper is sliding across relative to the formation (§9.8).
