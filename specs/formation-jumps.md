@@ -1,7 +1,7 @@
 # Spec: Formation Jumps (Multi-Plane Loads, .jump Upload, Multi-Point Sequences, Slot-Seeking)
 
-**Status:** Draft for review, rev 2 (spec only, nothing built yet)
-**Scope:** new `src/js/fleet/*`, `src/js/formations/*`, `src/js/physics/{SlotSeeking,SequenceSolver}.ts`, `src/js/visuals/FallRateArrows.ts`, `src/js/core/data/{JumpSettings,JsimFile}.ts` and `src/js/ui/FileMenu.ts`. Changes to:
+**Status:** Draft for review, rev 3 (spec only, nothing built yet)
+**Scope:** new `src/js/fleet/*`, `src/js/formations/*`, `src/js/physics/{SlotSeeking,SequenceSolver}.ts`, `src/js/visuals/AdjustmentArrows.ts`, `src/js/core/data/{JumpSettings,JsimFile}.ts` and `src/js/ui/FileMenu.ts`. Changes to:
 - `src/js/classes/BaseEntities.ts`, `src/js/classes/SimEntities.ts`, `src/js/physics/FormationFlight.ts`
 - `src/js/PlaneSelect.ts` (aircraft catalogue and model loading)
 - `src/js/ui/PlaneLoad.ts` and `src/css/planeloadui.css` (load menu)
@@ -23,11 +23,16 @@
 - **Load menu:** a small plane selector at the top picks which plane is being edited (§10).
 
 **Rev 2 decisions**
-- **Fall-rate arrow:** every formation jumper gets an up or down arrow showing how much they're changing their fall rate to stay with the group or get down to it (§9.8).
+- **Adjustment arrow:** every formation jumper gets an arrow showing how much they're changing their fall rate to stay with the group or get down to it (§9.8). Rev 3 adds sideways movement to the same arrow.
 - **Cessna-172 holds 4 jumpers** (§5.1).
 - **Plane position index:** in a `.jump` file, `planeSlot.index` 0 may be the pilot's end of the cabin or the first jumper out. The import handles both (§4.3).
 - **Floaters** hang on the outside of the plane, so the initial exit holds the floaters **plus** the people in the door (§5.4, §6.3). Floaters leave from their spots outside the fuselage, not from the door.
 - **Save and load:** the whole JumperSim environment saves to and loads from a **`.jsim`** file, through the File menu's existing Save, Load from File and Auto-Save items (§12).
+
+**Rev 3 decisions**
+- The adjustment arrow also shows **sideways movement**: one arrow, tilted by how much the jumper is sliding across relative to the formation (§9.8).
+- **Formations → Save Formation** writes a `.jsim`, the same as File → Save. There's no separate formation format (§12.4).
+- A `.jsim` file's **plan applies only while that file is open**. The dropzone's own saved plan is never changed by loading a file. Closing the file brings the dropzone's plan back, and **Use as dropzone plan** copies it over on request (§12.5).
 
 ---
 
@@ -39,9 +44,9 @@ Today the sim flies **one plane** with a hand-made load. Formations from `.jump`
 2. **Upload and split.** Uploading a `.jump` file reads every point, slot, name and colour. It honours the planes in the file when they make sense. Otherwise it picks the number of planes from the aircraft's capacity. It then assigns jumpers to planes by where their slot is (base in the lead, a sector of the formation per trail plane) and sets the exit order.
 3. **Exit altitude.** A real Jump Settings value drives the plane tracks, exits, formation timing, jumprun winds, the planner and the weather jump conditions.
 4. **Sequences.** A formation has several **points**. The formation flies them in order, each held for the **time per point**, and repeats until the working time or breakoff. Points that every slot reaches in time are **scored**.
-5. **Slot-seeking.** After exit, each diver dives down and across to a set-up point outside their slot. They match fall rate, wait for the people they grip, dock, and then follow the transitions. A jumper who can't make it follows the standard safety rules (stay out, never come up under the formation, break off on time) and is reported. An arrow on each formation jumper shows how much they're speeding up or slowing their fall to do this.
+5. **Slot-seeking.** After exit, each diver dives down and across to a set-up point outside their slot. They match fall rate, wait for the people they grip, dock, and then follow the transitions. A jumper who can't make it follows the standard safety rules (stay out, never come up under the formation, break off on time) and is reported. An arrow on each formation jumper shows how much they're speeding up or slowing their fall, and which way they're sliding across, to do this.
 6. **Load menu.** A strip of plane chips at the top of Plane Settings ("1 · Twin Otter · 16/21"). The table below edits the selected plane. There's also an **All** view and a formation bar for the sequence settings and the score.
-7. **`.jsim` files.** File → Save writes the whole environment (dropzone, plan, jump settings, planes, jumpers, formations, weather, view) to a `.jsim` file. File → Load from File, or dropping the file on the window, brings it back exactly.
+7. **`.jsim` files.** File → Save (or Formations → Save Formation) writes the whole environment (dropzone, plan, jump settings, planes, jumpers, formations, weather, view) to a `.jsim` file. File → Load from File, or dropping the file on the window, brings it back exactly. A file's plan applies only while that file is open; the dropzone's own plan is never overwritten.
 
 ### 1.1 Terms
 
@@ -87,7 +92,7 @@ Today the sim flies **one plane** with a hand-made load. Formations from `.jump`
 - **P4. One exit group.** All linked jumpers exit as one group, even from different formations.
 - **P5. Exit altitude and plane speed inputs do nothing.**
 - **P6. Colours.** The STL load gives every jumper a random colour (`Scripts.ts:838-847`), so the `.jump` colours are lost.
-- **P7. Formations menu.** Its *From .jump* item only logs the file (§2). It will run the same import as the Plane Settings button (§10.4).
+- **P7. Formations menu.** Its *From .jump* item only logs the file, and *Save Formation* does nothing (§2). *From .jump* will run the same import as the Plane Settings button (§10.4), and *Save Formation* will save a `.jsim` (§12.4).
 
 ---
 
@@ -102,7 +107,7 @@ Today the sim flies **one plane** with a hand-made load. Formations from `.jump`
 - G6. **Load menu** with a plane selector strip, a per-plane editor, an All view and a formation bar.
 - G7. **Deterministic:** the same inputs give the same tracks, so scrubbing and recalculation stay exact.
 - G8. A 100-way across 5 planes recalculates in under 1 s on the reference laptop.
-- G9. A **fall-rate arrow** on each formation jumper shows how much they're compensating (§9.8).
+- G9. An **adjustment arrow** on each formation jumper shows how they're compensating: fall-rate change up or down, and sliding sideways (§9.8).
 - G10. **Save and load** the whole environment as a `.jsim` file. Loading it elsewhere gives the same jump, and with the saved weather the same tracks and score (§12).
 
 **Non-goals (v1)**
@@ -599,41 +604,57 @@ export interface SequenceResult {
 | `LOW_TOL_M` / `NO_LOW_MARGIN_M` / `LOW_STANDOFF_M` | 2 / 10 / 20 | low guard |
 | `SETUP_DOCK_S` | 4 | time reserved for set-up and dock |
 
-### 9.8 Fall-rate arrow (rev 2)
+### 9.8 Adjustment arrow (rev 2; sideways added in rev 3)
 
-An arrow on each formation jumper shows **how much they're changing their fall rate** to get down to the group or to stay level with it.
+One arrow on each formation jumper shows what they're doing to reach their slot or stay in it:
+- **up or down** for how much they're changing their fall rate;
+- **sideways** for how they're sliding across, relative to the formation.
+
+Both parts are in mph, so the arrow's tilt shows the mix. A diver coming in from behind on a steep dive has an arrow pointing down and forward, toward the formation.
 
 ```
-   ▲  cyan: slowing down          ║  no arrow: neutral          ▼  orange: speeding up
-   │  (arching, spreading out     ║  (within ±2 mph)            │  (diving or de-arching to
-   ●   to stay level or come up)  ●                             ●   get down to the group)
-                                                                red: at the limit of their range
+   ▲ cyan            ↗ white             ●  no arrow          ▼ orange           ↘ orange
+   │ slowing down:   sliding across,     neutral: falling     speeding up:       diving down
+   ●  arching to     fall rate           with the group,      diving or          and across
+      stay level     unchanged           not moving across    de-arching         to the slot
+                                                               red: fall-rate range used up
 ```
 
-- **Value:** `adjustMph = v(A) − v(A_neutral)`.
+- **Vertical part:** `adjustMph = v(A) − v(A_neutral)`.
   - `v(A)` is the terminal fall rate at the jumper's **current** drag area (the lagged area from §9.4) and their exit mass.
   - `A_neutral` is their neutral belly area (`BODY_POSITIONS.belly.dragAreaM2`, times the suit factor from §9.5).
-  - Positive means falling faster than neutral, so a **down** arrow; negative means slower, so an **up** arrow.
-- **Who and when:** between exit and breakoff, in freefall only, for every member of a `.jump` sequence and every member of a linked round (`FormationFlight`). Hidden in the plane, after breakoff (tracking), under canopy, and for solo jumpers (they fall at neutral).
+  - Positive means falling faster than neutral, so the arrow points **down**; negative means slower, so it points **up**.
+- **Sideways part:** the jumper's horizontal velocity relative to the formation centre (`u_h` in §9.4), in mph and in world axes, so the arrow points the way they're sliding as seen from the formation. The wind and the formation's own drift cancel out, so a jumper holding their slot has no sideways part.
+- **Arrow vector:** `(side.x, −adjustMph, side.z)` in mph. It starts at the jumper's centre and is set in **world axes**: it doesn't tilt with the body, so up always means slower.
+- **Who and when:** between exit and breakoff, in freefall only, for every member of a `.jump` sequence and every member of a linked round (`FormationFlight`). Hidden in the plane, after breakoff (tracking), under canopy, and for solo jumpers (they fall at neutral and don't slide toward anything).
 - **What it shows in each state:**
-  - **Free** (DIVE, APPROACH, SETUP, DOCK, HOLD-OFF): the controller's actual area. A diver from a trail plane shows a long down arrow in the dive, which shrinks and may flip up as they flare at the formation's level.
-  - **Docked, transitioning, exit piece, linked rounds:** these are kinematic in the model (§9.2), so the arrow shows the compensation they need **to stay in**: the area that falls at the formation's rate, `A_hold = 2·m·g / (ρ·Cd·v_formation²)`, clamped to their range. A heavy jumper in a light base shows an up arrow (arching to slow down); a light one shows a down arrow.
+
+| State | Vertical part | Sideways part |
+|---|---|---|
+| EXIT (first `EXIT_STABLE_S`) | the actual area | none: the exit throw isn't something the jumper is doing |
+| DIVE, APPROACH, SETUP, DOCK | the controller's actual area | the actual relative velocity toward the waypoint |
+| HOLD-OFF | the actual area | the move out to the stand-off and back |
+| Docked, holding the slot | what they need **to stay in**: `A_hold = 2·m·g / (ρ·Cd·v_formation²)`, clamped to their range | none |
+| Transition (§8.4) | same as docked | the rate their offset changes, so every jumper visibly slides to their next slot |
+| Exit piece, linked rounds | same as docked | the easing into the slot, then none |
+
+A heavy jumper in a light base shows an up arrow while docked (arching to slow down); a light one shows a down arrow.
 - **At the limit:** the arrow turns **red** when a jumper who is trying to **stay level** (APPROACH, SETUP, DOCK, HOLD-OFF, docked, exit piece) needs an area outside their belly range, e.g. a heavy jumper fully spread and still sinking.
-  - Diving at `DIVE_AREA` in the DIVE state is normal and stays orange.
+  - Diving at `DIVE_AREA` in the DIVE state is normal and isn't red.
   - Docked jumpers at the limit are being carried by their grips. Free jumpers at the limit usually end up in §9.6.
   - For docked members this is the same condition as the fall-rate warning in §9.5, so the arrow and the warning agree.
-- **Look:**
-  - It starts at the jumper's centre and is **world-vertical**: it doesn't tilt with the body, so up always means slower.
-  - Length `clamp(|adjustMph| × 0.06 m, 0.4 m, 3 m)`: 10 mph is 0.6 m, and a full 40 mph dive is 2.4 m (one to two body lengths). Beyond 150 m from the camera it grows with distance, so it stays at least 16 px long on screen.
-  - Head 30% of the length. Colours: faster `#ff9f1c`, slower `#4fc3f7`, at the limit `#ff4d4d`.
-  - It's on the overlay layer (`registerOverlay`), so clouds and haze don't hide it.
-- **Data:** the solver records `{ t, adjustMph, atLimit }` for each member every 0.1 s (`SimJumper.fallAdjust`, typed arrays). The render loop interpolates it at the current time. There's no physics per frame, and scrubbing works.
+- **Colour:** red at the limit. Otherwise it's set by the vertical part: **orange** when falling more than 2 mph faster than neutral, **cyan** when more than 2 mph slower, and **white** when the fall rate is within ±2 mph and only the sideways part is showing. Colours: orange `#ff9f1c`, cyan `#4fc3f7`, white `#e6e6e6`, red `#ff4d4d`.
+- **Size:**
+  - Length `clamp(|vector| × 0.06 m, 0.4 m, 3 m)`, with `|vector|` in mph: 10 mph is 0.6 m, and a 40 mph dive is 2.4 m (one to two body lengths). Hidden below 2 mph.
+  - Beyond 150 m from the camera it grows with distance, so it stays at least 16 px long on screen.
+  - Head 30% of the length. On the overlay layer (`registerOverlay`), so clouds and haze don't hide it.
+- **Data:** the solver records `{ t, adjustMph, sideX, sideZ, atLimit }` for each member every 0.1 s (`SimJumper.adjust`, typed arrays). The render loop interpolates it at the current time. There's no physics per frame, and scrubbing works.
 - **Readouts:**
-  - The hover tooltip and the Scene Objects details add "Fall-rate adjust +18 mph (diving, 152 mph)".
+  - The hover tooltip and the Scene Objects details add "Adjusting +18 mph down (diving, 152 mph) · sliding 9 mph, heading 040°".
   - The Plane Settings **Fall (mph)** column shows "152 (+18)" while the jumper is in the formation.
-- **Toggle:** **View → Fall-rate arrows** (checkbox, on by default), saved in `localStorage["jumpersim.view.fallArrows"]`. When it's off, no arrows are created or updated, so it costs nothing.
+- **Toggle:** **View → Adjustment arrows** (checkbox, on by default), saved in `localStorage["jumpersim.view.adjustArrows"]`. When it's off, no arrows are created or updated, so it costs nothing.
 - **Cost:** one arrow per member, created when needed, updated only while visible: at most 100 updates per frame.
-- File: `src/js/visuals/FallRateArrows.ts`, updated from `updateFromPrecalc()` in `Scripts.ts`.
+- File: `src/js/visuals/AdjustmentArrows.ts`, updated from `updateFromPrecalc()` in `Scripts.ts`.
 
 ---
 
@@ -706,8 +727,10 @@ An arrow on each formation jumper shows **how much they're changing their fall r
 | Timeline | Exit markers for every plane, point bands and ticks, working-time end (§8.6). |
 | Weather | Exit altitude for the jump conditions (§7.3). |
 | Notifications | Import result with Undo / Show / warnings (§6.4). Fall-rate and miss warnings join the Warnings list. |
-| View menu | **Fall-rate arrows** toggle (§9.8). |
-| File menu | **Save**, **Save As…**, **Load from File…** and **Auto-Save** for `.jsim` files (§12). |
+| View menu | **Adjustment arrows** toggle (§9.8). |
+| File menu | **Save**, **Save As…**, **Load from File…**, **Close** and **Auto-Save** for `.jsim` files (§12). The menu bar shows the open file's name and "•" when unsaved. |
+| Formations menu | **From .jump** imports (§10.4). **Save Formation** saves a `.jsim` (§12.4). |
+| Dropzone tab, planner | "Plan from *file*" banner with **Use as dropzone plan** while a file is open (§12.5). |
 
 ---
 
@@ -720,6 +743,8 @@ The whole JumperSim environment can be saved to a `.jsim` file and loaded again,
 - The **File** menu already has *Save* (calls `handleClick('New Scene')`, which only logs), *Load from File* (no handler) and an *Auto-Save* checkbox (only logs) (`index.html:69-86`, `Menubar.ts:2-8`).
 - The only thing that can be exported today is the dropzone plan: `exportPlanJSON()` / `importPlanJSON()` in `DropzonePlan.ts:251-269`, with `validatePlan()`.
 - The selected dropzone is a cookie (`selectedDropzoneIndex`, an index into `dropzones.json`, `LocationSelect.ts:39-54`).
+- The dropzone plan saves itself: every finished change writes `localStorage["jumpersim.dzplan.<dropzone>"]` after 500 ms (`DropzonePlan.ts:161-174`), and `loadPlanForDropzone()` reads it back (`DropzonePlan.ts:224-241`).
+- **Formations → Save Formation** does nothing (`index.html:103-105`).
 
 ### 12.2 What a `.jsim` holds
 
@@ -736,7 +761,7 @@ The whole JumperSim environment can be saved to a `.jsim` file and loaded again,
 | Weather | `mode: "saved" \| "live"`. Saved: the `WeatherState` the physics used, plus the override name if one was on (`weather/Overrides.ts`) |
 | View | Sim time, playback speed, camera position and target |
 
-**Not saved:** precalculated tracks and results (the score, misses, fall-rate series), which are recalculated on load and come out the same because the sim is deterministic (G7). Also not saved: meshes, map tiles, and per-browser preferences (dock layout, view toggles, weather toggles).
+**Not saved:** precalculated tracks and results (the score, misses, adjustment series), which are recalculated on load and come out the same because the sim is deterministic (G7). Also not saved: meshes, map tiles, and per-browser preferences (dock layout, view toggles, weather toggles).
 
 ### 12.3 Format
 
@@ -771,6 +796,7 @@ JSON (UTF-8, pretty-printed), extension `.jsim`, MIME type `application/json`. A
   - Where the browser supports the File System Access API (`showSaveFilePicker`), the first Save asks for a location. Later Saves overwrite the same file.
   - Elsewhere it downloads `<jump name>.jsim`, with the name made safe for a file system.
 - **File → Save As…** (Ctrl+Shift+S) always asks.
+- **Formations → Save Formation** (rev 3) is the same as File → Save: it writes the whole environment to a `.jsim`, formation included. There's no separate formation format. When no file is open and the jump still has the default name ("Untitled JumpSim"), the file is named after the formation's title.
 - Pending Plane Settings edits are applied first, so the file matches what's on screen.
 - **Unsaved state:** the jump name in the menu bar gets a "•" after any change since the last save or load. The Plane Settings button that applies table edits is renamed **Apply**, so there's only one "Save" in the app.
 - A toast confirms "Saved Night 32-way.jsim".
@@ -782,15 +808,34 @@ JSON (UTF-8, pretty-printed), extension `.jsim`, MIME type `application/json`. A
   1. Leave the planner and Top view.
   2. Parse and validate (§12.7).
   3. **Dropzone:** select it by name in `dropzones.json`, else the nearest listed dropzone within 2 km. If neither exists, add a temporary "*name* (from file)" entry for this session at the saved coordinates and elevation.
-  4. **Plan:** the file's plan replaces that dropzone's plan, the same as importing a plan file today (§18 Q10).
+  4. **Plan:** the file's plan becomes the **active** plan while the file is open. The dropzone's own saved plan isn't touched (rev 3, see *While a file is open* below).
   5. Rebuild the fleet, jumpers, formations, meshes and colours, and apply the jump and load settings.
   6. **Weather:**
      - **saved** (the default): the weather service holds the saved state (`hold` on), and the Weather tab says "Weather from file · *time*";
      - **live**: fetch as usual.
   7. Recalculate, then restore the sim time, playback speed and camera.
-- **Notification:** "Loaded Night 32-way.jsim · 2 planes, 32 jumpers · weather from file", with **Undo** (restores the whole previous environment, plan included), **Use live weather**, and a warnings link.
+- **Notification:** "Loaded Night 32-way.jsim · 2 planes, 32 jumpers · weather from file", with **Undo** (restores the whole previous environment, including the file that was open before, if any), **Use live weather**, and a warnings link.
 - Loading **replaces** the environment. It never merges.
 - Saved with a different app version: a note in the notification ("Saved with JumperSim 1.0.1: tracks may differ slightly").
+
+**While a file is open** (rev 3)
+
+The plan in a `.jsim` belongs to that file. It applies only while the file is open, and the dropzone's own plan is left as it was.
+
+- **Open file:** the app keeps `currentFile = { name, handle?, unsaved }`. The menu bar shows the file name instead of the jump name, with "•" for unsaved changes. "No file" is the normal state on start-up.
+- **Plan source:** `DropzonePlan` gets a source switch, `setPlanSource("dropzone" | { file: name })`.
+  - While the source is a file, plan edits (jumprun, zones, patterns) still update the sim, undo and redo as usual. They mark the **file** unsaved, and the 500 ms write to `jumpersim.dzplan.<dropzone>` is **skipped**. They're kept by saving the file.
+  - The Dropzone tab and the planner show a banner: "Plan from Night 32-way.jsim. Changes are saved with the file, not to Example DZ's plan." The banner has a **Use as dropzone plan** button, which copies the file's plan into the dropzone's saved plan (after a confirm, with Undo). It's the only way a file's plan reaches the dropzone.
+  - The Dropzone tab's own plan export and import (`DropzonePanel.ts:309, 324`) keep working on the active plan. While a file is open, an imported plan becomes the file's plan.
+- **Closing the file** (rev 3: **File → Close**, Ctrl+W is not used because browsers own it):
+  - The dropzone's own plan comes back (`loadPlanForDropzone()`), and the sim recalculates.
+  - The rest stays as it is (load, jump settings, weather hold), now as an untitled environment, so the work isn't lost. File → Save then asks for a new file.
+  - If the file has unsaved changes, a small dialog asks **Save**, **Don't save** or **Cancel**.
+- **Other ways the file closes:**
+  - **Loading another `.jsim`** closes the open one first (with the same unsaved-changes dialog) and opens the new one.
+  - **Switching dropzone** in the Location tab closes the file, because the file's plan belongs to its own dropzone. Same dialog, then the new dropzone loads with its own plan.
+- **Reload and Auto-Save:** a plain reload starts with no file open and the dropzone's own plan. With Auto-Save on, **Restore last session** reopens the file state: the file name, and the file's plan as the active plan, still kept apart from the dropzone's. Its handle is gone, so the next Save asks where to save.
+- **Undo** of a load (in the notification) closes the loaded file and restores whatever was open before, without ever having written to the dropzone's plan.
 
 ### 12.6 Auto-Save
 
@@ -818,7 +863,9 @@ A `.jsim` may come from someone else, so it's treated as untrusted data:
 | File | Role |
 |---|---|
 | `src/js/core/data/JsimFile.ts` | **New, pure.** `serializeEnvironment()`, `parseJsim(text) → { env, warnings }`, validation, migrations. |
-| `src/js/ui/FileMenu.ts` | **New.** File menu items, shortcuts, the save picker or download, drop-to-open, Auto-Save, the unsaved "•". Replaces the stubs in `Menubar.ts`. |
+| `src/js/ui/FileMenu.ts` | **New.** File menu items (Save, Save As…, Load from File…, Close, Auto-Save), Formations → Save Formation, shortcuts, the save picker or download, drop-to-open, the open file and its unsaved "•", the unsaved-changes dialog. Replaces the stubs in `Menubar.ts`. |
+| `src/js/dropzone/DropzonePlan.ts` | `setPlanSource()`: skip the per-dropzone write while a file is open. "Use as dropzone plan" copies the active plan into the dropzone's storage. |
+| `src/js/panels/DropzonePanel.ts`, `src/js/dropzone/PlannerView.ts` | The "Plan from *file*" banner and its **Use as dropzone plan** button. |
 | `src/js/LocationSelect.ts` | Select a dropzone by name or coordinates. Temporary "(from file)" entries. |
 | `src/js/weather/WeatherService.ts` | `holdState(state)` to fly a saved weather state, and `exportState()`. |
 | `tests/jsimFile.test.ts` | **New.** Round trip (save → load → save is identical apart from `savedAt`), migrations, hostile input (markup in names and settings, out-of-range numbers, missing references). |
@@ -832,7 +879,7 @@ A `.jsim` may come from someone else, so it's treated as untrusted data:
 | `AircraftSpec` (`fleet/Aircraft.ts`) | Existing config + `capacity: number \| null`, `doorIntervalS`, `maxFloaters`, `floaterSpots: {right, up, back}[]`, `inDoor`, `wingspanM`, `lengthM`, `nameMatches: string[]` |
 | `Fleet` (`fleet/Fleet.ts`) | New (§5.2). `window.fleet`, `window.simPlanes`. |
 | `SimPlane` | `aircraftId`, `label`, `offset`, `floaters`, `goOffsetS`, `capacity` getter. `formations` moves to `Fleet`. |
-| `SimJumper` | `exitOrder`, `isFloater`, `seek: { states: {t, state}[]; dockTimes; missed: MissReason \| null }`, `fallAdjust: { t: Float32Array; mph: Float32Array; atLimit: Uint8Array } \| null` (§9.8). `formationSlot` reused for `.jump` slots. |
+| `SimJumper` | `exitOrder`, `isFloater`, `seek: { states: {t, state}[]; dockTimes; missed: MissReason \| null }`, `adjust: { t, adjustMph, sideX, sideZ: Float32Array; atLimit: Uint8Array } \| null` (§9.8). `formationSlot` reused for `.jump` slots. |
 | `ParsedJump` (`formations/JumpFile.ts`) | Parsed file in metres (§4.5). |
 | `FormationSequence`, `SequenceSettings`, `SequenceResult` | New (§8.1, §8.5). Replace `Formation`, `FormationData`, `FormationPoint`, `FormationSlot`. |
 | `JumpSettings` | New (§7.2), saved to `localStorage["jumpersim.jump.v1"]`. |
@@ -855,8 +902,8 @@ The load (fleet, jumpers, formations) lives in memory while the app runs. It's s
 | `src/js/formations/LoadSplit.ts` | **New, pure.** Plane count, counts, sectors, exit order (§6). |
 | `src/js/formations/FormationSequence.ts` | **New.** Sequence model and settings (§8.1). Replaces `classes/Formations.ts`. |
 | `src/js/physics/SlotSeeking.ts` | **New.** Member state machine, limits, feasibility (§9.3–9.7). |
-| `src/js/physics/SequenceSolver.ts` | **New.** Lockstep solve per formation: windows, docking, transitions, scoring, member tracks, fall-rate series (§8.3–8.5, §9.1–9.2, §9.8). |
-| `src/js/visuals/FallRateArrows.ts` | **New.** The fall-rate arrows and the View menu toggle (§9.8). |
+| `src/js/physics/SequenceSolver.ts` | **New.** Lockstep solve per formation: windows, docking, transitions, scoring, member tracks, adjustment series (§8.3–8.5, §9.1–9.2, §9.8). |
+| `src/js/visuals/AdjustmentArrows.ts` | **New.** The adjustment arrows (fall rate and sideways) and the View menu toggle (§9.8). |
 | `src/js/core/data/JsimFile.ts`, `src/js/ui/FileMenu.ts` | **New.** `.jsim` save, load, validation and Auto-Save (§12.8). |
 | `src/js/PlaneSelect.ts` | Model loading per plane with a GLTF cache. No module-level `planeMesh`. |
 | `src/js/classes/BaseEntities.ts`, `SimEntities.ts` | New fields. `precalculate()` copies solver tracks until breakoff. `precalculateJumpers()` pipeline (§5.5). |
@@ -867,10 +914,10 @@ The load (fleet, jumpers, formations) lives in memory while the app runs. It's s
 | `src/js/dropzone/PlanContext.ts`, `PlanOverlays.ts`, `PlannerView.ts` | Lead's jumprun frame. Exit markers per plane. Exit altitude from `JumpSettings`. |
 | `src/js/panels/WeatherPanel.ts` | Highest exit altitude for the jump conditions. |
 | `src/js/Scripts.ts` | Create the fleet. Startup load without the empty `jff2` formation. Mesh colours from `.jump`. Pipeline (§5.5). |
-| `src/js/Menubar.ts` | Formations → From .jump runs the real import (P7). The File menu stubs move to `FileMenu.ts`. |
+| `src/js/Menubar.ts` | Formations → From .jump runs the real import, and Save Formation runs File → Save (P7). The File menu stubs move to `FileMenu.ts`. |
 | `src/js/LocationSelect.ts`, `src/js/weather/WeatherService.ts` | Dropzone by name or coordinates, and holding a saved weather state (§12.8). |
-| `index.html`, `src/js/DevConsole.ts` | Jump Settings ids (§7.1). Plane Settings structure (§10). View → Fall-rate arrows. File → Save As…. |
-| `tests/jumpFile.test.ts`, `loadSplit.test.ts`, `sequenceSolver.test.ts`, `jsimFile.test.ts` | **New.** The four example files (both plane orders, the pilot-seat check), §6.5, a 4-way sequence, a forced low miss, the fall-rate series of a heavy jumper, `.jsim` round trip and hostile input. |
+| `index.html`, `src/js/DevConsole.ts` | Jump Settings ids (§7.1). Plane Settings structure (§10). View → Adjustment arrows. File → Save As…. |
+| `tests/jumpFile.test.ts`, `loadSplit.test.ts`, `sequenceSolver.test.ts`, `jsimFile.test.ts` | **New.** The four example files (both plane orders, the pilot-seat check), §6.5, a 4-way sequence, a forced low miss, the adjustment series of a heavy jumper and of a transition, `.jsim` round trip and hostile input. |
 | **Delete** | `src/js/classes/Formations.ts`, `src/js/exampleData/Formations.ts` (once phase 2 lands). |
 
 ---
@@ -910,8 +957,8 @@ Each phase leaves the app working.
 3. **Fleet** (§5). `Aircraft` with capacities (Cessna 4), floater spots and in-door counts, `Fleet`, per-plane meshes, layouts and offsets. `ExitSchedule` with climb-out and the initial exit (fixes P4). Every consumer moved off the single plane: Scene Objects, planner markers, timeline exits, weather.
 4. **Load menu** (§10.1–10.3, §10.5). Plane strip, selected-plane header, All view, moving jumpers, capacity warnings.
 5. **Auto-split on upload** (§6). `LoadSplit`, Replace / Add, the import notification with Undo, Re-split. Tests for §6.5.
-6. **Save and load `.jsim`** (§12). `JsimFile` and `FileMenu`: Save, Save As, Load, drop-to-open, Auto-Save, validation, saved weather. Rename the Plane Settings button to **Apply**. Later phases add their own fields (sequence settings, view) under the same `version: 1`, with defaults for files that don't have them.
-7. **Slot-seeking for point 1** (§9). `SlotSeeking` and `SequenceSolver` with the exit piece, divers, grips, docking, low guard, misses, fall-rate warnings, pre-flight hints, statuses, and the **fall-rate arrows** (§9.8).
+6. **Save and load `.jsim`** (§12). `JsimFile` and `FileMenu`: Save, Save As, Load, Close, Formations → Save Formation, drop-to-open, Auto-Save, validation, saved weather. The open-file state and the plan source switch in `DropzonePlan`, with the banner and **Use as dropzone plan**. Rename the Plane Settings button to **Apply**. Later phases add their own fields (sequence settings, view) under the same `version: 1`, with defaults for files that don't have them.
+7. **Slot-seeking for point 1** (§9). `SlotSeeking` and `SequenceSolver` with the exit piece, divers, grips, docking, low guard, misses, fall-rate warnings, pre-flight hints, statuses, and the **adjustment arrows** (§9.8).
 8. **Sequences and scoring** (§8). Windows, timed and early advance, repeat, transitions, working time, score. Formation bar (§10.4), timeline bands and ticks, the Scene Objects Formation row.
 9. **Polish:** staggered breakoff waves for 20+ ways, gripped initial-exit pieces on trail planes, optional seeded skill variation, slot target rings, simple separation between moving members during transitions.
 
@@ -949,10 +996,12 @@ Each phase leaves the app working.
 - [ ] Giving one diver +30 kg extra weight produces the fall-rate warning. That diver holds off at least 20 m out and breaks off when they reach breakoff altitude, and point 1 is reported missing their slot.
 - [ ] From 6,500 ft some 32-way slots are reported "Missed · … away", and those divers hold off and break off on time.
 
-**Fall-rate arrows**
-- [ ] In the 32-way, a trail-plane diver shows a long orange down arrow while diving. It shrinks as they flare and level off at the formation.
+**Adjustment arrows**
+- [ ] In the 32-way, a trail-plane diver shows a long orange arrow pointing down and toward the formation while diving. It shrinks and tilts sideways as they flare and level off, and turns white while they slide in at level.
+- [ ] In `3way6a`, every jumper's arrow points sideways toward their next slot during each transition, and has no sideways part while they hold a point.
+- [ ] A jumper holding their slot in a strong wind has no sideways part (the wind cancels).
 - [ ] The +30 kg diver above shows a red up arrow (slowing as much as they can and still too fast). A member of normal weight who has docked shows a short arrow or none.
-- [ ] Scrubbing the timeline moves the arrows with it. **View → Fall-rate arrows** off hides them all, and the setting survives a reload.
+- [ ] Scrubbing the timeline moves the arrows with it. **View → Adjustment arrows** off hides them all, and the setting survives a reload.
 
 **Save and load (`.jsim`)**
 - [ ] Save, then load the file in a browser with cleared storage. The dropzone, plan, exit altitude, fleet, jumpers, formation and settings are all back. With the saved weather, the tracks are identical (landing points within 1 cm) and so is the score.
@@ -960,7 +1009,14 @@ Each phase leaves the app working.
 - [ ] A `.jsim` whose dropzone isn't in the list loads at its saved coordinates, with a warning.
 - [ ] Markup in a jumper name or a settings value in a `.jsim` shows as plain text and never runs. Out-of-range numbers are clamped.
 - [ ] With Auto-Save on, a reload offers **Restore last session**, which brings back the same environment.
-- [ ] **Undo** after a load restores the previous environment, including the previous dropzone plan.
+- [ ] **Undo** after a load restores the previous environment and whatever file was open before.
+- [ ] **File plan stays with the file:**
+  - load a `.jsim`, move its jumprun, and close the file without saving: the dropzone's own plan comes back unchanged, and `jumpersim.dzplan.<dropzone>` was never written while the file was open;
+  - reopen the file: it has its saved plan, not the moved jumprun;
+  - move it again and Save: the file has the new jumprun, and the dropzone's plan still doesn't.
+- [ ] **Use as dropzone plan** copies the file's plan to the dropzone. After closing the file, the dropzone shows that plan.
+- [ ] Switching dropzone, or loading another file, with unsaved changes asks Save / Don't save / Cancel. Cancel leaves everything as it was.
+- [ ] **Formations → Save Formation** writes the same `.jsim` as File → Save. With no file open and the default jump name, the file is named after the formation.
 
 **Load menu**
 - [ ] The strip shows one chip per plane with seats used / capacity. Clicking a chip switches the header and table. **All** shows every jumper with a Plane column that moves them. Over-capacity shows red.
@@ -981,10 +1037,10 @@ Each phase leaves the app working.
 7. **Aircraft not modelled** ("Caravan"): fly them as the preferred aircraft (this spec), or add a Caravan model? If added, what capacity?
 8. **Advance default:** timed (predictable, this spec) or early (finishes each point as fast as the team can)?
 9. **Big-way scoring:** for a single-point big-way, is "keyed at T s" (build time) the result to show, instead of a point count?
-10. **Plan in a loaded `.jsim`:** this spec replaces the dropzone's saved plan with the file's (as importing a plan file does today), with Undo. Should a `.jsim` plan instead apply only while that file is open, leaving the dropzone's own plan alone? (Rev 2: saving the load is now `.jsim`, §12.)
+10. **Decided (rev 3):** a `.jsim` plan applies only while that file is open. The dropzone's own plan is left alone (§12.5).
 11. **Max planes:** is 10 enough?
 12. **Tunnel dives** (`tunnelFt` > 0): fly them as skydives with a warning (this spec), or refuse them?
 13. **Orientation:** is "page-up = along jumprun" the convention organizers expect, or should page-up face the lead plane (backwards)?
-14. **Formations → Save Formation:** the menu item does nothing today. Should it export the selected formation as a `.jump` for Skydive Designer (with the current plane split), or be removed now that `.jsim` saves everything?
-15. **Fall-rate arrow scope:** vertical only (this spec), or also a flat arrow for horizontal drive (sliding toward the slot)?
+14. **Decided (rev 3):** Formations → Save Formation saves a `.jsim` (§12.4). No `.jump` export.
+15. **Decided (rev 3):** the adjustment arrow shows sideways movement as well as fall rate, in one arrow (§9.8).
 16. **Floater and in-door defaults:** Twin Otter 5 floaters / 4 in the door, Skyvan 6 on the ramp, Cessna 3 / 2 (§5.1). Do these match how the DZs in mind exit?
