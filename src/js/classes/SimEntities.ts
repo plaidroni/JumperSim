@@ -32,6 +32,10 @@ import {
 } from "../physics/FormationFlight";
 import { breakoffDistance, MIN_DEPLOY_SEPARATION_M } from "../physics/FormationShapes";
 import { headingToQuaternion, sequenceOf } from "../formations/FormationSequence";
+import { AircraftId, DEFAULT_AIRCRAFT, aircraft } from "../fleet/Aircraft";
+
+/** Seconds before "go" that floaters climb out to their spots (specs/formation-jumps.md §5.4). */
+export const CLIMB_OUT_S = 5;
 import { FLOCK_DOCK_S, fanAngleDeg, flockSlotLabel } from "../physics/FlockShapes";
 import { TRACKING_EXIT_DELAY_S } from "../physics/BodyPositions";
 import { getPlanContext, invalidatePlanContext } from "../dropzone/PlanContext";
@@ -75,6 +79,24 @@ export class SimPlane extends Plane {
   planeLoad?: any;
   /** Where jumpers leave the aircraft, metres in its frame (set by PlaneSelect). */
   doorOffset = { right: 0, up: 0, back: 0 };
+  /** Floater spots outside the fuselage, drawn scale (set by PlaneSelect). */
+  floaterSpots: { right: number; up: number; back: number }[] = [];
+  /** Aircraft type (fleet/Aircraft.ts). */
+  aircraftId: AircraftId = DEFAULT_AIRCRAFT;
+  /** "Lead", "Plane 2", or the .jump plane name. */
+  label = "";
+  /** Wireframe and chip colour. */
+  planeColor = 0;
+  /** Offset from the lead in the lead's frame (the lead is 0,0,0). */
+  offset = { backM: 0, rightM: 0, upM: 0 };
+  /** Floaters on this plane; null = only those who don't fit in the door. */
+  floaters: number | null = null;
+  /** Exit signal delay relative to the lead (s). */
+  goOffsetS = 0;
+
+  get capacity(): number | null {
+    return aircraft(this.aircraftId).capacity;
+  }
 
   constructor(
     position: THREE.Vector3,
@@ -177,6 +199,12 @@ export class SimJumper extends Jumper {
   flockBreakoffTime: number | null = null;
   /** Nearest other jumper at this jumper's pull (from Separation.ts). */
   pullSeparation: { distanceM: number; otherId: string } | null = null;
+  /** 0-based exit order within this jumper's plane. */
+  exitOrder = 0;
+  /** Hangs outside the plane before "go" (specs/formation-jumps.md §1.1). */
+  isFloater = false;
+  /** Floater spot (drawn scale, aircraft frame) this jumper leaves from; null = the door. */
+  exitSpot: { right: number; up: number; back: number } | null = null;
 
   constructor(
     index: number,
@@ -319,7 +347,8 @@ export class SimJumper extends Jumper {
     const formation = formationPlanFor(this, this.plane as SimPlane);
     let groupPath: GroupPath | null = null;
     let slot: THREE.Vector3 | null = null;
-    const exitOffset = this.origin.clone().setY(0);
+    // offset from the group centre at this jumper's exit, eased into the slot
+    let exitOffset: THREE.Vector3 | null = null;
     let facing: THREE.Quaternion | null = null;
     this.formationEndTime = null;
     this.formationStatus = null;
@@ -334,7 +363,7 @@ export class SimJumper extends Jumper {
       slot = formation.plan.slots[formation.slotIndex].clone();
       groupPath = formationPath(
         formation.plan,
-        this.plane as SimPlane,
+        formation.plan.pathPlane ?? (this.plane as SimPlane),
         windProfile,
         step,
         duration,
@@ -486,7 +515,9 @@ export class SimJumper extends Jumper {
           if (fwd.lengthSq() < 1e-9) fwd.set(0, 0, -1);
           fwd.normalize();
           const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
-          const door = p.doorOffset ?? { right: 0, up: 0, back: 0 };
+          // floaters climb out to their spot shortly before "go"
+          const door =
+            this.exitSpot && simTime >= this.jumpTime - CLIMB_OUT_S ? this.exitSpot : p.doorOffset ?? { right: 0, up: 0, back: 0 };
           currentPosition = sample.position
             .clone()
             .addScaledVector(right, door.right)
@@ -502,6 +533,7 @@ export class SimJumper extends Jumper {
           // in formation: centre of the group + this jumper's slot (eased in after exit)
           const g = samplePath(groupPath, simTime);
           const dock = smoothstep((simTime - this.jumpTime) / FORMATION_DOCK_S);
+          if (!exitOffset) exitOffset = currentPosition.clone().sub(g.position);
           currentPosition = g.position.clone().add(exitOffset.clone().lerp(slot, dock));
           this.velocity = g.velocity.clone();
           if (facing) this.angle.copy(facing);

@@ -13,7 +13,10 @@ import {
   SimPlane,
 } from "./classes/SimEntities";
 import { loadDropzones } from "./LocationSelect";
-import { handlePlaneSelection, initializePlaneManager } from "./PlaneSelect";
+import { initializePlaneManager, loadPlaneModel } from "./PlaneSelect";
+import { Fleet } from "./fleet/Fleet";
+import { scheduleExits } from "./fleet/ExitSchedule";
+import { AIRCRAFT } from "./fleet/Aircraft";
 import {
   createDynamicTrajectoryLine,
   updateTrajectoryLines,
@@ -198,7 +201,7 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   if (moved > 4 || isEditingPlane || isAligningJumprun || planner?.active) return;
   onMouseMove(e);
   const hadMenu = isPickMenuOpen();
-  const picked = pickAt([simPlane.getMesh(), ...simJumpers.map((j) => j.getMesh()), ...markerObjects()]);
+  const picked = pickAt([...planeMeshes(), ...simJumpers.map((j) => j.getMesh()), ...markerObjects()]);
   if (picked) showFollowMenu(picked, { x: e.clientX, y: e.clientY });
   else if (!hadMenu) closePickMenu();
 });
@@ -414,10 +417,19 @@ function pickAt(objects: Array<THREE.Object3D | null>): Picked | null {
   const picked = findSceneObjectFor(hit.object);
   if (!picked) return null;
   const jumper = picked.type === "jumper" ? currentJumpers().find((j) => j.id === picked.id) : null;
-  const root = picked.type === "plane" ? simPlane.getMesh() : jumper?.getMesh() ?? hit.object;
+  const plane = picked.type === "plane" ? fleet.planes.find((p) => p.id === picked.id) : null;
+  const root = plane ? plane.getMesh() : jumper?.getMesh() ?? hit.object;
   if (!root) return null;
   window.dispatchEvent(new CustomEvent("scene-object-picked", { detail: picked }));
-  return { ...picked, root, name: picked.type === "plane" ? "the plane" : jumperLabel(jumper) };
+  return { ...picked, root, name: plane ? planeLabel(plane) : jumperLabel(jumper) };
+}
+
+function planeMeshes(): THREE.Object3D[] {
+  return fleet.planes.map((p) => p.getMesh()).filter((m): m is THREE.Object3D => !!m);
+}
+
+function planeLabel(p: SimPlane) {
+  return fleet.planes.length > 1 ? `${p.label || "the plane"} (${AIRCRAFT[p.aircraftId].name})` : "the plane";
 }
 
 function currentJumpers(): SimJumper[] {
@@ -500,7 +512,15 @@ const simPlane = new SimPlane(
   getJumpSettings().planeSpeedKt,
   new THREE.Vector3(90, 0, 0),
 );
-handlePlaneSelection("twin-otter", scene, simPlane);
+// === FLEET (specs/formation-jumps.md §5) ===
+simPlane.aircraftId = "twin-otter";
+simPlane.label = "Lead";
+simPlane.planeColor = AIRCRAFT["twin-otter"].color;
+const fleet = new Fleet(simPlane);
+fleet.modelLoader = (p) => void loadPlaneModel(p);
+(<any>window).fleet = fleet;
+Object.defineProperty(window, "simPlanes", { get: () => fleet.planes, configurable: true });
+loadPlaneModel(simPlane);
 // === SIMULATION DATA ===
 
 let simJumpers: SimJumper[] = [];
@@ -552,7 +572,7 @@ setLoadReplacer(({ jumpers, formations }) => {
   simJumpers.forEach((j) => {
     if (!keep.has(j)) j.getMesh()?.removeFromParent();
   });
-  simPlane.formations = formations;
+  fleet.formations = formations;
   simJumpers = jumpers;
   (<any>window).simJumpers = simJumpers;
   simPlane.jumpers = simJumpers;
@@ -620,7 +640,7 @@ function setFollowingLabel(name: string | null, mode: FollowMode | null = null) 
 function velocityOfMesh(obj: THREE.Object3D): THREE.Vector3 | null {
   const t = Number((window as any).simulationTime) || 0;
   const track =
-    obj === simPlane.getMesh() ? simPlane.track : currentJumpers().find((j) => j.getMesh() === obj)?.track;
+    fleet.planes.find((p) => p.getMesh() === obj)?.track ?? currentJumpers().find((j) => j.getMesh() === obj)?.track;
   const v = track?.getInterpolatedSample(t)?.velocity;
   return v ? v.clone() : null;
 }
@@ -650,11 +670,11 @@ document.addEventListener("keydown", (e) => {
 
 /** Map a picked mesh (or one of its children) back to the plane or a jumper. */
 function findSceneObjectFor(obj: THREE.Object3D): { type: "plane" | "jumper"; id: string } | null {
-  const planeMesh = simPlane.getMesh();
   // a zoomed-out marker stands in for its jumper or the plane
   if (obj.userData?.markerFor) obj = obj.userData.markerFor;
   for (let o: THREE.Object3D | null = obj; o; o = o.parent) {
-    if (planeMesh && o === planeMesh) return { type: "plane", id: simPlane.id };
+    const plane = fleet.planes.find((p) => p.getMesh() === o);
+    if (plane) return { type: "plane", id: plane.id };
     const j = simJumpers.find((x) => x.getMesh() === o);
     if (j) return { type: "jumper", id: j.id };
   }
@@ -706,6 +726,20 @@ function updateCameraFollow() {
 // Set when the tracks change so the scene redraws even while playback is paused
 let forceSceneUpdate = false;
 
+/** Exit order and times on every plane: index is the load order; exitOrder is its rank per plane. */
+function scheduleLoad(jumpers: SimJumper[]) {
+  jumpers.forEach((j) => {
+    if (!fleet.planes.includes(j.plane as SimPlane)) j.plane = fleet.lead;
+  });
+  for (const p of fleet.planes)
+    jumpers
+      .filter((j) => j.plane === p)
+      .sort((a, b) => a.index - b.index)
+      .forEach((j, k) => (j.exitOrder = k));
+  scheduleExits({ planes: fleet.planes, jumpers, formations: fleet.formations, exitIntervalS: fleet.exitIntervalS });
+}
+(window as any).scheduleLoad = () => scheduleLoad(currentJumpers());
+
 /** Re-run the physics for the plane and every jumper, then redraw. */
 export function recalculateSimulation() {
   const jumpers: SimJumper[] = Array.isArray((window as any).simJumpers)
@@ -714,7 +748,9 @@ export function recalculateSimulation() {
   applyJumpSettingsToPlane(simPlane);
   const jr = getDropzonePlan().jumprun;
   if (jr) applyJumprun(jr, simPlane, currentWindProfile());
-  simPlane.precalculate(SIM_DURATION_S);
+  fleet.syncFromLead();
+  fleet.planes.forEach((p) => p.precalculate(SIM_DURATION_S));
+  scheduleLoad(jumpers);
   precalculateJumpers(jumpers, SIM_DURATION_S);
   updateSimWindow(jumpers);
   forceSceneUpdate = true;
@@ -811,7 +847,9 @@ systemsOK.then(() => {
   }
 
   // start initial precalculation for jumpers
-  simPlane.precalculate(SIM_DURATION_S);
+  fleet.syncFromLead();
+  fleet.planes.forEach((p) => p.precalculate(SIM_DURATION_S));
+  scheduleLoad(simJumpers);
   precalculateJumpers(simJumpers, SIM_DURATION_S);
   simJumpers.forEach((jumper) => worldRoot.add(jumper.getMesh()));
   updateSimWindow(simJumpers);
@@ -855,6 +893,15 @@ systemsOK.then(() => {
   const sph = new THREE.Spherical();
 
   function updateFromPrecalc(time) {
+    for (const p of fleet.planes) {
+      if (p === simPlane) continue;
+      const s = p.track.getInterpolatedSample(time);
+      const m = p.getMesh();
+      if (m && s) {
+        m.position.copy(s.position);
+        if (s.angle instanceof THREE.Quaternion) m.quaternion.copy(s.angle);
+      }
+    }
     const planeSample = simPlane.track.getInterpolatedSample(time);
     // if (!planeSample) console.warn("No sample found at time", time);
     // console.log(
@@ -875,8 +922,9 @@ systemsOK.then(() => {
       const sample = jumper.track.getInterpolatedSample(time);
       if (!sample) return;
       jumper.getMesh().position.copy(sample.position);
-      if (planeSample) {
-        const dist = sample.position.distanceTo(planeSample.position);
+      const ownPlane = (jumper.plane as SimPlane)?.track?.getInterpolatedSample(time) ?? planeSample;
+      if (ownPlane) {
+        const dist = sample.position.distanceTo(ownPlane.position);
         jumper.hasJumped = dist > EXIT_THRESHOLD_METERS;
       }
 
@@ -966,7 +1014,7 @@ systemsOK.then(() => {
     }
     if (!planner?.active)
       checkHoverIntersect([
-        simPlane.getMesh(),
+        ...planeMeshes(),
         ...simJumpers.map((j) => j.getMesh()),
       ] as Array<THREE.Object3D | null>);
     if (!planner?.active) updateCameraFollow();

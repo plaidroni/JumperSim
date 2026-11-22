@@ -369,12 +369,21 @@ export class PlanOverlays {
       g.add(line([a, b], lineMat(COLORS.jumprun, 0.95)));
       g.add(arrowHead(b, b.clone().sub(a), COLORS.jumprun, 40));
       this.label("Green light", a, "#7dffa8", 14);
+      // trail planes: thin lines at their offsets (specs/formation-jumps.md §11)
+      const planes: any[] = (window as any).fleet?.planes ?? [];
+      for (const p of planes.slice(1)) {
+        const o = p.initialPosition;
+        const py = planner ? y : o.y;
+        const pa = new THREE.Vector3(o.x, py, o.z);
+        const pb = new THREE.Vector3(o.x + frame.dir.x * lenAlong, py, o.z + frame.dir.z * lenAlong);
+        g.add(line([pa, pb], lineMat(COLORS.jumprun, 0.35)));
+      }
       const seen = new Set<string>();
       for (const e of exits) {
         const key = `${Math.round(e.x / 5)}:${Math.round(e.z / 5)}`;
         if (seen.has(key)) continue; // linked groups exit together: one marker
         seen.add(key);
-        const same = exits.filter((x) => `${Math.round(x.x / 5)}:${Math.round(x.z / 5)}` === key).map((x) => x.order);
+        const same = exits.filter((x) => `${Math.round(x.x / 5)}:${Math.round(x.z / 5)}` === key).map((x) => x.label);
         this.label(same.length > 1 ? `${same[0]}–${same[same.length - 1]}` : `${same[0]}`, new THREE.Vector3(e.x, y, e.z), "#ffffff", 13);
       }
     }

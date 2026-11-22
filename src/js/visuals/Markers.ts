@@ -122,8 +122,11 @@ export function updateMarkers(camera: THREE.Camera, renderer: THREE.WebGLRendere
   const live = new Set<THREE.Object3D>();
   const plane = getPlane();
   const items: { target: THREE.Object3D; isPlane: boolean; jumper?: SimJumper }[] = [];
-  const planeMesh = plane?.getMesh?.();
-  if (planeMesh) items.push({ target: planeMesh, isPlane: true });
+  const planes: SimPlane[] = (window as any).fleet?.planes ?? (plane ? [plane] : []);
+  for (const p of planes) {
+    const planeMesh = p?.getMesh?.();
+    if (planeMesh) items.push({ target: planeMesh, isPlane: true });
+  }
   for (const j of getJumpers() ?? []) {
     const mesh = j.getMesh?.();
     if (mesh && plane && hasJumperExited(j, plane, t)) items.push({ target: mesh, isPlane: false, jumper: j });

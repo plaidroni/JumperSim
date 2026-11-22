@@ -339,8 +339,9 @@ export function initializeWeatherPanel() {
   }
 
   function renderConditions(st: WeatherState) {
-    const plane = (window as any).simPlane;
-    const exitAglM = Number(plane?.initialPosition?.y);
+    // the highest plane's exit (trail planes fly stacked above the lead)
+    const w = window as any;
+    const exitAglM = w.fleet ? Number(w.fleet.highestExitM()) : Number(w.simPlane?.initialPosition?.y);
     const isUS = (window as any).selectedDropzone?.country === "United States";
     if (!fin(exitAglM)) {
       cond.sum.textContent = "";

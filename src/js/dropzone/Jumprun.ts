@@ -60,14 +60,24 @@ export function applyJumprun(j: Jumprun, plane: SimPlane, profile: WindLevel[] =
   plane.changeDirection(new THREE.Vector3(d.x, 0, d.z));
 }
 
-/** Each jumper's exit point (from the plane's calculated track). */
+/**
+ * Each jumper's exit point (from their own plane's calculated track). With several
+ * planes, labels read "plane·exit" (e.g. "2·5"); with one plane, just the exit number.
+ */
 export function exitPoints(plane: SimPlane, jumpers: SimJumper[]) {
+  const planes: SimPlane[] = (typeof window !== "undefined" && (window as any).fleet?.planes) || [plane];
+  const multi = planes.length > 1;
+  const perPlane = new Map<SimPlane, number>();
   return [...jumpers]
     .sort((a, b) => a.jumpTime - b.jumpTime || a.index - b.index)
     .map((j, order) => {
-      const s = plane.track.getInterpolatedSample(j.jumpTime);
-      const p = s ? s.position : plane.initialPosition;
-      return { jumper: j, order: order + 1, x: p.x, z: p.z, t: j.jumpTime };
+      const own = (planes.includes(j.plane as SimPlane) ? j.plane : plane) as SimPlane;
+      const s = own.track.getInterpolatedSample(j.jumpTime);
+      const p = s ? s.position : own.initialPosition;
+      const n = (perPlane.get(own) ?? 0) + 1;
+      perPlane.set(own, n);
+      const label = multi ? `${planes.indexOf(own) + 1}·${n}` : String(order + 1);
+      return { jumper: j, order: order + 1, label, x: p.x, z: p.z, t: j.jumpTime };
     });
 }
 

@@ -18,7 +18,8 @@ export function simTime(): number {
 /** Exited = more than 2 m from the plane (falls back to the scheduled jump time). */
 export function hasJumperExited(j: SimJumper, plane: SimPlane, t = simTime()): boolean {
   const js = j.track.getInterpolatedSample(t);
-  const ps = plane.track.getInterpolatedSample(t);
+  const own = (j.plane as SimPlane | undefined)?.track ? (j.plane as SimPlane) : plane;
+  const ps = own.track.getInterpolatedSample(t);
   if (!js || !ps) return t >= j.jumpTime;
   return js.position.distanceTo(ps.position) > 2;
 }

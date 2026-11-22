@@ -35,6 +35,8 @@ export interface FormationPlan {
   slots: THREE.Vector3[];
   /** Per-slot heading (degrees clockwise from north) for .jump formations; else face the centre. */
   headingsDeg?: number[];
+  /** Plane whose exit starts the shared path (the lead for formations spanning planes). */
+  pathPlane?: SimPlane;
   startTime: number;
 }
 
@@ -133,7 +135,8 @@ export function formationPlanFor(
     if (!buildsRounds(j)) return null;
     const members = seq.getAllJumpers().filter(buildsRounds);
     if (members.length < 2) return null;
-    const frame = seq.frame(plane.direction);
+    const lead: SimPlane = (typeof window !== "undefined" && (window as any).fleet?.lead) || plane;
+    const frame = seq.frame(lead.direction);
     const slots = members.map((m) => seq.slotOffset(0, seq.slotOf(m), frame));
     const headingsDeg = members.map((m) => seq.slotHeadingDeg(0, seq.slotOf(m), frame));
     return {
@@ -143,6 +146,7 @@ export function formationPlanFor(
         members,
         slots,
         headingsDeg,
+        pathPlane: lead,
         startTime: Math.min(...members.map((m) => m.jumpTime)),
       },
       slotIndex: members.indexOf(j),

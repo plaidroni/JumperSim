@@ -66,7 +66,15 @@ export class PlaneLoad {
   layout: PlaneLayout;
   private selectedFormationIdx: number = 0;
   // User-configurable interval (seconds) between exits for sequential groups
-  private jumpIntervalSeconds: number = 10;
+  private get jumpIntervalSeconds(): number {
+    return (window as any).fleet?.exitIntervalS ?? this._jumpInterval;
+  }
+  private set jumpIntervalSeconds(v: number) {
+    const f = (window as any).fleet;
+    if (f) f.exitIntervalS = v;
+    else this._jumpInterval = v;
+  }
+  private _jumpInterval = 10;
   /** Edits made in the panel that haven't been applied to the sim yet. */
   private dirty = false;
 
@@ -126,6 +134,12 @@ export class PlaneLoad {
   }
 
   normalizeJumpTimes() {
+    // every plane's exit order and times (fleet/ExitSchedule.ts, via Scripts.ts)
+    const w = window as any;
+    if (typeof w.scheduleLoad === "function") {
+      w.scheduleLoad();
+      return;
+    }
     const sorted = [...this.jumpers].sort((a, b) => a.index - b.index);
     const baseInterval = Math.max(0, this.jumpIntervalSeconds);
 
@@ -990,7 +1004,7 @@ export class PlaneLoad {
 
   // Exit state via kinematics (shared with Scene Objects)
   private hasJumperExited(j: SimJumper): boolean {
-    return hasJumperExited(j, this.plane, this.getSimulationTime());
+    return hasJumperExited(j, (j.plane as SimPlane) ?? this.plane, this.getSimulationTime());
   }
 
   render() {

@@ -1048,3 +1048,5 @@ label .js-hint { display: inline; margin-left: 6px; }
 .js-warn { color: #ffb74d; }
 @keyframes js-flash { 0% { box-shadow: 0 0 0 2px #ff4d4d; } 100% { box-shadow: 0 0 0 0 transparent; } }
 .js-flash { animation: js-flash 0.8s ease-out; }
+
+.so-row.so-row--child { padding-left: 18px; }

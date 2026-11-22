@@ -23,8 +23,10 @@ interface Sources {
   jumpers: () => SimJumper[];
 }
 
-const PLANE_KEY = "plane";
+const PLANE_PREFIX = "plane:";
 const DETAIL_INTERVAL_MS = 100;
+const AIRCRAFT_NAMES: Record<string, string> = { "twin-otter": "Twin Otter", skyvan: "Skyvan", "cessna-172": "Cessna-172", "dc-9": "DC-9" };
+const isPlaneKey = (k: string | null) => !!k && k.startsWith(PLANE_PREFIX);
 
 export function initializeSceneObjects(src: Sources) {
   const tab = document.getElementById("objects-panel");
@@ -43,6 +45,12 @@ export function initializeSceneObjects(src: Sources) {
 
   const isShown = () => tab.offsetParent !== null && !tab.hidden;
   const sortedJumpers = () => [...src.jumpers()].sort((a, b) => a.index - b.index);
+  const planes = (): SimPlane[] => (window as any).fleet?.planes ?? [src.plane()];
+  const planeKey = (p: SimPlane) => PLANE_PREFIX + p.id;
+  const planeFor = (key: string | null): SimPlane | null =>
+    isPlaneKey(key) ? planes().find((p) => planeKey(p) === key) ?? null : null;
+  const planeName = (p: SimPlane) => (planes().length > 1 ? p.label || "Plane" : "Plane");
+  const planeHex = (p: SimPlane) => (p.planeColor ? `#${p.planeColor.toString(16).padStart(6, "0")}` : "#ffd700");
 
   function meshColor(j: SimJumper): string {
     const mat = (j.getMesh() as any)?.material;
@@ -51,7 +59,8 @@ export function initializeSceneObjects(src: Sources) {
   }
 
   function objectFor(key: string): THREE.Object3D | null {
-    if (key === PLANE_KEY) return src.plane().getMesh();
+    const p = planeFor(key);
+    if (p) return p.getMesh();
     return src.jumpers().find((j) => j.id === key)?.getMesh() ?? null;
   }
 
@@ -59,12 +68,20 @@ export function initializeSceneObjects(src: Sources) {
 
   function buildList() {
     const jumpers = sortedJumpers();
-    signature = jumpers.map((j) => `${j.id}:${j.index}:${j.flyingStyle}`).join("|");
+    signature = listSignature(jumpers);
     listEl.replaceChildren();
-    listEl.appendChild(makeRow(PLANE_KEY, "#ffd700", "✈", "Plane", aircraftName()));
-    jumpers.forEach((j) => {
-      const pos = BODY_POSITIONS[normalizeBodyPosition(j.flyingStyle)].label;
-      listEl.appendChild(makeRow(j.id, meshColor(j), String(j.index + 1), jumperName(j), pos));
+    const ps = planes();
+    const multi = ps.length > 1;
+    ps.forEach((p, k) => {
+      const aboard = jumpers.filter((j) => j.plane === p || (k === 0 && !ps.includes(j.plane as SimPlane)));
+      const sub = `${AIRCRAFT_NAMES[p.aircraftId] ?? aircraftName()}${multi ? ` · ${k === 0 ? "Lead · " : ""}${aboard.length} aboard` : ""}`;
+      listEl.appendChild(makeRow(planeKey(p), planeHex(p), "✈", planeName(p), sub));
+      aboard.forEach((j) => {
+        const pos = BODY_POSITIONS[normalizeBodyPosition(j.flyingStyle)].label;
+        const row = makeRow(j.id, meshColor(j), multi ? `${k + 1}·${j.exitOrder + 1}` : String(j.index + 1), jumperName(j), pos);
+        if (multi) row.classList.add("so-row--child");
+        listEl.appendChild(row);
+      });
     });
     if (selected && !listEl.querySelector(`[data-key="${cssEscape(selected)}"]`)) selected = null;
     updateRows();
@@ -106,8 +123,9 @@ export function initializeSceneObjects(src: Sources) {
       const key = row.dataset.key!;
       const cell = row.querySelector(".so-status") as HTMLElement;
       let text: string;
-      if (key === PLANE_KEY) {
-        const s = plane.track.getInterpolatedSample(t);
+      const rowPlane = planeFor(key);
+      if (rowPlane) {
+        const s = rowPlane.track.getInterpolatedSample(t);
         text = s ? `In air · ${fmtFt(s.position.y)}` : "In air";
       } else {
         const j = byId.get(key);
@@ -140,10 +158,11 @@ export function initializeSceneObjects(src: Sources) {
     if (!obj) return;
     let offset: THREE.Vector3;
     let name: string;
-    if (key === PLANE_KEY) {
-      const d = src.plane().direction.clone().setY(0).normalize();
+    const kp = planeFor(key);
+    if (kp) {
+      const d = kp.direction.clone().setY(0).normalize();
       offset = d.multiplyScalar(-80).add(new THREE.Vector3(0, 25, 0));
-      name = "the plane";
+      name = planes().length > 1 ? kp.label : "the plane";
     } else {
       const j = src.jumpers().find((x) => x.id === key)!;
       const s = j.track.getInterpolatedSample(simTime());
@@ -157,7 +176,8 @@ export function initializeSceneObjects(src: Sources) {
 
   function follow(key: string) {
     const obj = objectFor(key);
-    const name = key === PLANE_KEY ? "the plane" : jumperName(src.jumpers().find((x) => x.id === key)!);
+    const fp = planeFor(key);
+    const name = fp ? (planes().length > 1 ? fp.label : "the plane") : jumperName(src.jumpers().find((x) => x.id === key)!);
     (window as any).cameraFocus?.(obj, { name });
   }
 
@@ -171,16 +191,26 @@ export function initializeSceneObjects(src: Sources) {
     let rows: Array<[string, string]>;
     let color = "#ffd700";
 
-    if (selected === PLANE_KEY) {
-      const s = plane.track.getInterpolatedSample(t);
-      const onBoard = src.jumpers().filter((j) => !hasJumperExited(j, plane, t)).length;
-      title = `Plane · ${aircraftName()}`;
+    const sp = planeFor(selected);
+    if (sp) {
+      const s = sp.track.getInterpolatedSample(t);
+      const aboard = src.jumpers().filter((j) => j.plane === sp);
+      const onBoard = aboard.filter((j) => !hasJumperExited(j, sp, t)).length;
+      color = planeHex(sp);
+      title = `${planeName(sp)} · ${AIRCRAFT_NAMES[sp.aircraftId] ?? aircraftName()}`;
       rows = [
-        ["Speed", `${Math.round(plane.speed / 0.51444)} kt`],
-        ["Heading", `${String(headingDeg(plane.direction.x, plane.direction.z)).padStart(3, "0")}°`],
+        ["Speed", `${Math.round(sp.speed / 0.51444)} kt`],
+        ["Heading", `${String(headingDeg(sp.direction.x, sp.direction.z)).padStart(3, "0")}°`],
         ["Altitude", s ? fmtFt(s.position.y) : "–"],
-        ["On board", `${onBoard} of ${src.jumpers().length}`],
+        ["On board", `${onBoard} of ${aboard.length}`],
       ];
+      if (planes().length > 1)
+        rows.push([
+          "Position",
+          sp === planes()[0]
+            ? "Lead"
+            : `${Math.round(sp.offset.backM)} m back · ${Math.round(Math.abs(sp.offset.rightM))} m ${sp.offset.rightM >= 0 ? "right" : "left"} · +${Math.round(sp.offset.upM * M_TO_FT)} ft`,
+        ]);
     } else {
       const j = src.jumpers().find((x) => x.id === selected);
       if (!j) return null;
@@ -195,6 +225,9 @@ export function initializeSceneObjects(src: Sources) {
       const ground = s ? Math.hypot(s.velocity.x, s.velocity.z) : 0;
       rows = [
         ["Status", jumperStatus(j, plane, t)],
+        ...(planes().length > 1
+          ? ([["Plane", `${(j.plane as SimPlane)?.label ?? "–"} · exit ${j.exitOrder + 1}${j.isFloater ? " (floater)" : ""}`]] as Array<[string, string]>)
+          : []),
         ["Altitude", s ? fmtFt(s.position.y) : "–"],
         ["Fall rate", falling ? `${Math.round(Math.max(0, -s!.velocity.y) * MS_TO_MPH)} mph` : "–"],
         [
@@ -276,7 +309,7 @@ export function initializeSceneObjects(src: Sources) {
       <div class="so-actions">
         <button type="button" class="primary" data-act="zoom">Zoom in</button>
         <button type="button" data-act="follow">Follow</button>
-        ${selected === PLANE_KEY ? "" : `<button type="button" data-act="edit">Edit in Plane Settings</button>`}
+        ${isPlaneKey(selected) ? "" : `<button type="button" data-act="edit">Edit in Plane Settings</button>`}
       </div>`;
     const key = selected;
     detailsEl.querySelector('[data-act="zoom"]')?.addEventListener("click", () => zoomIn(key));
@@ -329,7 +362,7 @@ export function initializeSceneObjects(src: Sources) {
 
   window.addEventListener("scene-object-picked", (e: any) => {
     const d = e.detail as { type: "plane" | "jumper"; id: string };
-    select(d.type === "plane" ? PLANE_KEY : d.id, true);
+    select(d.type === "plane" ? PLANE_PREFIX + d.id : d.id, true);
   });
   onRecalculated(() => buildList());
   window.addEventListener("tab-shown", (e: any) => {
@@ -340,13 +373,22 @@ export function initializeSceneObjects(src: Sources) {
   const tick = () => {
     if (isShown()) {
       const jumpers = sortedJumpers();
-      const sig = jumpers.map((j) => `${j.id}:${j.index}:${j.flyingStyle}`).join("|");
+      const sig = listSignature(jumpers);
       if (sig !== signature) buildList();
       else updateRows();
       if (performance.now() - lastDetail > DETAIL_INTERVAL_MS) refreshDetails();
     }
     requestAnimationFrame(tick);
   };
+  function listSignature(jumpers: SimJumper[]) {
+    const ps = planes();
+    return (
+      ps.map((p) => `${p.id}:${p.label}:${p.aircraftId}`).join(",") +
+      "#" +
+      jumpers.map((j) => `${j.id}:${j.index}:${j.flyingStyle}:${(j.plane as any)?.id}`).join("|")
+    );
+  }
+
   buildList();
   requestAnimationFrame(tick);
 }
