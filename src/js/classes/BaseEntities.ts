@@ -2,7 +2,7 @@ import { DEFAULT_PULL_FT } from "../physics/Canopy";
 import { getGroundHeight } from "../terrain/GroundHeight";
 import * as THREE from "three";
 import { SimPlane } from "./SimEntities";
-import { Formation } from "./Formations";
+import type { FormationSequence } from "../formations/FormationSequence";
 import { v4 as uuidv4 } from "uuid";
 
 type SuitType = "baggy" | "skintight" | "normal";
@@ -115,7 +115,9 @@ export class Jumper {
   currentVelocity: THREE.Vector3;
   velocity: THREE.Vector3;
   isInFormation: boolean = false;
-  formation: Formation;
+  formation: FormationSequence | undefined;
+  /** Display colour (#rrggbb), e.g. from a .jump file. */
+  color?: string;
   name: String;
   height: number;
   targetPosition: THREE.Vector3;

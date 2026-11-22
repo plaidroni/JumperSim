@@ -19,8 +19,7 @@ import {
   updateTrajectoryLines,
   visualizeJumpers,
 } from "./ui/TrajectoryLines";
-import { loadJumpFormation } from "./exampleData/Formations";
-import { Formation } from "./classes/Formations";
+import { setLoadReplacer } from "./core/data/LoadStore";
 import { addTooltipToggle } from "./Menubar";
 import { initializeDock } from "./editor/Dock";
 import { initializeTimeline, renderTimelineMarkers } from "./editor/Timeline";
@@ -504,75 +503,70 @@ const simPlane = new SimPlane(
 handlePlaneSelection("twin-otter", scene, simPlane);
 // === SIMULATION DATA ===
 
-let formations: Formation[] = [];
 let simJumpers: SimJumper[] = [];
 (<any>window).simPlane = simPlane;
 (<any>window).simJumpers = simJumpers;
 // attach PlaneLoad instance to plane for centralized state
 (simPlane as any).planeLoad = new PlaneLoad(simPlane);
-// keep plane reference to jumpers array in sync
+
+// Start with 10 default jumpers. Formations come from Import .jump (specs/formation-jumps.md §4).
+simJumpers = groupAndReindexJumpers(simPlane, createDefaultSimJumpers(10, simPlane));
+(<any>window).simJumpers = simJumpers;
 simPlane.jumpers = simJumpers;
+(simPlane as any).planeLoad?.render();
 
-try {
-  // const formationData1 = await loadJumpFormation("/formations/3way6a.jump");
-  const formationData1 = await loadJumpFormation("/formations/jff2.jump");
-  console.log("Loaded formation data:", formationData1);
-  const formation1 = new Formation(formationData1);
-  // formation1.createJumpersForPlane(simPlane, formationData1.jumpers);
-  simJumpers = createDefaultSimJumpers(10, simPlane);
-  simPlane.addFormation(formation1);
+// === JUMPER MESHES, TRAJECTORY LINES AND LOAD REPLACEMENT ===
+let jumperGeometry: THREE.BufferGeometry | null = null;
+let lines: THREE.Line[] = [];
+let sceneReady = false;
 
-  // const formationData2 = await loadJumpFormation("/formations/another.jump");
-  // const formation2 = new Formation(formationData2);
-  // formation2.createJumpersForPlane(simPlane, formationData2.jumpers);
-  // simPlane.addFormation(formation2);
-
-  formations = simPlane.formations;
-  // Gather all jumpers from all formations
-  simJumpers = formations.flatMap((f) => f.getAllJumpers());
-  simJumpers.push(...createDefaultSimJumpers(10, simPlane));
-  // Group formation jumpers together and reindex sequentially
-  simJumpers = groupAndReindexJumpers(simPlane, simJumpers);
-  (<any>window).simJumpers = simJumpers;
-  simPlane.jumpers = simJumpers;
-  (simPlane as any).planeLoad?.render();
-
-  // Success notification with action button
-  notificationManager.success(
-    `Formation loaded: ${formations.length} formation(s) with ${simJumpers.length} jumpers`,
-    {
-      duration: 5000,
-      actions: [
-        {
-          label: "View Objects",
-          callback: () => {
-            // Show objects panel - find and maximize it
-            const objectsPanel = document.querySelector(
-              "#objects-panel",
-            ) as HTMLElement;
-            if (objectsPanel) {
-              objectsPanel.style.visibility = "visible";
-            }
-          },
-        },
-      ],
-    },
-  );
-} catch (e) {
-  // fallback: no formation, use default jumpers
-  simJumpers = createDefaultSimJumpers(10, simPlane);
-  simJumpers = groupAndReindexJumpers(simPlane, simJumpers);
-  (<any>window).simJumpers = simJumpers;
-  simPlane.jumpers = simJumpers;
-  (simPlane as any).planeLoad?.render();
-  // Warning notification for fallback scenario
-  notificationManager.warning(
-    "Formation loading failed - using default jumpers",
-    {
-      duration: 6000,
-    },
-  );
+/** Give a jumper its wireframe skydiver mesh, in its own colour (or a random one). */
+function attachJumperMesh(jumper: SimJumper) {
+  if (!jumperGeometry) return;
+  const hex = (jumper as any).color as string | undefined;
+  const color = hex ? new THREE.Color(hex) : new THREE.Color(Math.random(), Math.random(), Math.random());
+  const material = new THREE.MeshBasicMaterial({ color, wireframe: true });
+  const mesh = new THREE.Mesh(jumperGeometry, material);
+  mesh.scale.setScalar(JUMPER_UNITS_TO_M); // true size in the scaled world (10.4 model units = 1.8 m)
+  const old = jumper.getMesh();
+  if (old) old.removeFromParent();
+  jumper.setMesh(mesh);
+  worldRoot.add(mesh);
 }
+
+/** Rebuild one trajectory line per jumper. */
+function rebuildTrajectoryLines() {
+  lines.forEach((l) => {
+    l.removeFromParent();
+    l.geometry?.dispose();
+  });
+  unregisterOverlay(...lines);
+  lines = simJumpers.map(createDynamicTrajectoryLine);
+  lines.forEach((l) => worldRoot.add(l));
+  registerOverlay(...lines);
+}
+
+/** Swap the whole load: old meshes and lines go, new ones come, everything recalculates. */
+setLoadReplacer(({ jumpers, formations }) => {
+  const keep = new Set(jumpers);
+  simJumpers.forEach((j) => {
+    if (!keep.has(j)) j.getMesh()?.removeFromParent();
+  });
+  simPlane.formations = formations;
+  simJumpers = jumpers;
+  (<any>window).simJumpers = simJumpers;
+  simPlane.jumpers = simJumpers;
+  for (const j of jumpers) {
+    if (jumperGeometry) {
+      if (!(j.getMesh() as any)?.geometry || (j.getMesh() as any).geometry !== jumperGeometry) attachJumperMesh(j);
+      else if (!j.getMesh().parent) worldRoot.add(j.getMesh());
+    } else if (!j.getMesh().parent) worldRoot.add(j.getMesh());
+  }
+  if (sceneReady) rebuildTrajectoryLines();
+  recalculateSimulation();
+  (simPlane as any).planeLoad?.render();
+  renderTimelineMarkers();
+});
 
 // TODO: move into menubar with refactor
 function startPlaneEdit() {
@@ -837,50 +831,14 @@ systemsOK.then(() => {
   stlLoader.load(
     "fabs/skydiver_fix.stl",
     (geometry) => {
-      simJumpers.forEach((jumper) => {
-        const color = new THREE.Color(
-          Math.random(),
-          Math.random(),
-          Math.random(),
-        );
-
-        const material = new THREE.MeshBasicMaterial({
-          color,
-          wireframe: true,
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-
-        // true size in the scaled world (10.4 model units = 1.8 m)
-        mesh.scale.setScalar(JUMPER_UNITS_TO_M);
-
-        geometry.computeBoundingBox();
-        const center = new THREE.Vector3();
-        if (geometry.boundingBox) {
-          geometry.boundingBox.getCenter(center);
-        }
-        mesh.geometry.translate(-center.x, -center.y, -center.z);
-        const forward = new THREE.Vector3(1, 0, 0);
-        // const fixQuat = new THREE.Quaternion().setFromAxisAngle(
-        //   forward,
-        //   -Math.PI / 2
-        // );
-        jumper.setMesh(mesh);
-
-        // mesh.userData.fixQuat = fixQuat.clone();
-        // set mesh rotation upright
-
-        if (jumper.isInFormation && jumper.formationOffset.lengthSq() > 0) {
-          mesh.position.copy(jumper.formationOffset);
-          const targetDir = jumper.formationOffset.clone().normalize().negate();
-          // console.log("formation offset:", jumper.formationOffset);
-          console.log("targetDir:", jumper.angle);
-          mesh.quaternion.copy(jumper.angle);
-        } else {
-          // mesh.quaternion.copy(fixQuat);
-        }
-        worldRoot.add(jumper.getMesh());
-      });
+      // centre the model once; every jumper shares this geometry
+      geometry.computeBoundingBox();
+      const center = new THREE.Vector3();
+      geometry.boundingBox?.getCenter(center);
+      geometry.translate(-center.x, -center.y, -center.z);
+      jumperGeometry = geometry;
+      simJumpers.forEach(attachJumperMesh);
+      forceSceneUpdate = true;
     },
     (xhr) => {
       console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
@@ -950,9 +908,8 @@ systemsOK.then(() => {
     updateCanopyRigs(worldRoot, simJumpers, time);
   }
 
-  const lines = simJumpers.map(createDynamicTrajectoryLine);
-  lines.forEach((l) => worldRoot.add(l));
-  registerOverlay(...lines);
+  sceneReady = true;
+  rebuildTrajectoryLines();
 
   // Three.js stops the animation loop for good if a frame throws, which freezes the
   // whole app (planner exit, dragging, playback). Log the error and keep going.

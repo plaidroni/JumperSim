@@ -323,3 +323,5 @@ body {
   accent-color: #ffd700;
   margin: 0;
 }
+
+#plane-panel.is-drop-target { outline: 2px dashed #ffd700; outline-offset: -4px; }

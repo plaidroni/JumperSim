@@ -1,5 +1,6 @@
 import { SimPlane, SimJumper } from "../classes/SimEntities";
-import { Formation } from "../classes/Formations";
+import { pickAndImportJump } from "../formations/ImportJump";
+import { sequenceOf } from "../formations/FormationSequence";
 import { notificationManager } from "../classes/NotificationManager";
 import { requestRecalculation } from "../core/data/SimulationVariables";
 import { hasJumperExited, jumperStatus } from "../panels/jumperStatus";
@@ -363,7 +364,7 @@ export class PlaneLoad {
     importBtn.className = "ps-button";
     importBtn.textContent = "Import .jump";
     importBtn.title = "Import a formation from a .jump file";
-    importBtn.addEventListener("click", () => this.openFormationImport());
+    importBtn.addEventListener("click", () => pickAndImportJump());
 
     const formSel = document.createElement("select");
     formSel.className = "ps-select";
@@ -728,7 +729,8 @@ export class PlaneLoad {
         const sIdx = Number(slotSelect.value);
         const f = (this.plane.formations || [])[fIdx2];
         if (!f) return;
-        (f as any).assignExistingJumperToSlot?.(j, sIdx);
+        const mine = f.slotOf(j);
+        if (mine >= 0 && mine !== sIdx) f.swapSlots(mine, sIdx);
         // After slot change, keep group timing and regroup UI
         this.normalizeJumpTimes();
         this.markDirty();
@@ -785,6 +787,25 @@ export class PlaneLoad {
       this.markDirty();
       this.render();
     };
+    const seq = sequenceOf(j);
+    if (seq) {
+      const mine = seq.slotOf(j);
+      for (let k = 0; k < seq.slotCount; k++) {
+        const o = document.createElement("option");
+        o.value = String(k);
+        const who = seq.members[k];
+        o.textContent = who && who !== j ? `${k + 1}` : `${k + 1}${who ? "" : " (empty)"}`;
+        o.selected = k === mine;
+        sel.appendChild(o);
+      }
+      sel.title = `Slot in ${seq.title} (the same slot in every point). Picking a taken slot swaps.`;
+      sel.addEventListener("change", () => {
+        seq.swapSlots(mine, Number(sel.value));
+        this.markDirty();
+        this.render();
+      });
+      return sel;
+    }
     if (j.linked && buildsRounds(j) && getFormationShape(this.plane.linkedFormation).id !== "none") {
       const members = roundMembers(j, this.plane);
       if (members.length < 2) return none();
@@ -941,51 +962,13 @@ export class PlaneLoad {
     setTimeout(() => document.addEventListener("mousedown", close, true), 0);
   }
 
-  private openFormationImport() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".jump,application/json";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        const formation = new Formation(data);
-        // Create formation jumpers for this plane
-        formation.createJumpersForPlane(this.plane, data.jumpers || []);
-        this.plane.addFormation(formation as any);
-        notificationManager.success(
-          `Imported formation: ${formation.title || file.name}`
-        );
-        this.selectedFormationIdx = Math.max(
-          0,
-          (this.plane.formations?.length || 1) - 1
-        );
-        this.render();
-      } catch (e) {
-        console.error("Failed to import .jump file", e);
-        notificationManager.error("Failed to import formation (.jump)");
-      }
-    };
-    input.click();
-  }
-
   private assignJumperToFormation(j: SimJumper, formationIndex: number) {
     const formations = this.plane.formations || [];
     // Remove jumper from any current formation first
-    formations.forEach((f: any) => {
-      f.jumpers = (f.getAllJumpers?.() || []).filter(
-        (x: SimJumper) => x.id !== j.id
-      );
-    });
+    sequenceOf(j)?.removeMember(j); // their slot stays empty
     if (formationIndex >= 0 && formationIndex < formations.length) {
-      const target = formations[formationIndex];
-      target.jumpers.push(j);
-      j.isInFormation = true;
-      j.linked = true;
-    } else {
-      j.isInFormation = false;
+      if (!formations[formationIndex].addMember(j))
+        notificationManager.warning(`${formations[formationIndex].title} has no empty slot.`);
     }
 
     // Resort: formation members first, maintain stable order

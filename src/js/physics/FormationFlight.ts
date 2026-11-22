@@ -20,6 +20,7 @@ import {
   FlockSlot,
   flockSlot,
 } from "./FlockShapes";
+import { sequenceOf } from "../formations/FormationSequence";
 
 /**
  * Linked jumpers who exit together fly as one formation until breakoff. The group
@@ -32,8 +33,19 @@ export interface FormationPlan {
   shape: FormationShape;
   members: SimJumper[];
   slots: THREE.Vector3[];
+  /** Per-slot heading (degrees clockwise from north) for .jump formations; else face the centre. */
+  headingsDeg?: number[];
   startTime: number;
 }
+
+/** Status shape for members of an imported .jump formation. */
+const JUMP_SHAPE: FormationShape = {
+  id: "round",
+  label: "From .jump",
+  statusLabel: "In formation",
+  description: "Slots from the imported .jump file.",
+  slots: () => null,
+};
 
 export interface GroupPath {
   t0: number;
@@ -54,9 +66,10 @@ export function allJumpers(plane: SimPlane): SimJumper[] {
 
 /** Which formation a jumper belongs to: its imported formation, else the shared linked group. */
 export function groupKey(j: SimJumper, plane: SimPlane): string {
-  const formations: any[] = plane.formations || [];
-  const i = formations.findIndex((f) => f?.getAllJumpers?.().includes(j));
-  return i >= 0 ? `formation:${i}` : "linked";
+  const seq = sequenceOf(j);
+  if (seq) return `formation:${seq.id}`;
+  // linked groups are per plane (specs/formation-jumps.md §5.4)
+  return `linked:${(j.plane as any)?.id ?? (plane as any)?.id ?? ""}`;
 }
 
 /** Body positions that build rounds (wingsuits fly flocks, trackers fly lanes). */
@@ -114,6 +127,27 @@ export function formationPlanFor(
   j: SimJumper,
   plane: SimPlane,
 ): { plan: FormationPlan; slotIndex: number } | null {
+  const seq = sequenceOf(j);
+  if (seq) {
+    // .jump formation: everyone flies point 1 of the file, around the lead exit
+    if (!buildsRounds(j)) return null;
+    const members = seq.getAllJumpers().filter(buildsRounds);
+    if (members.length < 2) return null;
+    const frame = seq.frame(plane.direction);
+    const slots = members.map((m) => seq.slotOffset(0, seq.slotOf(m), frame));
+    const headingsDeg = members.map((m) => seq.slotHeadingDeg(0, seq.slotOf(m), frame));
+    return {
+      plan: {
+        key: `formation:${seq.id}`,
+        shape: JUMP_SHAPE,
+        members,
+        slots,
+        headingsDeg,
+        startTime: Math.min(...members.map((m) => m.jumpTime)),
+      },
+      slotIndex: members.indexOf(j),
+    };
+  }
   if (!j.linked || !buildsRounds(j)) return null;
   const key = groupKey(j, plane);
   const members = roundMembers(j, plane);

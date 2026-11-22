@@ -1,3 +1,4 @@
+import { importJumpText, pickAndImportJump } from "./formations/ImportJump";
 
 function handleClick(name: string): void {
   console.log(`Clicked: ${name}`);
@@ -7,16 +8,32 @@ function handleToggle(checkbox: HTMLInputElement, label: string): void {
   console.log(`${label} is now ${checkbox.checked ? "enabled" : "disabled"}`);
 }
 
-// function to handle file selection
+// Formations → Import Formation → From .jump (specs/formation-jumps.md P7)
 function handleFileSelect(): void {
-  let input = document.createElement("input");
-  input.type = "file";
-  input.onchange = (_) => {
-    let files = Array.from(input.files);
-    console.log(files);
-  };
-  input.click();
+  pickAndImportJump();
 }
+
+// Drop a .jump on the Plane Settings tab to import it
+function setupJumpDrop() {
+  const tab = document.getElementById("plane-panel");
+  if (!tab) return;
+  tab.addEventListener("dragover", (e) => {
+    if ([...(e.dataTransfer?.items ?? [])].some((i) => i.kind === "file")) {
+      e.preventDefault();
+      tab.classList.add("is-drop-target");
+    }
+  });
+  tab.addEventListener("dragleave", () => tab.classList.remove("is-drop-target"));
+  tab.addEventListener("drop", async (e) => {
+    tab.classList.remove("is-drop-target");
+    const file = e.dataTransfer?.files?.[0];
+    if (!file || !/.jump$/i.test(file.name)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    importJumpText(await file.text(), file.name);
+  });
+}
+if (typeof document !== "undefined") setupJumpDrop();
 
 // function to handle opening Skydive Designer link
 function handleOpenSkydiveDesignerLink(): void {}

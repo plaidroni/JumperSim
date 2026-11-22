@@ -3,7 +3,7 @@ import { Plane, Jumper } from "./BaseEntities";
 import { KinematicTrack } from "../Kinematics";
 import { currentWindProfile, windAtHeight } from "../wind/WindProfile";
 import { clamp } from "three/src/Three.TSL.js";
-import { Formation } from "./Formations"; // add this import
+import type { FormationSequence } from "../formations/FormationSequence";
 import { getGroundHeight } from "../terrain/GroundHeight";
 import {
   AIR_DENSITY,
@@ -31,6 +31,7 @@ import {
   smoothstep,
 } from "../physics/FormationFlight";
 import { breakoffDistance, MIN_DEPLOY_SEPARATION_M } from "../physics/FormationShapes";
+import { headingToQuaternion, sequenceOf } from "../formations/FormationSequence";
 import { FLOCK_DOCK_S, fanAngleDeg, flockSlotLabel } from "../physics/FlockShapes";
 import { TRACKING_EXIT_DELAY_S } from "../physics/BodyPositions";
 import { getPlanContext, invalidatePlanContext } from "../dropzone/PlanContext";
@@ -65,7 +66,8 @@ const mass = 80;
 
 export class SimPlane extends Plane {
   track: KinematicTrack;
-  formations: Formation[] = [];
+  /** Imported .jump formations flown by this load (specs/formation-jumps.md §8). */
+  formations: FormationSequence[] = [];
   jumpers: SimJumper[] = [];
   /** What linked groups fly between exit and breakoff (Plane Settings). */
   linkedFormation: FormationShapeId = DEFAULT_FORMATION_SHAPE;
@@ -83,7 +85,7 @@ export class SimPlane extends Plane {
     this.track = new KinematicTrack();
   }
 
-  addFormation(formation: Formation) {
+  addFormation(formation: FormationSequence) {
     this.formations.push(formation);
   }
 
@@ -109,11 +111,11 @@ export class SimPlane extends Plane {
   }
 
   getFormationsSummary() {
-    return this.formations.map((f: any) => ({
-      id: f?.id,
-      name: f?.name,
-      size: f?.members ? f.members.length : undefined,
-      // add other fields if your Formation type exposes them (e.g., anchor, slots)
+    return this.formations.map((f) => ({
+      id: f.id,
+      name: f.title,
+      size: f.getAllJumpers().length,
+      points: f.points.length,
     }));
   }
 
@@ -325,8 +327,9 @@ export class SimJumper extends Jumper {
     let roundBreakoffM = trackingStartAltitudeM;
     if (formation) {
       const highestPullFt = Math.max(...formation.plan.members.map((m) => m.pullAltitudeFt ?? DEFAULT_PULL_FT));
+      const seq = sequenceOf(this);
       roundBreakoffM = feetToMeters(
-        breakoffAltitudeFt(roundSettingsOf(this.plane as SimPlane).breakoffFt, highestPullFt)
+        breakoffAltitudeFt(seq ? seq.settings.breakoffFt : roundSettingsOf(this.plane as SimPlane).breakoffFt, highestPullFt)
       );
       slot = formation.plan.slots[formation.slotIndex].clone();
       groupPath = formationPath(
@@ -346,6 +349,8 @@ export class SimJumper extends Jumper {
           Math.atan2(-slot.x, -slot.z) // face the centre
         );
       }
+      const hdg = formation.plan.headingsDeg?.[formation.slotIndex];
+      if (typeof hdg === "number") facing = headingToQuaternion(hdg); // the .jump slot's heading
     }
 
     // ----- dropzone plan: patterns, lanes, zones -----
