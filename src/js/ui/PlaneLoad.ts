@@ -120,6 +120,7 @@ export class PlaneLoad {
   markDirty() {
     this.dirty = true;
     this.updateSaveState();
+    window.dispatchEvent(new Event("environment-changed"));
   }
 
   /** Apply the panel's changes: recalculate the sim, then redraw the panel. */
@@ -501,8 +502,8 @@ export class PlaneLoad {
     const saveBtn = document.createElement("button");
     saveBtn.id = "plane-load-save";
     saveBtn.className = "plane-load-save";
-    saveBtn.textContent = "Save";
-    saveBtn.title = "Apply these settings and recalculate the jump";
+    saveBtn.textContent = "Apply";
+    saveBtn.title = "Apply these settings and recalculate the jump (File → Save writes a .jsim)";
     saveBtn.addEventListener("click", () => this.save());
     saveWrap.appendChild(dirtyNote);
     saveWrap.appendChild(saveBtn);

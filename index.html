@@ -65,22 +65,28 @@
       <div id="logocontainer"></div>
       <div id="menu-items">
         <span class="logo-text">Jumper Sim</span>
+        <span class="file-title" id="file-title" title="The open .jsim file"></span>
 
         <div class="menu-item dropdown">
           <span>File</span>
           <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="handleClick('New Scene')">
-              <span>Save</span>
+            <!-- wired by src/js/ui/FileMenu.ts (specs/formation-jumps.md §12) -->
+            <div class="dropdown-item" id="file-save">
+              <span>Save</span><kbd>Ctrl+S</kbd>
             </div>
-            <div class="dropdown-item">
-              <span>Load from File</span>
+            <div class="dropdown-item" id="file-save-as">
+              <span>Save As…</span><kbd>Ctrl+Shift+S</kbd>
             </div>
-            <div class="dropdown-item">
+            <div class="dropdown-item" id="file-load">
+              <span>Load from File…</span><kbd>Ctrl+O</kbd>
+            </div>
+            <div class="dropdown-item" id="file-close">
+              <span>Close</span>
+            </div>
+            <hr />
+            <div class="dropdown-item" id="file-autosave" role="menuitemcheckbox">
               <span>Auto-Save</span>
-              <input
-                type="checkbox"
-                onclick="handleToggle(this, 'Auto-Save')"
-              />
+              <input type="checkbox" tabindex="-1" />
             </div>
           </div>
         </div>
@@ -100,7 +106,7 @@
         <div class="menu-item dropdown">
           <span>Formations</span>
           <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="handleClick('Undo')">
+            <div class="dropdown-item" id="formation-save" title="Saves everything, formation included, as a .jsim">
               <span>Save Formation</span>
             </div>
             <div class="dropdown-item submenu">

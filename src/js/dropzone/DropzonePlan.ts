@@ -158,8 +158,73 @@ function emit(live: boolean) {
   });
 }
 
+/**
+ * Where the active plan comes from: the dropzone's own saved plan, or an open .jsim
+ * file. A file's plan is never written to the dropzone's storage
+ * (specs/formation-jumps.md §12.5).
+ */
+let planSource: "dropzone" | { file: string } = "dropzone";
+const sourceListeners = new Set<() => void>();
+
+export function getPlanSource() {
+  return planSource;
+}
+
+export function setPlanSource(src: "dropzone" | { file: string }) {
+  planSource = src;
+  sourceListeners.forEach((fn) => fn());
+}
+
+export function onPlanSourceChanged(fn: () => void): () => void {
+  sourceListeners.add(fn);
+  return () => sourceListeners.delete(fn);
+}
+
+/** Copy the active plan into the dropzone's saved plan (Use as dropzone plan). */
+export function saveActivePlanToDropzone(): boolean {
+  if (!hasStorage() || !plan.dropzone) return false;
+  try {
+    localStorage.setItem(storageKey(plan.dropzone), JSON.stringify(plan));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The dropzone's own saved plan (for Undo of "Use as dropzone plan"). */
+export function savedDropzonePlanJSON(dz: string): string | null {
+  try {
+    return hasStorage() ? localStorage.getItem(storageKey(dz)) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function restoreSavedDropzonePlanJSON(dz: string, json: string | null) {
+  if (!hasStorage()) return;
+  try {
+    if (json === null) localStorage.removeItem(storageKey(dz));
+    else localStorage.setItem(storageKey(dz), json);
+  } catch {
+    /* storage full or blocked */
+  }
+}
+
+/** Use a plan as the active plan without saving it anywhere (loading a .jsim). */
+export function useFilePlan(raw: unknown, dropzone: string): boolean {
+  const parsed = validatePlan(raw);
+  if (!parsed) return false;
+  parsed.dropzone = dropzone || parsed.dropzone;
+  plan = parsed;
+  undoStack.length = 0;
+  redoStack.length = 0;
+  emit(false);
+  requestRecalculation();
+  return true;
+}
+
 function scheduleSaveAndRecalc() {
-  if (hasStorage() && plan.dropzone) {
+  if (planSource === "dropzone" && hasStorage() && plan.dropzone) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try {
@@ -187,7 +252,16 @@ export function updatePlan(mutate: (p: DropzonePlan) => void, opts: { live?: boo
   if (!opts.live) pushUndo(opts.snapshot ?? JSON.stringify(plan));
   mutate(plan);
   emit(!!opts.live);
-  if (!opts.live) scheduleSaveAndRecalc();
+  if (!opts.live) {
+    scheduleSaveAndRecalc();
+    environmentChanged();
+  }
+}
+
+/** Tell the File menu the environment changed (unsaved "•", Auto-Save). */
+function environmentChanged() {
+  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function")
+    window.dispatchEvent(new Event("environment-changed"));
 }
 
 /** JSON of the plan now, to pass as `snapshot` when a drag that started earlier ends. */
@@ -209,6 +283,7 @@ export function undo() {
   plan = JSON.parse(prev);
   emit(false);
   scheduleSaveAndRecalc();
+  environmentChanged();
 }
 
 export function redo() {
@@ -218,6 +293,7 @@ export function redo() {
   plan = JSON.parse(next);
   emit(false);
   scheduleSaveAndRecalc();
+  environmentChanged();
 }
 
 /** Load the saved plan for a dropzone, else its default from dropzones.json, else empty. */

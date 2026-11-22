@@ -1050,3 +1050,19 @@ label .js-hint { display: inline; margin-left: 6px; }
 .js-flash { animation: js-flash 0.8s ease-out; }
 
 .so-row.so-row--child { padding-left: 18px; }
+
+/* .jsim files (specs/formation-jumps.md §12) */
+.file-title { margin: 0 10px; color: #bbb; font-size: 12px; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+#file-close.is-disabled { opacity: 0.45; pointer-events: none; }
+.plan-source-banner { display: flex; align-items: center; gap: 8px; padding: 6px 10px; margin: 6px; border: 1px solid #6b5a12; border-radius: 4px; background: #2a2510; color: #f3dc7a; font-size: 12px; }
+.plan-source-banner[hidden] { display: none; }
+.plan-source-banner .plan-source-text { flex: 1; }
+.plan-source-banner.is-floating { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 30; max-width: 70%; }
+.plan-source-use { background: #3a3315; color: #ffd700; border: 1px solid #6b5a12; border-radius: 3px; padding: 2px 8px; cursor: pointer; }
+.jsim-dialog-back { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+.jsim-dialog { background: #2c2c2c; color: #ddd; border: 1px solid #444; border-radius: 6px; padding: 16px 18px; min-width: 320px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.jsim-dialog h3 { margin: 0 0 6px; font-size: 15px; color: #fff; }
+.jsim-dialog p { margin: 0 0 14px; font-size: 13px; color: #aaa; }
+.jsim-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.jsim-dialog-actions button { padding: 5px 12px; border-radius: 3px; border: 1px solid #555; background: #1e1e1e; color: #ddd; cursor: pointer; }
+.jsim-dialog-actions button.primary { background: #ffd700; color: #111; border-color: #ffd700; }

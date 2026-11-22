@@ -62,6 +62,8 @@ import {
 import { initializePlanner, type Planner } from "./dropzone/PlannerView";
 import { applyJumpSettingsToPlane, exitAltitudeM, getJumpSettings } from "./core/data/JumpSettings";
 import { initializeJumpSettingsPanel } from "./ui/JumpSettingsPanel";
+import { initializeFileMenu } from "./ui/FileMenu";
+import { initializePlanSourceBanner } from "./ui/PlanSourceBanner";
 import { WeatherRenderer } from "./visuals/weather/WeatherRenderer";
 import { registerOverlay, seeAllLayers, unregisterOverlay } from "./visuals/Layers";
 
@@ -80,6 +82,7 @@ const camera = new THREE.PerspectiveCamera(
   100000 * WORLD_SCALE,
 );
 const controls = new OrbitControls(camera, renderer.domElement);
+(window as any).simulationControls = controls;
 // clouds, haze and rain darkening (specs/weather-clouds-visibility.md §5.1)
 seeAllLayers(camera);
 const weatherRenderer = new WeatherRenderer(renderer);
@@ -1047,6 +1050,8 @@ planner = initializePlanner({
 initializeWindWidget(camera, controls);
 initializeWeatherPanel();
 initializeJumpSettingsPanel();
+initializeFileMenu();
+initializePlanSourceBanner();
 initializeWeatherMenu();
 // "zoop" to the ground or back up to jump height (viewport buttons, G / J)
 const cameraZoop = initializeCameraZoop({

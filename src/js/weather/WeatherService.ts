@@ -50,6 +50,8 @@ class WeatherService {
   private pendingWinds: WeatherState | null = null;
 
   private hold = false;
+  /** A saved weather state from a .jsim file is being flown; fetches don't replace it. */
+  private pinned: string | null = null;
   private loading = false;
   private failures = 0;
   private lastError = "";
@@ -128,6 +130,7 @@ class WeatherService {
       this.failures = 0;
       this.lastError = "";
       this.loading = false;
+      if (this.pinned) return; // flying the weather from a file
       this.apply(state, reason === "dz");
       if (reason === "dz") {
         notificationManager.success(
@@ -168,8 +171,57 @@ class WeatherService {
     }
   }
 
+  /**
+   * Fly a saved weather state (from a .jsim file) and hold it: fetches no longer
+   * replace it until `unpin()` (specs/formation-jumps.md §12.5).
+   */
+  pin(state: WeatherState, label: string, overrideName: string | null = null) {
+    this.pinned = label;
+    this.hold = true;
+    this.clearTimer();
+    this.abort?.abort();
+    this.loading = false;
+    if (overrideName) {
+      try {
+        this.override = resolveOverride(overrideName);
+      } catch {
+        this.override = null;
+      }
+    } else this.override = null;
+    this.pendingWinds = null;
+    this.base = state;
+    this.latest = this.withOverride(state);
+    if (!this.readySignalled) {
+      this.readySignalled = true;
+      signalWeatherReady();
+    }
+    this.useWinds(state, true);
+  }
+
+  /** Stop flying the file's weather and fetch live weather again. */
+  unpin() {
+    if (!this.pinned) return;
+    this.pinned = null;
+    this.hold = false;
+    this.refresh("dz");
+  }
+
+  /** Label of the file whose weather is pinned, or null. */
+  get pinnedLabel(): string | null {
+    return this.pinned;
+  }
+
+  /** The state the physics uses, for saving. */
+  exportState(): WeatherState | null {
+    return this.windState ?? this.base;
+  }
+
   setHold(hold: boolean) {
     if (hold === this.hold) return;
+    if (!hold && this.pinned) {
+      this.unpin();
+      return;
+    }
     this.hold = hold;
     if (hold) this.clearTimer();
     else if (this.isDue()) this.refresh("auto");
